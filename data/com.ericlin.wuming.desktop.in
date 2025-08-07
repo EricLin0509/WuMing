@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=WuMing
+GenericName=Malware Scanner
+Exec=wuming
+Icon=com.ericlin.wuming
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=clamav;anti-virus;
+StartupNotify=true
+DBusActivatable=true

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/com/ericlin/wuming">
+    <file preprocess="xml-stripblanks">wuming-window.ui</file>
+    <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
+  </gresource>
+
+  <gresource prefix="/com/ericlin/clamavgnome/pages">
+    <file preprocess="xml-stripblanks">update-signature-page.ui</file>
+  </gresource>
+</gresources>

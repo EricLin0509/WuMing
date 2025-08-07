@@ -1,0 +1,129 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-08-07 21:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: data/com.ericlin.wuming.desktop.in:2
+msgid "wuming"
+msgstr ""
+
+#: data/com.ericlin.wuming.desktop.in:8
+msgid "GTK;"
+msgstr ""
+
+#: data/com.ericlin.wuming.metainfo.xml.in:7 src/wuming-window.ui:6
+msgid "WuMing"
+msgstr ""
+
+#: data/com.ericlin.wuming.metainfo.xml.in:8
+msgid "Keep the summary shorter, between 10 and 35 characters"
+msgstr ""
+
+#: data/com.ericlin.wuming.metainfo.xml.in:10
+msgid "No description"
+msgstr ""
+
+#: data/com.ericlin.wuming.metainfo.xml.in:14
+msgid "Developer name"
+msgstr ""
+
+#: data/com.ericlin.wuming.metainfo.xml.in:52
+#: data/com.ericlin.wuming.metainfo.xml.in:56
+msgid "A caption"
+msgstr ""
+
+#: src/wuming-window.ui:30
+msgid "Main Menu"
+msgstr ""
+
+#: src/wuming-window.ui:47 src/wuming-window.ui:48
+msgid "Security Overview"
+msgstr ""
+
+#: src/wuming-window.ui:52 src/wuming-window.ui:65 src/wuming-window.ui:94
+msgid "Coming Soon..."
+msgstr ""
+
+#: src/wuming-window.ui:60 src/wuming-window.ui:61
+msgid "Scan"
+msgstr ""
+
+#: src/wuming-window.ui:73 src/wuming-window.ui:74 src/wuming-window.ui:78
+msgid "Update Signature"
+msgstr ""
+
+#: src/wuming-window.ui:89 src/wuming-window.ui:90
+msgid "Check History"
+msgstr ""
+
+#: src/wuming-window.ui:107
+msgid "_Preferences"
+msgstr ""
+
+#: src/wuming-window.ui:111
+msgid "_Keyboard Shortcuts"
+msgstr ""
+
+#: src/wuming-window.ui:115
+msgid "_About WuMing"
+msgstr ""
+
+#: src/update-signature.c:464
+msgid "Update Complete"
+msgstr ""
+
+#: src/update-signature.c:464
+msgid "Update Failed"
+msgstr ""
+
+#: src/update-signature-page.c:30
+msgid "Warning! No signature found! Please Update the signature!"
+msgstr ""
+
+#: src/update-signature-page.c:37
+#, c-format
+msgid "Warning! Only found main.cvd! Date: %d.%d.%d %d"
+msgstr ""
+
+#: src/update-signature-page.c:41
+#, c-format
+msgid "Current signature date: %d.%d.%d %d"
+msgstr ""
+
+#: src/update-signature-page.c:49
+msgid "Is up to date"
+msgstr ""
+
+#: src/update-signature-page.c:50
+msgid "Outdated!"
+msgstr ""
+
+#: src/update-signature-page.c:71
+msgid "Updating..."
+msgstr ""
+
+#: src/update-signature-page.c:81
+msgid "Close"
+msgstr ""
+
+#: src/update-signature-page.ui:22
+msgid "Current Signature Status"
+msgstr ""
+
+#: src/update-signature-page.ui:31
+msgid "Update"
+msgstr ""
