@@ -125,8 +125,7 @@ parse_cvd_header(const char *filepath)
     if (date_end)
     {
       *date_end = '\0'; // Cut
-      result = calloc(strlen(date_start) + 1, sizeof(char)); // the return result should be store at heap
-      memmove(result, date_start, strlen(date_start));
+      result = g_strdup(date_start);
     }
   }
 
@@ -172,19 +171,10 @@ scan_signature_date(scan_result *result)
   }
 
   /* First try daily.cvd */
-  size = strlen(database_dir) + strlen("/daily.cvd") + 1;
-
-  filepath = calloc(size, sizeof(char));
-  if (filepath == NULL)
-  {
-    g_warning("Calloc failed!\n");
-    return;
-  }
-
-  snprintf(filepath, size, "%s/daily.cvd", database_dir);
+  filepath = g_strdup_printf("%s/daily.cvd", database_dir);
   cvd_result = parse_cvd_header(filepath);
 
-  free(filepath);
+  g_free(filepath);
   filepath = NULL;
 
   if (cvd_result != NULL)
@@ -192,13 +182,13 @@ scan_signature_date(scan_result *result)
     if ((sscanf(cvd_result, "%d %3s %d %d", &cvd_day, cvd_month_str, &cvd_year, &cvd_time)) != 4)
     {
       g_warning("Invalid date format\n");
-      free(cvd_result);
+      g_free(cvd_result);
       cvd_result = NULL;
       goto scan_cld;
     }
     else is_daily_data_exist = true;
 
-    free(cvd_result);
+    g_free(cvd_result);
     cvd_result = NULL;
 
     cvd_month = month_str_to_num(cvd_month_str);
@@ -206,19 +196,10 @@ scan_signature_date(scan_result *result)
 
   /* Try daily.cld */
 scan_cld:
-  size = strlen(database_dir) + strlen("/daily.cld") + 1;
-
-  filepath = calloc(size, sizeof(char));
-  if (filepath == NULL)
-  {
-    g_warning("Calloc failed!\n");
-    return;
-  }
-
-  snprintf(filepath, size, "%s/daily.cld", database_dir);
+  filepath = g_strdup_printf("%s/daily.cld", database_dir);
   cld_result = parse_cvd_header(filepath);
 
-  free(filepath);
+  g_free(filepath);
   filepath = NULL;
 
   if (cld_result != NULL)
@@ -226,13 +207,13 @@ scan_cld:
     if ((sscanf(cld_result, "%d %3s %d %d", &cld_day, cld_month_str, &cld_year, &cld_time)) != 4)
     {
       g_warning("Invalid date format\n");
-      free(cld_result);
+      g_free(cld_result);
       cld_result = NULL;
       goto scan_main;
     }
     else is_daily_data_exist = true;
 
-    free(cld_result);
+    g_free(cld_result);
     cld_result = NULL;
     cld_month = month_str_to_num(cld_month_str);
   }
@@ -242,19 +223,11 @@ scan_main:
   if (!is_daily_data_exist)
   {
     result->is_warning = true; // set warning flag
-    size = strlen(database_dir) + strlen("/main.cvd") + 1;
 
-    filepath = calloc(size, sizeof(char));
-    if (filepath == NULL)
-    {
-      g_warning("Calloc failed!\n");
-      return;
-    }
-
-    snprintf(filepath, size, "%s/main.cvd", database_dir);
+    filepath = g_strdup_printf("%s/main.cvd", database_dir);
     cvd_result = parse_cvd_header(filepath);
 
-    free(filepath);
+    g_free(filepath);
     filepath = NULL;
 
     if (cvd_result == NULL)
@@ -271,7 +244,7 @@ scan_main:
       return;
     }
 
-    free(cvd_result);
+    g_free(cvd_result);
     cvd_result = NULL;
   }
 
