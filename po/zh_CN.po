@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-08 00:54+0800\n"
+"POT-Creation-Date: 2025-08-08 15:30+0800\n"
 "PO-Revision-Date: 2025-08-07 20:36+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -97,11 +97,11 @@ msgstr "快捷键"
 msgid "_About WuMing"
 msgstr "关于无名"
 
-#: src/update-signature.c:484
+#: src/update-signature.c:410
 msgid "Update Complete"
 msgstr "更新完成"
 
-#: src/update-signature.c:484
+#: src/update-signature.c:410
 msgid "Update Failed"
 msgstr "更新失败"
 
@@ -115,9 +115,8 @@ msgid "Warning! Only found main.cvd! Date: %d.%d.%d %d"
 msgstr "警告！只找到 main.cvd！日期：%d.%d.%d %d"
 
 #: src/update-signature-page.c:61
-#, fuzzy, c-format
 msgid "Current signature date: %d.%d.%d %d"
-msgstr "当前病毒库状态：%d.%d.%d %d"
+msgstr "当前病毒库日期：%d.%d.%d %d"
 
 #: src/update-signature-page.c:69
 msgid "Is up to date"
@@ -142,4 +141,3 @@ msgstr "当前病毒库状态"
 #: src/update-signature-page.ui:31
 msgid "Update"
 msgstr "更新"
-

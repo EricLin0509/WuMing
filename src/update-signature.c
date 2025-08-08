@@ -29,6 +29,15 @@
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
 #define PKEXEC_PATH "/usr/bin/pkexec"
 
+typedef struct {
+    char *result_ref;
+    int year;
+    int month;
+    int day;
+    int time;
+    char month_str[4];
+} DatabaseFileParams;
+
 /* Change month format to number */
 static int
 month_str_to_num(char *str)
@@ -132,171 +141,116 @@ parse_cvd_header(const char *filepath)
   return result;
 }
 
+/*Check Database dir*/
+static gboolean
+check_database_dir(const char *database_dir)
+{
+  if (!database_dir)
+    {
+      g_warning ("%s is not vaild dictionary\n", database_dir);
+      return FALSE;
+    }
+
+  if (strlen(database_dir) > (PATH_MAX - 50))
+    {
+      g_warning("Database path length exceeds system limit\n");
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+/*Build database path*/
+static char*
+build_database_path(const char *database_dir, const char *filename)
+{
+    return g_strdup_printf("%s/%s", database_dir, filename);
+}
+
+/*Get database date*/
+static gboolean
+parse_database_file(DatabaseFileParams *params, const char *database_dir, const char *filename)
+{
+    char* filepath = build_database_path(database_dir, filename);
+    params->result_ref = parse_cvd_header(filepath);
+    g_free(filepath);
+
+    if (!params->result_ref) return FALSE;
+
+    if (sscanf(params->result_ref, "%d %3s %d %d",
+               &params->day, params->month_str, &params->year, &params->time) != 4)
+    {
+        g_warning("Failed to parse: '%s'", params->result_ref);
+        g_warning("Invalid date format in %s", filename);
+        g_free(params->result_ref);
+        params->result_ref = NULL;
+        return FALSE;
+    }
+
+    params->month = month_str_to_num(params->month_str);
+    g_free(params->result_ref);
+    params->result_ref = NULL;
+    return TRUE;
+}
+
+/*Choose the latest date*/
+static void
+update_scan_result(scan_result *result, int cvd_days, int cld_days,
+                   DatabaseFileParams *cvd, DatabaseFileParams *cld)
+{
+    const gboolean cvd_valid = (cvd_days > 0);
+    const gboolean cld_valid = (cld_days > 0);
+
+    if (!cvd_valid && !cld_valid)
+    {
+        result->is_success = FALSE;
+        g_warning("No valid signature dates found");
+        return;
+    }
+
+    DatabaseFileParams* latest = (cvd_days >= cld_days) ? cvd : cld;
+    result->year   = latest->year;
+    result->month  = latest->month;
+    result->day    = latest->day;
+    result->time   = latest->time;
+    result->is_success = TRUE;
+}
+
 /*Scan the signature date*/
 void
 scan_signature_date(scan_result *result)
 {
-  bool is_daily_data_exist = false;
+  gboolean has_daily = FALSE;
 
-  /* .cvd date data*/
-  char *cvd_result = NULL;
-  int cvd_year = 0;
-  char cvd_month_str[4] = "Jan";
-  int cvd_month = 0;
-  int cvd_day = 0;
-  int cvd_time = 0;
-
-  /* .cld date data*/
-  char *cld_result = NULL;
-  int cld_year = 0;
-  char cld_month_str[4] = "Jan";
-  int cld_month = 0;
-  int cld_day = 0;
-  int cld_time = 0;
-
-  char *filepath = NULL;
-  int size = 0;
   const char *database_dir = cl_retdbdir();
+  if (!check_database_dir (database_dir)) return;
 
-  if (database_dir == NULL)
-  {
-    g_warning("The database dictionary not found!\n");
-    return;
-  }
+  /*First try daily.cvd*/
+  DatabaseFileParams *cvd_date = g_new0(DatabaseFileParams, 1);
+  has_daily = parse_database_file (cvd_date, database_dir, "daily.cvd");
 
-  if (strlen(database_dir) > PATH_MAX - 50)
-  {
-    g_warning("Database path length exceeds system limit");
-    return;
-  }
+  /*Try daily.cld*/
+  DatabaseFileParams *cld_date = g_new0(DatabaseFileParams, 1);
+  has_daily |= parse_database_file (cvd_date, database_dir, "daily.cld");
 
-  /* First try daily.cvd */
-  filepath = g_strdup_printf("%s/daily.cvd", database_dir);
-  cvd_result = parse_cvd_header(filepath);
-
-  g_free(filepath);
-  filepath = NULL;
-
-  if (cvd_result != NULL)
-  {
-    if ((sscanf(cvd_result, "%d %3s %d %d", &cvd_day, cvd_month_str, &cvd_year, &cvd_time)) != 4)
+  /*If no daily database found, try main.cvd*/
+  if (!has_daily)
     {
-      g_warning("Invalid date format\n");
-      g_free(cvd_result);
-      cvd_result = NULL;
-      goto scan_cld;
-    }
-    else is_daily_data_exist = true;
-
-    g_free(cvd_result);
-    cvd_result = NULL;
-
-    cvd_month = month_str_to_num(cvd_month_str);
-  }
-
-  /* Try daily.cld */
-scan_cld:
-  filepath = g_strdup_printf("%s/daily.cld", database_dir);
-  cld_result = parse_cvd_header(filepath);
-
-  g_free(filepath);
-  filepath = NULL;
-
-  if (cld_result != NULL)
-  {
-    if ((sscanf(cld_result, "%d %3s %d %d", &cld_day, cld_month_str, &cld_year, &cld_time)) != 4)
-    {
-      g_warning("Invalid date format\n");
-      g_free(cld_result);
-      cld_result = NULL;
-      goto scan_main;
-    }
-    else is_daily_data_exist = true;
-
-    g_free(cld_result);
-    cld_result = NULL;
-    cld_month = month_str_to_num(cld_month_str);
-  }
-
-  /* If no daily database, try main.cvd */
-scan_main:
-  if (!is_daily_data_exist)
-  {
-    result->is_warning = true; // set warning flag
-
-    filepath = g_strdup_printf("%s/main.cvd", database_dir);
-    cvd_result = parse_cvd_header(filepath);
-
-    g_free(filepath);
-    filepath = NULL;
-
-    if (cvd_result == NULL)
-    {
-      result->is_success = false;
-      return;
+      result->is_warning = TRUE;
+      if (!parse_database_file (cvd_date, database_dir, "main.cvd"))
+        {
+          result->is_success = FALSE;
+          goto clean_up;
+        }
     }
 
-    if ((sscanf(cvd_result, "%d %3s %d %d", &cvd_day, cvd_month_str, &cvd_year, &cvd_time)) != 4)
-    {
-      g_warning("Invalid date format\n");
-      free(cvd_result);
-      cvd_result = NULL;
-      return;
-    }
+  int cvd_days = date_to_days(cvd_date->year, cvd_date->month, cvd_date->day);
+  int cld_days = date_to_days(cld_date->year, cld_date->month, cld_date->day);
+  update_scan_result(result, cvd_days, cld_days, cvd_date, cld_date);
 
-    g_free(cvd_result);
-    cvd_result = NULL;
-  }
-
-  /* Compare result date */
-  int cvd_days = date_to_days(cvd_year, cvd_month, cvd_day);
-  int cld_days = date_to_days(cld_year, cld_month, cld_day);
-
-  const bool cvd_valid = (cvd_days > 0);
-  const bool cld_valid = (cld_days > 0);
-
-  if (!cvd_valid && !cld_valid)
-  {
-    result->is_success = false;
-    g_warning("No valid signature dates found");
-    return;
-  }
-  else if (cvd_valid && cld_valid)
-  {
-    if (cvd_days >= cld_days)
-    {
-      result->year = cvd_year;
-      result->month = cvd_month;
-      result->day = cvd_day;
-      result->time = cvd_time;
-    }
-    else
-    {
-      result->year = cld_year;
-      result->month = cld_month;
-      result->day = cld_day;
-      result->time = cld_time;
-    }
-  }
-  else
-  {
-    if (cvd_valid)
-    {
-      result->year = cvd_year;
-      result->month = cvd_month;
-      result->day = cvd_day;
-      result->time = cvd_time;
-    }
-    else
-    {
-      result->year = cld_year;
-      result->month = cld_month;
-      result->day = cld_day;
-      result->time = cld_time;
-    }
-  }
-
-  result->is_success = true;
+clean_up:
+  g_free (cvd_date);
+  g_free (cld_date);
 }
 
 /*Check whether the signature is up to date*/
