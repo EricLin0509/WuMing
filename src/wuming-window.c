@@ -100,11 +100,12 @@ wuming_window_init (WumingWindow *self)
 
 
     /* Scan the Database First */
-    scan_result result = {0, 0, 0, 0, false, false, false};
-    scan_signature_date (&result);
-    is_signature_uptodate (&result);
+    scan_result *result = g_new0 (scan_result, 1);
+    scan_signature_date (result);
+    is_signature_uptodate (result);
 
     /* Merge Window Elements */
-    update_signature_page_show_date (self->update_signature_page, result);
-    update_signature_page_show_isuptodate(self->update_signature_page, result.is_uptodate);
+    update_signature_page_show_date (self->update_signature_page, *result);
+    update_signature_page_show_isuptodate(self->update_signature_page, result->is_uptodate);
+    g_free (result);
 }
