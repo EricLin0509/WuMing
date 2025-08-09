@@ -21,8 +21,10 @@
 #include <glib/gi18n.h>
 #include <clamav.h>
 #include <time.h>
-#include <sys/wait.h>
 #include <limits.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/wait.h>
 
 #include "update-signature.h"
 
@@ -96,48 +98,50 @@ date_to_days(int year, int month, int day)
 static char*
 parse_cvd_header(const char *filepath)
 {
-  FILE *discriptor = NULL;
-  char header[256] = {0};
+  int discriptor = -1;
+  char *file_mapped = MAP_FAILED;
+  struct stat st;
 
-  char *date_start = NULL;
-  char *date_end = NULL;
+  const char header_prefix[] = "ClamAV-VDB:";
+  const size_t prefix_len = sizeof(header_prefix) - 1;
   char *result = NULL;
 
-  discriptor = fopen(filepath, "rb");
-
-  if (!discriptor)
-  {
-    g_warning("%s not found\n", filepath);
-    return NULL;
-  }
-
-  /* Get the first line of the file */
-  if (!fgets(header, sizeof(header), discriptor))
-  {
-    g_warning("failed to read the header\n");
-    fclose(discriptor);
-    return NULL;
-  }
-  fclose(discriptor);
-
-  if (strlen(header) < 20 || !strstr(header, "ClamAV-VDB:"))
-  {
-    g_warning("Invalid CVD header format");
-    return NULL;
-  }
-
-  if ((date_start = strstr(header, "ClamAV-VDB:")) != NULL)
-  {
-    date_start += strlen("ClamAV-VDB:"); // Skip prefix
-    while (*date_start == ' ') date_start++; // Skip spaces
-    date_end = strchr(date_start, '-');
-    if (date_end)
+  if ((discriptor = open(filepath, O_RDONLY)) == -1)
     {
-      *date_end = '\0'; // Cut
-      result = g_strdup(date_start);
+      g_warning("%s not found: %s\n", filepath, strerror(errno));
+      return NULL;
     }
-  }
 
+  if (fstat (discriptor, &st) == -1)
+    {
+      g_warning("Can't get the file size\n");
+      goto clean_up;
+    }
+
+  file_mapped = mmap (NULL, st.st_size, PROT_READ, MAP_PRIVATE, discriptor, 0);
+  if (file_mapped == MAP_FAILED)
+    {
+      g_warning ("mmap failed: %s\n", strerror(errno));
+      goto clean_up;
+    }
+
+  char *header_start = memmem(file_mapped, st.st_size, header_prefix, prefix_len);
+  if (!header_start)
+    {
+      g_warning("CVD header not found\n");
+      goto clean_up;
+    }
+
+  char *date_start = header_start + prefix_len;
+  while (*date_start == ' ' && date_start < (file_mapped + st.st_size)) date_start++;
+
+  char *date_end = memchr(date_start, '-', file_mapped + st.st_size - date_start);
+
+  if (date_end) result = g_strndup(date_start, date_end - date_start);
+
+clean_up:
+  if (file_mapped != MAP_FAILED) munmap(file_mapped, st.st_size);
+  if (discriptor != -1) close(discriptor);
   return result;
 }
 
