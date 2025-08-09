@@ -23,6 +23,7 @@
 #include <time.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
 
@@ -324,6 +325,7 @@ update_ui_callback(gpointer user_data)
       data->message
     );
 
+  update_context_unref(data->ctx);
   g_free(data->message);
   g_free(data);
   return G_SOURCE_REMOVE;
@@ -348,6 +350,7 @@ update_complete_callback(gpointer user_data)
     gtk_widget_set_sensitive(data->ctx->close_button, TRUE);
   }
 
+  update_context_unref(data->ctx);
   g_free(data->message);
   g_free(data);
   return G_SOURCE_REMOVE;
@@ -367,9 +370,12 @@ update_thread(gpointer data)
   int pipefd[2];
   pid_t pid;
 
-  if (pipe(pipefd) == -1)
+  char buffer[4096];
+  GString *line_buf = g_string_new(NULL);
+
+  if (pipe(pipefd) == -1 || fcntl(pipefd[0], F_SETFL, O_NONBLOCK) == -1)
   {
-    perror("pipe");
+    perror("pipe/fcntl");
     return NULL;
   }
 
@@ -391,19 +397,58 @@ update_thread(gpointer data)
   else // Parent process
   {
     close(pipefd[1]);
-    char buffer[1024];
-    FILE *stream = fdopen(pipefd[0], "r");
+    struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
 
-    while (fgets(buffer, sizeof(buffer), stream) != NULL)
+    while (true)
     {
-      g_async_queue_push(ctx->output_queue, g_strdup(buffer));
-      IdleData *callback_data = g_new0(IdleData, 1);
-      callback_data->ctx = update_context_ref(ctx);
-      callback_data->message = g_strdup(buffer);
-      g_idle_add(update_ui_callback, callback_data);
+      int ready = poll(&fds, 1, 100); // 100ms time out
+      if (ready == -1)
+      {
+        if (errno == EINTR) continue;
+        perror("poll");
+        break;
+      }
+
+      if (ready == 0) // if is time out
+      {
+        g_usleep(10000); // prevent cpu idling
+        continue;
+      }
+
+      ssize_t n = read(pipefd[0], buffer, sizeof(buffer)-1);
+      if (n < 0)
+      {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) continue;
+        perror("read");
+        break;
+      }
+      if (n == 0) break; // EOF
+      buffer[n] = '\0';
+      g_string_append(line_buf, buffer);
+
+      /*Process the output lines*/
+      char *line_end;
+      while ((line_end = strchr(line_buf->str, '\n')) != NULL)
+      {
+        *line_end = '\0';
+        IdleData *callback_data = g_new0(IdleData, 1);
+        callback_data->ctx = update_context_ref(ctx);
+        callback_data->message = g_strdup(line_buf->str);
+        g_idle_add(update_ui_callback, callback_data);
+        g_string_erase(line_buf, 0, line_end - line_buf->str + 1);
+      }
     }
 
-    fclose(stream);
+    /*Process the rest data*/
+    if (line_buf->len > 0)
+    {
+      IdleData *callback_data = g_new0(IdleData, 1);
+      callback_data->ctx = update_context_ref(ctx);
+      callback_data->message = g_strdup(line_buf->str);
+      g_idle_add(update_ui_callback, callback_data);
+    }
+    g_string_free(line_buf, TRUE);
+
     int status;
     waitpid(pid, &status, 0);
 
