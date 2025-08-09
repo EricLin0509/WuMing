@@ -356,12 +356,6 @@ update_complete_callback(gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
-static void
-close_button_cb(GtkButton* self, gpointer dialog)
-{
-  adw_dialog_force_close(ADW_DIALOG(dialog));
-}
-
 static gpointer
 update_thread(gpointer data)
 {
@@ -467,7 +461,7 @@ update_thread(gpointer data)
 void
 start_update(AdwDialog *dialog, GtkWidget *page, GtkWidget *close_button, GtkWidget *update_button)
 {
-  g_signal_connect(GTK_BUTTON(close_button), "clicked", G_CALLBACK(close_button_cb), dialog);
+  g_signal_connect_swapped(GTK_BUTTON(close_button), "clicked", G_CALLBACK(adw_dialog_force_close), ADW_DIALOG (dialog));
 
   UpdateContext *ctx = g_new0(UpdateContext, 1);
 
