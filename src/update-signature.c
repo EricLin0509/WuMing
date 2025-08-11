@@ -395,20 +395,41 @@ update_thread(gpointer data)
     close(pipefd[1]);
     struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
 
+    /*Dynamic timeout duration*/
+    int idle_counter = 0;
+    const int MAX_IDLE_COUNT = 5; // If idle_counter greater than this, use MAX_TIMEOUT_MS
+    const int BASE_TIMEOUT_MS = 50;
+    const int MAX_TIMEOUT_MS = 1000;
+    int dynamic_timeout = BASE_TIMEOUT_MS;
+
     while (true)
     {
-      int ready = poll(&fds, 1, 100); // 100ms time out
+      const int timeout_ms = line_buf->len > 0 ? 0 : dynamic_timeout;
+      int ready = poll(&fds, 1, timeout_ms);
       if (ready == -1)
       {
         if (errno == EINTR) continue;
         perror("poll");
+        g_critical ("Poll operation failed\n");
         break;
       }
 
       if (ready == 0) // if is time out
       {
+        if (++idle_counter > MAX_IDLE_COUNT)
+        {
+          dynamic_timeout = MIN(dynamic_timeout * 2, MAX_TIMEOUT_MS);
+          idle_counter = 0;
+
+          g_debug ("Set timeout to %dms\n", dynamic_timeout);
+        }
         g_usleep(10000); // prevent cpu idling
         continue;
+      }
+      else
+      {
+        idle_counter = 0;
+        dynamic_timeout = BASE_TIMEOUT_MS;
       }
 
       ssize_t n = read(pipefd[0], buffer, sizeof(buffer)-1);
