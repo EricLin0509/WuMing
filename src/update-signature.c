@@ -26,6 +26,7 @@
 #include <poll.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#include <sys/prctl.h>
 
 #include "update-signature.h"
 
@@ -381,6 +382,7 @@ update_thread(gpointer data)
 
   if (pid == 0) // Child process
   {
+    prctl(PR_SET_PDEATHSIG, SIGTERM);
     close(pipefd[0]);
     dup2(pipefd[1], STDOUT_FILENO);
     dup2(pipefd[1], STDERR_FILENO);
