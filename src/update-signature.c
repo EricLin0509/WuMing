@@ -423,7 +423,6 @@ update_thread(gpointer data)
 
           g_debug ("Set timeout to %dms\n", dynamic_timeout);
         }
-        g_usleep(10000); // prevent cpu idling
         continue;
       }
       else
