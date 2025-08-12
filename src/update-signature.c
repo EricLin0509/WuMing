@@ -412,8 +412,6 @@ update_thread(gpointer data)
       const int jitter = rand() % JITTER_RANGE; // use random perturbations
       const int timeout_ms = line_buf->len > 0 ? 0 : CLAMP(dynamic_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
-      g_print ("Set timeout to %dms\n", timeout_ms);
-
       int ready = poll(&fds, 1, timeout_ms);
       if (ready == -1)
       {
