@@ -28,6 +28,7 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 
+#include "ring-buffer.h"
 #include "update-signature.h"
 
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
@@ -316,7 +317,19 @@ update_context_unref(UpdateContext *ctx)
   if (!ctx || --ctx->ref_count > 0) return;
 
   if (ctx->output_queue)
+  {
+    g_async_queue_lock(ctx->output_queue);
+
+    while (g_async_queue_length_unlocked(ctx->output_queue) > 0)
+      {
+        IdleData *data = g_async_queue_pop_unlocked(ctx->output_queue);
+        update_context_unref(data->ctx);
+        g_free(data->message);
+        g_free(data);
+      }
+
     g_async_queue_unref(ctx->output_queue);
+  }
 
   g_free(ctx);
 }
@@ -371,8 +384,14 @@ update_thread(gpointer data)
   int pipefd[2];
   pid_t pid;
 
-  char buffer[4096];
-  GString *line_buf = g_string_new(NULL);
+  RingBuffer ring_buf;
+  ring_buffer_init(&ring_buf);
+
+  char read_buf[512]; // Read line
+  char line_buf[RING_BUFFER_SIZE + 1]; // temp line buffer
+  size_t line_capacity = sizeof(line_buf);
+  LineAccumulator acc; // Accumulate lines
+  line_accumulator_init(&acc);
 
   if (pipe(pipefd) == -1 || fcntl(pipefd[0], F_SETFL, O_NONBLOCK) == -1)
   {
@@ -399,6 +418,9 @@ update_thread(gpointer data)
   else // Parent process
   {
     close(pipefd[1]);
+
+    volatile gboolean eof_received = FALSE;
+
     struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
 
     srand((unsigned)(g_get_monotonic_time() ^ getpid()));
@@ -410,7 +432,7 @@ update_thread(gpointer data)
     while (true)
     {
       const int jitter = rand() % JITTER_RANGE; // use random perturbations
-      const int timeout_ms = line_buf->len > 0 ? 0 : CLAMP(dynamic_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
+      const int timeout_ms = (ring_buf.count > 0) ? 0 : CLAMP(dynamic_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
       int ready = poll(&fds, 1, timeout_ms);
       if (ready == -1)
@@ -438,39 +460,47 @@ update_thread(gpointer data)
         dynamic_timeout = BASE_TIMEOUT_MS;
       }
 
-      ssize_t n = read(pipefd[0], buffer, sizeof(buffer)-1);
-      if (n < 0)
+      ssize_t n = read(pipefd[0], read_buf, sizeof(read_buf));
+      if (n > 0)
+        {
+          size_t written = ring_buffer_write(&ring_buf, read_buf, n);
+          if (written < (size_t)n)
+            {
+              g_warning("Ring buffer overflow, lost %zd bytes", n - written);
+            }
+        }
+      else if (n == 0) eof_received = TRUE; // EOF
+      else
       {
         if (errno == EAGAIN || errno == EWOULDBLOCK) continue;
         perror("read");
         break;
       }
-      if (n == 0) break; // EOF
-      buffer[n] = '\0';
-      g_string_append(line_buf, buffer);
-
       /*Process the output lines*/
-      char *line_end;
-      while ((line_end = strchr(line_buf->str, '\n')) != NULL)
+      char *line;
+      if (ring_buffer_read_line(&ring_buf, &acc, &line))
       {
-        *line_end = '\0';
         IdleData *callback_data = g_new0(IdleData, 1);
+        callback_data->message = g_strndup(line, strlen(line));
         callback_data->ctx = update_context_ref(ctx);
-        callback_data->message = g_strdup(line_buf->str);
         g_idle_add(update_ui_callback, callback_data);
-        g_string_erase(line_buf, 0, line_end - line_buf->str + 1);
+      }
+
+      if (eof_received && ring_buf.count == 0)
+      {
+        if (acc.read_pos < acc.write_pos)
+        {
+          IdleData *end_data = g_new0(IdleData, 1);
+          end_data->message = g_strdup(acc.buffer + acc.read_pos);
+          end_data->ctx = update_context_ref(ctx);
+          g_idle_add(update_ui_callback, end_data);
+          line_accumulator_init(&acc); // reset accumulator
+        }
+        
+        break;
       }
     }
 
-    /*Process the rest data*/
-    if (line_buf->len > 0)
-    {
-      IdleData *callback_data = g_new0(IdleData, 1);
-      callback_data->ctx = update_context_ref(ctx);
-      callback_data->message = g_strdup(line_buf->str);
-      g_idle_add(update_ui_callback, callback_data);
-    }
-    g_string_free(line_buf, TRUE);
 
     int status;
     waitpid(pid, &status, 0);
