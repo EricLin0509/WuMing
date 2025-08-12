@@ -243,7 +243,7 @@ scan_signature_date(scan_result *result)
 
   /*Try daily.cld*/
   DatabaseFileParams *cld_date = g_new0(DatabaseFileParams, 1);
-  has_daily |= parse_database_file (cvd_date, database_dir, "daily.cld");
+  has_daily |= parse_database_file (cld_date, database_dir, "daily.cld");
 
   /*If no daily database found, try main.cvd*/
   if (!has_daily)
@@ -506,3 +506,4 @@ start_update(AdwDialog *dialog, GtkWidget *page, GtkWidget *close_button, GtkWid
 
   g_thread_new("update-thread", update_thread, ctx);
 }
+
