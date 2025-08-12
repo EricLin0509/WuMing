@@ -33,6 +33,12 @@
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
 #define PKEXEC_PATH "/usr/bin/pkexec"
 
+#define JITTER_RANGE 30
+#define MAX_IDLE_COUNT 5 // If idle_counter greater than this, use MAX_TIMEOUT_MS
+#define BASE_TIMEOUT_MS 50
+#define MAX_TIMEOUT_MS 1000
+
+
 typedef struct {
     char *result_ref;
     int year;
@@ -395,16 +401,19 @@ update_thread(gpointer data)
     close(pipefd[1]);
     struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
 
+    srand((unsigned)(g_get_monotonic_time() ^ getpid()));
+
     /*Dynamic timeout duration*/
     int idle_counter = 0;
-    const int MAX_IDLE_COUNT = 5; // If idle_counter greater than this, use MAX_TIMEOUT_MS
-    const int BASE_TIMEOUT_MS = 50;
-    const int MAX_TIMEOUT_MS = 1000;
     int dynamic_timeout = BASE_TIMEOUT_MS;
 
     while (true)
     {
-      const int timeout_ms = line_buf->len > 0 ? 0 : dynamic_timeout;
+      const int jitter = rand() % JITTER_RANGE; // use random perturbations
+      const int timeout_ms = line_buf->len > 0 ? 0 : CLAMP(dynamic_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
+
+      g_print ("Set timeout to %dms\n", timeout_ms);
+
       int ready = poll(&fds, 1, timeout_ms);
       if (ready == -1)
       {
