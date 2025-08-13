@@ -304,6 +304,13 @@ typedef struct {
   char *message;
 } IdleData;
 
+typedef struct {
+    int pipefd;
+    RingBuffer *ring_buf;
+    LineAccumulator *acc;
+    UpdateContext *ctx;
+} IOContext;
+
 static UpdateContext*
 update_context_ref(UpdateContext *ctx)
 {
@@ -376,146 +383,189 @@ update_complete_callback(gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
+static
+gboolean spawn_update_process(int pipefd[2], pid_t *pid)
+{
+    if (pipe(pipefd) == -1)
+    {
+        perror("pipe");
+        return FALSE;
+    }
+
+    if ((*pid = fork()) == -1)
+    {
+        perror("fork");
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return FALSE;
+    }
+
+    if (*pid == 0) // Child process
+    {
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+        
+        execl(PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL);
+        exit(EXIT_FAILURE);
+    }
+    
+    close(pipefd[1]);
+    return TRUE;
+}
+
+static
+gboolean wait_for_process(pid_t pid)
+{
+    int status;
+    if (waitpid(pid, &status, 0) == -1)
+    {
+        perror("waitpid");
+        return FALSE;
+    }
+    return WIFEXITED(status) && (WEXITSTATUS(status) == 0);
+}
+
+static
+gboolean handle_io_event(IOContext *io_ctx)
+{
+    char read_buf[512];
+    ssize_t n = read(io_ctx->pipefd, read_buf, sizeof(read_buf));
+    
+    if (n > 0)
+    {
+        size_t written = ring_buffer_write(io_ctx->ring_buf, read_buf, n);
+        if (written < (size_t)n)
+        {
+            g_warning("Ring buffer overflow, lost %zd bytes", n - written);
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static void
+process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, UpdateContext *ctx)
+{
+    char *line;
+    while (ring_buffer_read_line(ring_buf, acc, &line))
+    {
+        IdleData *data = g_new0(IdleData, 1);
+        data->message = g_strdup(line);
+        data->ctx = update_context_ref(ctx);
+        g_idle_add(update_ui_callback, data);
+    }
+}
+
+static int calculate_dynamic_timeout(int *idle_counter, int *current_timeout)
+{
+    const int jitter = rand() % JITTER_RANGE;
+    
+    if (++(*idle_counter) > MAX_IDLE_COUNT)
+    {
+        *current_timeout = MIN(*current_timeout * 2, MAX_TIMEOUT_MS);
+        *idle_counter = 0;
+    }
+    
+    return CLAMP(*current_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
+}
+
+static void 
+send_final_status(UpdateContext *ctx, gboolean success)
+{
+    const char *status_text = success ? 
+        _("Update Complete") : _("Update Failed");
+    
+    /* Create final status message */
+    IdleData *complete_data = g_new0(IdleData, 1);
+    complete_data->ctx = update_context_ref(ctx);
+    complete_data->message = g_strdup(status_text);
+    
+    /* Send final status message to main thread */
+    if (G_LIKELY(complete_data->ctx && complete_data->ctx->update_status_page))
+    {
+        g_async_queue_push(ctx->output_queue, complete_data);
+        
+        /* Safe to call update_complete_callback directly */
+        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                       update_complete_callback,
+                       complete_data,
+                       (GDestroyNotify)update_context_unref);
+    }
+    else
+    {
+        g_warning("Attempted to send status to invalid context");
+        update_context_unref(complete_data->ctx);
+        g_free(complete_data->message);
+        g_free(complete_data);
+    }
+}
+
+
 static gpointer
 update_thread(gpointer data)
 {
-  UpdateContext *ctx = update_context_ref(data);
-
-  int pipefd[2];
-  pid_t pid;
-
-  RingBuffer ring_buf;
-  ring_buffer_init(&ring_buf);
-
-  char read_buf[512]; // Read line
-  char line_buf[RING_BUFFER_SIZE + 1]; // temp line buffer
-  size_t line_capacity = sizeof(line_buf);
-  LineAccumulator acc; // Accumulate lines
-  line_accumulator_init(&acc);
-
-  if (pipe(pipefd) == -1 || fcntl(pipefd[0], F_SETFL, O_NONBLOCK) == -1)
-  {
-    perror("pipe/fcntl");
-    return NULL;
-  }
-
-  if ((pid = fork()) == -1)
-  {
-    perror("fork");
-    return NULL;
-  }
-
-  if (pid == 0) // Child process
-  {
-    prctl(PR_SET_PDEATHSIG, SIGTERM);
-    close(pipefd[0]);
-    dup2(pipefd[1], STDOUT_FILENO);
-    dup2(pipefd[1], STDERR_FILENO);
-
-    execl(PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL);
-    exit(EXIT_FAILURE);
-  }
-  else // Parent process
-  {
-    close(pipefd[1]);
-
-    volatile gboolean eof_received = FALSE;
-
-    struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
-
-    srand((unsigned)(g_get_monotonic_time() ^ getpid()));
-
-    /*Dynamic timeout duration*/
-    int idle_counter = 0;
-    int dynamic_timeout = BASE_TIMEOUT_MS;
-
-    while (true)
+    UpdateContext *ctx = update_context_ref(data);
+    int pipefd[2];
+    pid_t pid;
+    
+    /*Initialize ring buffer and line accumulator*/
+    RingBuffer ring_buf;
+    ring_buffer_init(&ring_buf);
+    LineAccumulator acc;
+    line_accumulator_init(&acc);
+    
+    /*Spawn update process*/
+    if (!spawn_update_process(pipefd, &pid))
     {
-      const int jitter = rand() % JITTER_RANGE; // use random perturbations
-      const int timeout_ms = (ring_buf.count > 0) ? 0 : CLAMP(dynamic_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
-
-      int ready = poll(&fds, 1, timeout_ms);
-      if (ready == -1)
-      {
-        if (errno == EINTR) continue;
-        perror("poll");
-        g_critical ("Poll operation failed\n");
-        break;
-      }
-
-      if (ready == 0) // if is time out
-      {
-        if (++idle_counter > MAX_IDLE_COUNT)
-        {
-          dynamic_timeout = MIN(dynamic_timeout * 2, MAX_TIMEOUT_MS);
-          idle_counter = 0;
-
-          g_debug ("Set timeout to %dms\n", dynamic_timeout);
-        }
-        continue;
-      }
-      else
-      {
-        idle_counter = 0;
-        dynamic_timeout = BASE_TIMEOUT_MS;
-      }
-
-      ssize_t n = read(pipefd[0], read_buf, sizeof(read_buf));
-      if (n > 0)
-        {
-          size_t written = ring_buffer_write(&ring_buf, read_buf, n);
-          if (written < (size_t)n)
-            {
-              g_warning("Ring buffer overflow, lost %zd bytes", n - written);
-            }
-        }
-      else if (n == 0) eof_received = TRUE; // EOF
-      else
-      {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) continue;
-        perror("read");
-        break;
-      }
-      /*Process the output lines*/
-      char *line;
-      if (ring_buffer_read_line(&ring_buf, &acc, &line))
-      {
-        IdleData *callback_data = g_new0(IdleData, 1);
-        callback_data->message = g_strndup(line, strlen(line));
-        callback_data->ctx = update_context_ref(ctx);
-        g_idle_add(update_ui_callback, callback_data);
-      }
-
-      if (eof_received && ring_buf.count == 0)
-      {
-        /*Flush the remaining lines in the buffer*/
-         while (ring_buffer_read_line(&ring_buf, &acc, &line))
-         {
-          IdleData *callback_data = g_new0(IdleData, 1);
-          callback_data->message = g_strdup(line);
-          callback_data->ctx = update_context_ref(ctx);
-          g_idle_add(update_ui_callback, callback_data);
-         }
-        
-        break;
-      }
+        update_context_unref(ctx);
+        return NULL;
     }
 
+    /*Initialize IO context*/
+    IOContext io_ctx = {
+        .pipefd = pipefd[0],
+        .ring_buf = &ring_buf,
+        .acc = &acc,
+        .ctx = ctx
+    };
 
-    int status;
-    waitpid(pid, &status, 0);
+    /*Start update thread*/
+    struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
+    int idle_counter = 0;
+    int dynamic_timeout = BASE_TIMEOUT_MS;
+    gboolean eof_received = FALSE;
 
-    gboolean success = WIFEXITED(status) && (WEXITSTATUS(status) == 0);
+    while (!eof_received)
+    {
+        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout);
+        int ready = poll(&fds, 1, timeout);
+        
+        if (ready > 0)
+        {
+            idle_counter = 0;
+            dynamic_timeout = BASE_TIMEOUT_MS;
+            
+            if (!handle_io_event(&io_ctx))
+            {
+                eof_received = TRUE;
+            }
+        }
+        
+        process_output_lines(&ring_buf, &acc, ctx);
+    }
 
-    IdleData *complete_data = g_new0(IdleData, 1);
-    complete_data->ctx = update_context_ref(ctx);
-    complete_data->message = g_strdup(success ? gettext("Update Complete") : gettext("Update Failed"));
-    g_idle_add(update_complete_callback, complete_data);
-  }
-
-  update_context_unref(ctx);
-  return NULL;
+    /*Clean up*/
+    process_output_lines(&ring_buf, &acc, ctx);
+    gboolean success = wait_for_process(pid);
+    send_final_status(ctx, success);
+    
+    close(pipefd[0]);
+    update_context_unref(ctx);
+    return NULL;
 }
+
 
 void
 start_update(AdwDialog *dialog, GtkWidget *page, GtkWidget *close_button, GtkWidget *update_button)
