@@ -475,7 +475,7 @@ static void
 send_final_status(UpdateContext *ctx, gboolean success)
 {
     const char *status_text = success ? 
-        _("Update Complete") : _("Update Failed");
+        gettext("Update Complete") : gettext("Update Failed");
     
     /* Create final status message */
     IdleData *complete_data = g_new0(IdleData, 1);

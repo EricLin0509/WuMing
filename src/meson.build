@@ -3,12 +3,14 @@ wuming_sources = [
   'wuming-application.c',
   'wuming-window.c',
   'ring-buffer.c',
+  'systemd-control.c',
   'update-signature.c',
   'update-signature-page.c',
 ]
 
 wuming_deps = [
   dependency('libclamav'),
+  dependency('dbus-1'),
   dependency('gtk4'),
   dependency('libadwaita-1', version: '>= 1.4'),
 ]

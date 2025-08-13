@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-13 16:05+0800\n"
+"POT-Creation-Date: 2025-08-13 15:59+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -98,14 +98,6 @@ msgstr "_Keyboard Shortcuts"
 msgid "_About WuMing"
 msgstr "_About WuMing"
 
-#: src/update-signature.c:478
-msgid "Update Complete"
-msgstr "Update Complete"
-
-#: src/update-signature.c:478
-msgid "Update Failed"
-msgstr "Update Failed"
-
 #: src/update-signature-page.c:51
 msgid "Warning! No signature found! Please Update the signature!"
 msgstr "Warning! No signature found! Please Update the signature!"
@@ -128,18 +120,6 @@ msgstr "Is up to date"
 msgid "Outdated!"
 msgstr "Outdated!"
 
-#: src/update-signature-page.c:80
-msgid "Enabled"
-msgstr ""
-
-#: src/update-signature-page.c:81
-msgid "Disabled"
-msgstr ""
-
-#: src/update-signature-page.c:82
-msgid "Failed to check!"
-msgstr ""
-
 #: src/update-signature-page.c:94
 msgid "Updating..."
 msgstr "Updating..."
@@ -159,3 +139,9 @@ msgstr "Update"
 #: src/update-signature-page.ui:44
 msgid "Freshclam service status"
 msgstr ""
+
+#~ msgid "Update Complete"
+#~ msgstr "Update Complete"
+
+#~ msgid "Update Failed"
+#~ msgstr "Update Failed"

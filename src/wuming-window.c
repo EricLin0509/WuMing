@@ -107,5 +107,6 @@ wuming_window_init (WumingWindow *self)
     /* Merge Window Elements */
     update_signature_page_show_date (self->update_signature_page, *result);
     update_signature_page_show_isuptodate(self->update_signature_page, result->is_uptodate);
+    update_signature_page_show_servicestat (self->update_signature_page);
     g_free (result);
 }

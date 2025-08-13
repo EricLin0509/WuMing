@@ -34,6 +34,7 @@ struct _UpdateSignaturePage {
   GtkWidget          *clamp;
   AdwActionRow       *status_row;
   GtkButton          *update_button;
+  AdwActionRow       *service_row;
 };
 
 G_DEFINE_FINAL_TYPE (UpdateSignaturePage, update_signature_page, GTK_TYPE_WIDGET)
@@ -68,6 +69,17 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, bool is_uptodat
 {
   if (is_uptodate) adw_action_row_set_subtitle (self->status_row, gettext("Is up to date"));
   else adw_action_row_set_subtitle (self->status_row, gettext("Outdated!"));
+}
+
+void
+update_signature_page_show_servicestat(UpdateSignaturePage *self)
+{
+  const char *service = "clamav-freshclam.service";
+  int is_enabled = is_service_enabled(service);
+
+  if (is_enabled == 1) adw_action_row_set_subtitle (self->service_row, gettext("Enabled"));
+  else if (is_enabled == 0) adw_action_row_set_subtitle (self->service_row, gettext("Disabled"));
+  else adw_action_row_set_subtitle (self->service_row, gettext("Failed to check!"));
 }
 
 static void
@@ -125,6 +137,7 @@ update_signature_page_class_init (UpdateSignaturePageClass *klass)
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, clamp);
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, status_row);
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, update_button);
+    gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, service_row);
 }
 
 GtkWidget *

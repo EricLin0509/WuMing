@@ -23,6 +23,7 @@
 #include <adwaita.h>
 
 #include "update-signature.h"
+#include "systemd-control.h"
 
 G_BEGIN_DECLS
 
@@ -38,5 +39,8 @@ update_signature_page_show_date(UpdateSignaturePage *self, scan_result result);
 
 void
 update_signature_page_show_isuptodate(UpdateSignaturePage *self, bool is_uptodate);
+
+void
+update_signature_page_show_servicestat(UpdateSignaturePage *self);
 
 G_END_DECLS

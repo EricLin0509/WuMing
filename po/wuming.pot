@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-08 15:30+0800\n"
+"POT-Creation-Date: 2025-08-13 16:05+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -98,41 +98,53 @@ msgstr ""
 msgid "_About WuMing"
 msgstr ""
 
-#: src/update-signature.c:410
+#: src/update-signature.c:478
 msgid "Update Complete"
 msgstr ""
 
-#: src/update-signature.c:410
+#: src/update-signature.c:478
 msgid "Update Failed"
 msgstr ""
 
-#: src/update-signature-page.c:50
+#: src/update-signature-page.c:51
 msgid "Warning! No signature found! Please Update the signature!"
 msgstr ""
 
-#: src/update-signature-page.c:57
+#: src/update-signature-page.c:58
 #, c-format
 msgid "Warning! Only found main.cvd! Date: %d.%d.%d %d"
 msgstr ""
 
-#: src/update-signature-page.c:61
+#: src/update-signature-page.c:62
 #, c-format
 msgid "Current signature date: %d.%d.%d %d"
 msgstr ""
 
-#: src/update-signature-page.c:69
+#: src/update-signature-page.c:70
 msgid "Is up to date"
 msgstr ""
 
-#: src/update-signature-page.c:70
+#: src/update-signature-page.c:71
 msgid "Outdated!"
 msgstr ""
 
+#: src/update-signature-page.c:80
+msgid "Enabled"
+msgstr ""
+
+#: src/update-signature-page.c:81
+msgid "Disabled"
+msgstr ""
+
 #: src/update-signature-page.c:82
+msgid "Failed to check!"
+msgstr ""
+
+#: src/update-signature-page.c:94
 msgid "Updating..."
 msgstr ""
 
-#: src/update-signature-page.c:162
+#: src/update-signature-page.c:175
 msgid "Close"
 msgstr ""
 
@@ -142,4 +154,8 @@ msgstr ""
 
 #: src/update-signature-page.ui:31
 msgid "Update"
+msgstr ""
+
+#: src/update-signature-page.ui:44
+msgid "Freshclam service status"
 msgstr ""
