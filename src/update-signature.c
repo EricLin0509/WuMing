@@ -488,7 +488,7 @@ update_thread(gpointer data)
 
       if (eof_received && ring_buf.count == 0)
       {
-        /*First flush the remaining lines in the buffer*/
+        /*Flush the remaining lines in the buffer*/
          while (ring_buffer_read_line(&ring_buf, &acc, &line))
          {
           IdleData *callback_data = g_new0(IdleData, 1);
@@ -496,16 +496,6 @@ update_thread(gpointer data)
           callback_data->ctx = update_context_ref(ctx);
           g_idle_add(update_ui_callback, callback_data);
          }
-
-        /*Then the rest of the output*/
-        if (acc.read_pos < acc.write_pos)
-        {
-          IdleData *end_data = g_new0(IdleData, 1);
-          end_data->message = g_strdup(acc.buffer + acc.read_pos);
-          end_data->ctx = update_context_ref(ctx);
-          g_idle_add(update_ui_callback, end_data);
-          line_accumulator_init(&acc); // reset accumulator
-        }
         
         break;
       }
