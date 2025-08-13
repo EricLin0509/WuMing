@@ -341,6 +341,14 @@ update_context_unref(UpdateContext *ctx)
   g_free(ctx);
 }
 
+static void
+resource_clean_up(IdleData *data)
+{
+  update_context_unref (data->ctx);
+  g_free(data->message);
+  g_free(data);
+}
+
 static gboolean
 update_ui_callback(gpointer user_data)
 {
@@ -352,9 +360,6 @@ update_ui_callback(gpointer user_data)
       data->message
     );
 
-  update_context_unref(data->ctx);
-  g_free(data->message);
-  g_free(data);
   return G_SOURCE_REMOVE;
 }
 
@@ -377,9 +382,6 @@ update_complete_callback(gpointer user_data)
     gtk_widget_set_sensitive(data->ctx->close_button, TRUE);
   }
 
-  update_context_unref(data->ctx);
-  g_free(data->message);
-  g_free(data);
   return G_SOURCE_REMOVE;
 }
 
@@ -454,7 +456,10 @@ process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, UpdateContext *
         IdleData *data = g_new0(IdleData, 1);
         data->message = g_strdup(line);
         data->ctx = update_context_ref(ctx);
-        g_idle_add(update_ui_callback, data);
+        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                       update_ui_callback,
+                       data,
+                       (GDestroyNotify)resource_clean_up);
     }
 }
 
@@ -487,11 +492,10 @@ send_final_status(UpdateContext *ctx, gboolean success)
     {
         g_async_queue_push(ctx->output_queue, complete_data);
         
-        /* Safe to call update_complete_callback directly */
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                        update_complete_callback,
                        complete_data,
-                       (GDestroyNotify)update_context_unref);
+                       (GDestroyNotify)resource_clean_up);
     }
     else
     {
