@@ -134,8 +134,7 @@ ring_buffer_read_line(RingBuffer *rb, LineAccumulator *acc, char **output)
         if (acc->buffer[i] == '\n')
         {
             acc->buffer[i] = '\0'; // Replace newline with null terminator
-            size_t head_offset = rb->head % RING_BUFFER_SIZE;
-            *output = &rb->data[head_offset] + acc->read_pos;
+            *output = acc->buffer + acc->read_pos; // Move to right position in buffer
             acc->read_pos = i + 1; // Move read position to next character
             return TRUE;
         }
@@ -175,6 +174,7 @@ ring_buffer_read_line(RingBuffer *rb, LineAccumulator *acc, char **output)
         memmove(acc->buffer, acc->buffer + acc->read_pos, pending_data);
         acc->read_pos = 0;
         acc->write_pos = pending_data;
+        acc->buffer[acc->write_pos] = '\0';
     }
 
     return FALSE;
