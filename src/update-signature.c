@@ -51,25 +51,35 @@ typedef struct {
 
 /* Change month format to number */
 static int
-month_str_to_num(char *str)
+month_str_to_num(const char *str)
 {
-  if (str == NULL) return 0;
-  if (strlen(str) != 3) return 0;
-
-  if (strcmp(str, "Jan") == 0) return 1;
-  if (strcmp(str, "Feb") == 0) return 2;
-  if (strcmp(str, "Mar") == 0) return 3;
-  if (strcmp(str, "Apr") == 0) return 4;
-  if (strcmp(str, "May") == 0) return 5;
-  if (strcmp(str, "Jun") == 0) return 6;
-  if (strcmp(str, "Jul") == 0) return 7;
-  if (strcmp(str, "Aug") == 0) return 8;
-  if (strcmp(str, "Sep") == 0) return 9;
-  if (strcmp(str, "Oct") == 0) return 10;
-  if (strcmp(str, "Nov") == 0) return 11;
-  if (strcmp(str, "Dec") == 0) return 12;
-  return 0;
+    if (!str || strlen(str) != 3) return 0;
+    
+    /* Hash the first 3 characters of the month string to get a number */
+    const unsigned int hash = 
+        ((unsigned char)str[0] << 16) | // First character move 16 bits to the left
+        ((unsigned char)str[1] << 8) | // Second character move 8 bits to the left
+        (unsigned char)str[2]; // Third character
+    
+    /* Use the hash to get the month number */
+    switch (hash)
+    {
+        case 0x4a616e: return 1; // "Jan"
+        case 0x466562: return 2; // "Feb"
+        case 0x4d6172: return 3; // "Mar"
+        case 0x417072: return 4; // "Apr"
+        case 0x4d6179: return 5; // "May"
+        case 0x4a756e: return 6; // "Jun"
+        case 0x4a756c: return 7; // "Jul"
+        case 0x417567: return 8; // "Aug"
+        case 0x536570: return 9; // "Sep"
+        case 0x4f6374: return 10; // "Oct"
+        case 0x4e6f76: return 11; // "Nov"
+        case 0x446563: return 12; // "Dec"
+        default: return 0;
+    }
 }
+
 
 /* Use for comparing the databases date */
 static int
@@ -87,19 +97,20 @@ date_to_days(int year, int month, int day)
                   (year - 1) / 400;
 
   /* Turn months to days */
-  bool current_year_is_leap_year = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+  const bool current_year_is_leap_year = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
 
-  int month_day_list[] = {
-    31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+  static const int cumulative_days[] = { // Use cumulative days to calculate the dates of each month
+    0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
   };
 
-  if (current_year_is_leap_year) month_day_list[1] = 29;
+  int month_days = cumulative_days[month];
+  if (current_year_is_leap_year && month > 2) month_days += 1; // If current month is greater than February and current year is leap year, add 1 to the month_days
 
-  int month_days = 0;
+  const int max_day = 
+    (month == 2 && current_year_is_leap_year) ? 29 : 
+    (cumulative_days[month+1] - cumulative_days[month]);
 
-  for (int i = 0; i < month - 1; i++) month_days += month_day_list[i];
-
-  if (day > month_day_list[month - 1]) return 0; // check valid day again because of leap year
+  if (day > max_day) return 0; // Check is valid day again
 
   return year_days + month_days + day;
 }
