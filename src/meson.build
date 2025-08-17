@@ -6,6 +6,7 @@ wuming_sources = [
   'systemd-control.c',
   'update-signature.c',
   'update-signature-page.c',
+  'scan-page.c',
 ]
 
 wuming_deps = [

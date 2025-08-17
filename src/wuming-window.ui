@@ -61,8 +61,11 @@
                 <property name="name" translatable="yes">Scan</property>
                 <property name="icon-name">scanner-symbolic</property>
                 <property name="child">
-                  <object class="AdwStatusPage" id="scan_page">
-                    <property name="title" translatable="yes">Coming Soon...</property>
+                  <object class="AdwStatusPage">
+                    <property name="title" translatable="yes">Scan</property>
+                    <child>
+                      <object class="ScanPage" id="scan_page"/>
+                    </child>
                   </object>
                 </property>
               </object>

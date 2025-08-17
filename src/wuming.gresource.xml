@@ -3,9 +3,12 @@
   <gresource prefix="/com/ericlin/wuming">
     <file preprocess="xml-stripblanks">wuming-window.ui</file>
     <file preprocess="xml-stripblanks">gtk/help-overlay.ui</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/scan-folder-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/scan-file-symbolic.svg</file>
   </gresource>
 
-  <gresource prefix="/com/ericlin/clamavgnome/pages">
+  <gresource prefix="/com/ericlin/wuming/pages">
     <file preprocess="xml-stripblanks">update-signature-page.ui</file>
+    <file preprocess="xml-stripblanks">scan-page.ui</file>
   </gresource>
 </gresources>

@@ -8,6 +8,7 @@ src/main.c
 src/systemd-control.c
 src/wuming-window.c
 src/wuming-window.ui
+src/scan-page.ui
 src/update-signature.c
 src/update-signature-page.c
 src/update-signature-page.ui

@@ -24,6 +24,7 @@
 
 #include "update-signature.h"
 #include "update-signature-page.h"
+#include "scan-page.h"
 
 struct _WumingWindow
 {
@@ -38,7 +39,7 @@ struct _WumingWindow
     AdwStatusPage       *security_overview_page;
 
     /* Scan Page */
-    AdwStatusPage       *scan_page;
+    ScanPage            *scan_page;
 
     /* Update Signature Page */
     UpdateSignaturePage *update_signature_page;
@@ -71,6 +72,7 @@ wuming_window_class_init (WumingWindowClass *klass)
     /* Check History Page */
     gtk_widget_class_bind_template_child (widget_class, WumingWindow, check_history_page);
 
+    g_type_ensure (SCAN_TYPE_PAGE);
     g_type_ensure(UPDATE_SIGNATURE_TYPE_PAGE);
 }
 

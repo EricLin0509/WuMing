@@ -132,7 +132,7 @@ update_signature_page_class_init (UpdateSignaturePageClass *klass)
 
     gtk_widget_class_set_layout_manager_type(widget_class, GTK_TYPE_BIN_LAYOUT);
 
-	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/clamavgnome/pages/update-signature-page.ui");
+	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/update-signature-page.ui");
 
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, clamp);
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, status_row);

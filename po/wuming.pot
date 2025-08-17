@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-13 16:05+0800\n"
+"POT-Creation-Date: 2025-08-17 23:18+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -70,39 +70,47 @@ msgstr ""
 msgid "Security Overview"
 msgstr ""
 
-#: src/wuming-window.ui:52 src/wuming-window.ui:65 src/wuming-window.ui:94
+#: src/wuming-window.ui:52 src/wuming-window.ui:97
 msgid "Coming Soon..."
 msgstr ""
 
-#: src/wuming-window.ui:60 src/wuming-window.ui:61
+#: src/wuming-window.ui:60 src/wuming-window.ui:61 src/wuming-window.ui:65
 msgid "Scan"
 msgstr ""
 
-#: src/wuming-window.ui:73 src/wuming-window.ui:74 src/wuming-window.ui:78
+#: src/wuming-window.ui:76 src/wuming-window.ui:77 src/wuming-window.ui:81
 msgid "Update Signature"
 msgstr ""
 
-#: src/wuming-window.ui:89 src/wuming-window.ui:90
+#: src/wuming-window.ui:92 src/wuming-window.ui:93
 msgid "Check History"
 msgstr ""
 
-#: src/wuming-window.ui:107
+#: src/wuming-window.ui:110
 msgid "_Preferences"
 msgstr ""
 
-#: src/wuming-window.ui:111
+#: src/wuming-window.ui:114
 msgid "_Keyboard Shortcuts"
 msgstr ""
 
-#: src/wuming-window.ui:115
+#: src/wuming-window.ui:118
 msgid "_About WuMing"
 msgstr ""
 
-#: src/update-signature.c:478
+#: src/scan-page.ui:21
+msgid "Scan file"
+msgstr ""
+
+#: src/scan-page.ui:37
+msgid "Scan folder"
+msgstr ""
+
+#: src/update-signature.c:494
 msgid "Update Complete"
 msgstr ""
 
-#: src/update-signature.c:478
+#: src/update-signature.c:494
 msgid "Update Failed"
 msgstr ""
 
