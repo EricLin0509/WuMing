@@ -33,6 +33,85 @@ struct _ScanPage {
 
 G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
 
+/*Test functions*/
+
+static void
+show_chosen_file_path (GObject *source_object, GAsyncResult *res, gpointer data)
+{
+  GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
+  GFile *file = NULL;
+  GError *error = NULL;
+
+  if (file = gtk_file_dialog_open_finish (dialog, res, &error))
+    {
+      g_print("[Info] You chose %s\n", g_file_get_path (file));
+    }
+  else
+    {
+      if (error->code == GTK_DIALOG_ERROR_DISMISSED)
+            g_warning ("[Info] User canceled!\n");
+      else
+            g_warning ("[Error] Failed to open the file!\n");
+    }
+}
+
+static void
+show_chosen_folder_path (GObject *source_object, GAsyncResult *res, gpointer data)
+{
+  GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
+  GFile *file = NULL;
+  GError *error = NULL;
+
+  if (file = gtk_file_dialog_select_folder_finish (dialog, res, &error))
+    {
+      g_print("[Info] You chose %s\n", g_file_get_path (file));
+    }
+  else
+    {
+      if (error->code == GTK_DIALOG_ERROR_DISMISSED)
+            g_warning ("[Info] User canceled!\n");
+      else
+            g_warning ("[Error] Failed to open the folder!\n");
+    }
+}
+
+/*Callbacks*/
+
+static void
+file_chooser (GtkButton* file_button, gpointer user_data)
+{
+  gtk_widget_set_sensitive (GTK_WIDGET (file_button), FALSE);
+  g_print("[Info] Choose a file\n");
+
+  GtkWidget *window = gtk_widget_get_ancestor (GTK_WIDGET (file_button), ADW_TYPE_APPLICATION_WINDOW);
+
+  GtkFileDialog *dialog;
+  dialog = gtk_file_dialog_new ();
+  gtk_file_dialog_open (dialog, GTK_WINDOW (window), NULL, show_chosen_file_path, NULL);
+
+  g_object_unref (dialog);
+  gtk_widget_set_sensitive (GTK_WIDGET (file_button), TRUE);
+}
+
+static void
+folder_chooser (GtkButton* folder_button, gpointer user_data)
+{
+  gtk_widget_set_sensitive (GTK_WIDGET (folder_button), FALSE);
+  g_print("[Info] Choose a folder\n");
+
+  GtkWidget *window = gtk_widget_get_ancestor (GTK_WIDGET (folder_button), ADW_TYPE_APPLICATION_WINDOW);
+
+  GtkFileDialog *dialog;
+  dialog = gtk_file_dialog_new ();
+  gtk_file_dialog_select_folder (dialog, GTK_WINDOW (window), NULL, show_chosen_folder_path, NULL);
+
+  g_object_unref (dialog);
+  gtk_widget_set_sensitive (GTK_WIDGET (folder_button), TRUE);
+}
+
+
+/*GObject Essential Functions */
+
 static void
 scan_page_dispose(GObject *gobject)
 {
@@ -42,8 +121,6 @@ scan_page_dispose(GObject *gobject)
 
   G_OBJECT_CLASS(scan_page_parent_class)->dispose(gobject);
 }
-
-/*GObject Essential Functions */
 
 static void
 scan_page_finalize(GObject *gobject)
@@ -79,4 +156,7 @@ static void
 scan_page_init (ScanPage *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
+
+  g_signal_connect (self->scan_a_file_button, "clicked", G_CALLBACK (file_chooser), NULL);
+  g_signal_connect (self->scan_a_folder_button, "clicked", G_CALLBACK (folder_chooser), NULL);
 }
