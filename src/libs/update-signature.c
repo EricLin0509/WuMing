@@ -31,6 +31,8 @@
 #include "ring-buffer.h"
 #include "update-signature.h"
 
+#include "../update-signature-page.h"
+
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
 #define PKEXEC_PATH "/usr/bin/pkexec"
 
@@ -304,6 +306,7 @@ typedef struct {
   GAsyncQueue *output_queue;
   gboolean completed;
   gboolean success;
+  GtkWidget *main_page;
   AdwDialog *update_dialog;
   GtkWidget *update_status_page;
   GtkWidget *close_button;
@@ -391,6 +394,18 @@ update_complete_callback(gpointer user_data)
   {
     gtk_widget_set_visible(data->ctx->close_button, TRUE);
     gtk_widget_set_sensitive(data->ctx->close_button, TRUE);
+  }
+
+  if (data->ctx->main_page && data->ctx->success)
+  {
+    /*Re-scan the signature*/
+    scan_result *result = g_new0 (scan_result, 1);
+    scan_signature_date (result);
+    is_signature_uptodate (result);
+
+    update_signature_page_show_date (UPDATE_SIGNATURE_PAGE (data->ctx->main_page), *result);
+    update_signature_page_show_isuptodate(UPDATE_SIGNATURE_PAGE (data->ctx->main_page), result->is_uptodate);
+    g_free (result);
   }
 
   return G_SOURCE_REMOVE;
@@ -497,6 +512,7 @@ send_final_status(UpdateContext *ctx, gboolean success)
     IdleData *complete_data = g_new0(IdleData, 1);
     complete_data->ctx = update_context_ref(ctx);
     complete_data->message = g_strdup(status_text);
+    complete_data->ctx->success = success;
     
     /* Send final status message to main thread */
     if (G_LIKELY(complete_data->ctx && complete_data->ctx->update_status_page))
@@ -593,6 +609,7 @@ start_update(AdwDialog *dialog, GtkWidget *page, GtkWidget *close_button, GtkWid
     .output_queue = g_async_queue_new(),
     .completed = FALSE,
     .success = FALSE,
+    .main_page = gtk_widget_get_ancestor (update_button, UPDATE_SIGNATURE_TYPE_PAGE), // Get the main page
     .update_dialog = dialog,
     .update_status_page = page,
     .close_button = close_button,
