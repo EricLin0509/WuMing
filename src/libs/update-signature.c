@@ -303,7 +303,6 @@ is_signature_uptodate(scan_result *result)
 
 /*Update Signature*/
 typedef struct {
-  GAsyncQueue *output_queue;
   gboolean completed;
   gboolean success;
   GtkWidget *main_page;
@@ -336,21 +335,6 @@ static void
 update_context_unref(UpdateContext *ctx)
 {
   if (!ctx || --ctx->ref_count > 0) return;
-
-  if (ctx->output_queue)
-  {
-    g_async_queue_lock(ctx->output_queue);
-
-    while (g_async_queue_length_unlocked(ctx->output_queue) > 0)
-      {
-        IdleData *data = g_async_queue_pop_unlocked(ctx->output_queue);
-        update_context_unref(data->ctx);
-        g_free(data->message);
-        g_free(data);
-      }
-
-    g_async_queue_unref(ctx->output_queue);
-  }
 
   g_free(ctx);
 }
@@ -517,8 +501,6 @@ send_final_status(UpdateContext *ctx, gboolean success)
     /* Send final status message to main thread */
     if (G_LIKELY(complete_data->ctx && complete_data->ctx->update_status_page))
     {
-        g_async_queue_push(ctx->output_queue, complete_data);
-        
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                        update_complete_callback,
                        complete_data,
@@ -537,7 +519,7 @@ send_final_status(UpdateContext *ctx, gboolean success)
 static gpointer
 update_thread(gpointer data)
 {
-    UpdateContext *ctx = update_context_ref(data);
+    UpdateContext *ctx = data;
     int pipefd[2];
     pid_t pid;
     
@@ -606,7 +588,6 @@ start_update(AdwDialog *dialog, GtkWidget *page, GtkWidget *close_button, GtkWid
   UpdateContext *ctx = g_new0(UpdateContext, 1);
 
   *ctx = (UpdateContext){
-    .output_queue = g_async_queue_new(),
     .completed = FALSE,
     .success = FALSE,
     .main_page = gtk_widget_get_ancestor (update_button, UPDATE_SIGNATURE_TYPE_PAGE), // Get the main page
