@@ -22,6 +22,8 @@
 
 #include "update-signature-page.h"
 
+#include "libs/systemd-control.h"
+
 struct _UpdateSignaturePage {
   GtkWidget          parent_instance;
 

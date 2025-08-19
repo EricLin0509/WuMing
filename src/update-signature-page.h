@@ -22,8 +22,7 @@
 
 #include <adwaita.h>
 
-#include "update-signature.h"
-#include "systemd-control.h"
+#include "libs/update-signature.h"
 
 G_BEGIN_DECLS
 

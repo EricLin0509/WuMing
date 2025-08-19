@@ -2,9 +2,6 @@ wuming_sources = [
   'main.c',
   'wuming-application.c',
   'wuming-window.c',
-  'ring-buffer.c',
-  'systemd-control.c',
-  'update-signature.c',
   'update-signature-page.c',
   'scan-page.c',
 ]
@@ -15,6 +12,8 @@ wuming_deps = [
   dependency('gtk4'),
   dependency('libadwaita-1', version: '>= 1.4'),
 ]
+
+subdir('libs')
 
 wuming_sources += gnome.compile_resources('wuming-resources',
   'wuming.gresource.xml',
