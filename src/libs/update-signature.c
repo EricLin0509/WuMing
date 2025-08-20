@@ -303,13 +303,19 @@ is_signature_uptodate(scan_result *result)
 
 /*Update Signature*/
 typedef struct {
+  /* Protected by mutex */
+  GMutex mutex; // Only protect "completed" and "success" fields
   gboolean completed;
   gboolean success;
+
+  /*No need to protect these fields because they always same after initialize*/
   GtkWidget *main_page;
   AdwDialog *update_dialog;
   GtkWidget *update_status_page;
   GtkWidget *close_button;
-  gint ref_count;
+
+  /* Protected by atomic ref count */
+  volatile gint ref_count;
 } UpdateContext;
 
 typedef struct {
@@ -325,18 +331,49 @@ typedef struct {
 } IOContext;
 
 static UpdateContext*
+update_context_new(void)
+{
+  UpdateContext *ctx = g_new0(UpdateContext, 1);
+  g_mutex_init(&ctx->mutex);
+  ctx->ref_count = 1;
+  return ctx;
+}
+
+static UpdateContext*
 update_context_ref(UpdateContext *ctx)
 {
-  if (ctx) ctx->ref_count++;
+  if (ctx) g_atomic_int_inc(&ctx->ref_count);
   return ctx;
 }
 
 static void
 update_context_unref(UpdateContext *ctx)
 {
-  if (!ctx || --ctx->ref_count > 0) return;
+  if (ctx && g_atomic_int_dec_and_test(&ctx->ref_count))
+  {
+    g_mutex_clear(&ctx->mutex);
+    g_free(ctx);
+  }
+}
 
-  g_free(ctx);
+
+/* thread-safe method to get/set states */
+static void
+set_completion_state(UpdateContext *ctx, gboolean completed, gboolean success)
+{
+  g_mutex_lock(&ctx->mutex);
+  ctx->completed = completed;
+  ctx->success = success;
+  g_mutex_unlock(&ctx->mutex);
+}
+
+static void
+get_completion_state(UpdateContext *ctx, gboolean *out_completed, gboolean *out_success)
+{
+  g_mutex_lock(&ctx->mutex);
+  if (out_completed) *out_completed = ctx->completed;
+  if (out_success) *out_success = ctx->success;
+  g_mutex_unlock(&ctx->mutex);
 }
 
 static void
@@ -352,7 +389,7 @@ update_ui_callback(gpointer user_data)
 {
   IdleData *data = (IdleData *)user_data;
 
-  if (data->ctx && data->ctx->update_status_page)
+  if (data->ctx && data->ctx->update_status_page && GTK_IS_WIDGET(data->ctx->update_status_page))
     adw_status_page_set_description(
       ADW_STATUS_PAGE(data->ctx->update_status_page),
       data->message
@@ -366,7 +403,10 @@ update_complete_callback(gpointer user_data)
 {
   IdleData *data = user_data;
 
-  if (data->ctx->update_status_page)
+  gboolean is_success = FALSE;
+  get_completion_state(data->ctx, NULL, &is_success); // Get the completion state for thread-safe access
+
+  if (data->ctx && data->ctx->update_status_page && GTK_IS_WIDGET(data->ctx->update_status_page))
   {
     adw_status_page_set_title(
       ADW_STATUS_PAGE(data->ctx->update_status_page),
@@ -374,13 +414,13 @@ update_complete_callback(gpointer user_data)
     );
   }
 
-  if (data->ctx->close_button)
+  if (data->ctx && data->ctx->close_button && GTK_IS_WIDGET(data->ctx->close_button))
   {
     gtk_widget_set_visible(data->ctx->close_button, TRUE);
     gtk_widget_set_sensitive(data->ctx->close_button, TRUE);
   }
 
-  if (data->ctx->main_page && data->ctx->success)
+  if (data->ctx && data->ctx->main_page && GTK_IS_WIDGET(data->ctx->main_page) && is_success)
   {
     /*Re-scan the signature*/
     scan_result *result = g_new0 (scan_result, 1);
@@ -489,6 +529,8 @@ static int calculate_dynamic_timeout(int *idle_counter, int *current_timeout)
 static void 
 send_final_status(UpdateContext *ctx, gboolean success)
 {
+    set_completion_state(ctx, TRUE, success);
+
     const char *status_text = success ? 
         gettext("Update Complete") : gettext("Update Failed");
     
@@ -496,7 +538,6 @@ send_final_status(UpdateContext *ctx, gboolean success)
     IdleData *complete_data = g_new0(IdleData, 1);
     complete_data->ctx = update_context_ref(ctx);
     complete_data->message = g_strdup(status_text);
-    complete_data->ctx->success = success;
     
     /* Send final status message to main thread */
     if (G_LIKELY(complete_data->ctx && complete_data->ctx->update_status_page))
@@ -585,18 +626,20 @@ start_update(AdwDialog *dialog, GtkWidget *page, GtkWidget *close_button, GtkWid
 {
   g_signal_connect_swapped(GTK_BUTTON(close_button), "clicked", G_CALLBACK(adw_dialog_force_close), ADW_DIALOG (dialog));
 
-  UpdateContext *ctx = g_new0(UpdateContext, 1);
+  UpdateContext *ctx = update_context_new();
 
-  *ctx = (UpdateContext){
-    .completed = FALSE,
-    .success = FALSE,
-    .main_page = gtk_widget_get_ancestor (update_button, UPDATE_SIGNATURE_TYPE_PAGE), // Get the main page
-    .update_dialog = dialog,
-    .update_status_page = page,
-    .close_button = close_button,
-    .ref_count = 1,
-  };
+  g_mutex_lock(&ctx->mutex);
+  ctx->completed = FALSE;
+  ctx->success = FALSE;
+  ctx->main_page =
+          gtk_widget_get_ancestor (update_button, UPDATE_SIGNATURE_TYPE_PAGE); // Get the main page
+  ctx->update_dialog = dialog;
+  ctx->update_status_page = page;
+  ctx->close_button = close_button;
+  ctx->ref_count = G_ATOMIC_REF_COUNT_INIT;
+  g_mutex_unlock(&ctx->mutex);
 
+  /* Start update thread */
   g_thread_new("update-thread", update_thread, ctx);
 }
 
