@@ -18,9 +18,9 @@ WuMing is a simple ClamAV GUI frontend written in C using GTK4/LibAdwaita. It is
 
 ## Roadmap
 
-- [ ] Update ClamAV signatures (parial)
+- [x] Update ClamAV signatures
     - ~~need to replace Pkexec with GPermission library~~ (Won't work)
-    - check whether clamav-freshclam systemd service is running
+    - ~~check whether clamav-freshclam systemd service is running~~ (Done)
 - [ ] scan files and directories
 - [ ] take action on infected files
 - [ ] add secuirty overview page
