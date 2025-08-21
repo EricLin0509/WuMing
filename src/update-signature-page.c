@@ -46,7 +46,7 @@ update_signature_page_show_date(UpdateSignaturePage *self, scan_result result)
 {
   GtkWidget *page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
 
-  char *message = NULL;
+  g_autofree char *message = NULL; // use g_autofree to avoid memory leak
 
   if (!result.is_success)
     {
@@ -112,7 +112,7 @@ update_signature_page_dispose(GObject *gobject)
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE (gobject);
 
   g_clear_object(&self->dialog);
-  g_clear_pointer (&self->clamp, gtk_widget_unparent);
+  g_clear_pointer(&self->clamp, gtk_widget_unparent);
 
   G_OBJECT_CLASS(update_signature_page_parent_class)->dispose(gobject);
 }
@@ -154,8 +154,7 @@ update_signature_page_init (UpdateSignaturePage *self)
   gtk_widget_init_template (GTK_WIDGET (self));
 
   /*Build UpdateDialog*/
-  self->dialog = adw_dialog_new ();
-  g_object_ref_sink(self->dialog);
+  self->dialog = g_object_ref_sink(adw_dialog_new());
   adw_dialog_set_can_close(ADW_DIALOG (self->dialog), FALSE);
   adw_dialog_set_content_height (self->dialog, 300);
   adw_dialog_set_content_width (self->dialog, 400);
