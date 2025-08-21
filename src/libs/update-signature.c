@@ -120,6 +120,8 @@ date_to_days(int year, int month, int day)
 static char*
 parse_cvd_header(const char *filepath)
 {
+  const size_t cvd_header_size = 128; // Only read the first 128 bytes to get the header
+
   int discriptor = -1;
   char *file_mapped = MAP_FAILED;
   struct stat st;
@@ -140,29 +142,56 @@ parse_cvd_header(const char *filepath)
       goto clean_up;
     }
 
-  file_mapped = mmap (NULL, st.st_size, PROT_READ, MAP_PRIVATE, discriptor, 0);
+  /* Check file size */
+  if (st.st_size < (off_t)(cvd_header_size + 512)) // 128 bytes header + 512 bytes sha256 sum
+  {
+     g_warning("%s is invalid signature, file size %ld < 640 bytes\n", filepath, (long)st.st_size);
+     goto clean_up;
+  }
+
+  file_mapped = mmap (NULL, cvd_header_size, PROT_READ, MAP_PRIVATE, discriptor, 0);
   if (file_mapped == MAP_FAILED)
     {
       g_warning ("mmap failed: %s\n", strerror(errno));
       goto clean_up;
     }
 
-  char *header_start = memmem(file_mapped, st.st_size, header_prefix, prefix_len);
+  char *header_start = memmem(file_mapped, cvd_header_size, header_prefix, prefix_len);
   if (!header_start)
     {
       g_warning("CVD header not found\n");
       goto clean_up;
     }
 
-  char *date_start = header_start + prefix_len;
-  while (*date_start == ' ' && date_start < (file_mapped + st.st_size)) date_start++;
+  if ((header_start + prefix_len) > (file_mapped + cvd_header_size))
+  {
+    g_warning("Header prefix out of bounds\n");
+    goto clean_up;
+  }
 
-  char *date_end = memchr(date_start, '-', file_mapped + st.st_size - date_start);
+  char *date_start = header_start + prefix_len;
+  const char *buffer_end = file_mapped + cvd_header_size; // the Buffer end
+  while (date_start < buffer_end && *date_start == ' ') date_start++;
+
+  const size_t max_date_len = 20; // Maximum date length is 20 characters
+  if (date_start + max_date_len > buffer_end) // Check if date is out of bounds
+  {
+    g_warning("Date field exceeds header boundary");
+    goto clean_up;
+  }
+
+
+  char *date_end = memchr(date_start, '-',  buffer_end - date_start);
+  if (!date_end || date_end >= buffer_end) // Check if date terminator is found
+  {
+    g_warning("Invalid date terminator");
+    goto clean_up;
+  }
 
   if (date_end) result = g_strndup(date_start, date_end - date_start);
 
 clean_up:
-  if (file_mapped != MAP_FAILED) munmap(file_mapped, st.st_size);
+  if (file_mapped != MAP_FAILED) munmap(file_mapped, cvd_header_size);
   if (discriptor != -1) close(discriptor);
   return result;
 }
