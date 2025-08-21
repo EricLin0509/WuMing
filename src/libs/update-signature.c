@@ -469,16 +469,14 @@ gboolean spawn_update_process(int pipefd[2], pid_t *pid)
 {
     if (pipe(pipefd) == -1)
     {
-        perror("pipe");
-        return FALSE;
+        g_warning("Failed to create pipe: %s", strerror(errno));
+        goto error_clean_up;
     }
 
     if ((*pid = fork()) == -1)
     {
-        perror("fork");
-        close(pipefd[0]);
-        close(pipefd[1]);
-        return FALSE;
+        g_warning("Failed to fork: %s", strerror(errno));
+        goto error_clean_up;
     }
 
     if (*pid == 0) // Child process
@@ -494,6 +492,11 @@ gboolean spawn_update_process(int pipefd[2], pid_t *pid)
     
     close(pipefd[1]);
     return TRUE;
+
+error_clean_up:
+    close(pipefd[0]);
+    close(pipefd[1]);
+    return FALSE;
 }
 
 static
