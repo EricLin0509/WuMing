@@ -21,6 +21,7 @@
 #pragma once
 
 #define RING_BUFFER_SIZE 8192
+#define LINE_ACCUMULATOR_SIZE 16384 // Double buffer for atomicity
 
 typedef struct {
     char data[RING_BUFFER_SIZE];
@@ -30,7 +31,7 @@ typedef struct {
 } RingBuffer;
 
 typedef struct {
-    char buffer[RING_BUFFER_SIZE * 2];  // Double buffer for atomicity
+    char buffer[LINE_ACCUMULATOR_SIZE];
     size_t write_pos;
     size_t read_pos;
 } LineAccumulator;
@@ -49,9 +50,6 @@ ring_buffer_write(RingBuffer *ring, const char *src, size_t len);
 
 size_t
 ring_buffer_read(RingBuffer *ring, char *dest, size_t len);
-
-char *
-ring_buffer_find_newline(const RingBuffer *ring);
 
 gboolean
 ring_buffer_read_line(RingBuffer *rb, LineAccumulator *acc, char **output);

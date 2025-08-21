@@ -22,12 +22,15 @@
 #include <assert.h>
 #include "ring-buffer.h"
 
+#define RING_DIFF(tail, head) (( (tail) >= (head) ) ? ( (tail) - (head) ) : ( RING_BUFFER_SIZE - ( (head) - (tail) ) )) // use for assertion
+
 G_STATIC_ASSERT((RING_BUFFER_SIZE & (RING_BUFFER_SIZE - 1)) == 0);
 
 void
 ring_buffer_init(RingBuffer *ring)
 {
     memset(ring->data, 0, sizeof(ring->data));
+    ring->head = 0;
     ring->tail = 0;
     ring->count = 0;
 }
@@ -43,6 +46,8 @@ void line_accumulator_init(LineAccumulator *acc)
 size_t
 ring_buffer_available(const RingBuffer *ring)
 {
+    assert(ring->count <= RING_BUFFER_SIZE); // check whether the counter is valid
+
     return RING_BUFFER_SIZE - ring->count;
 }
 
@@ -70,6 +75,9 @@ ring_buffer_write(RingBuffer *ring, const char *src, size_t len)
     ring->tail += to_write;
     ring->count += to_write;
 
+    assert(ring->count <= RING_BUFFER_SIZE); // check whether the counter is valid
+    assert(ring->count == RING_DIFF(ring->tail, ring->head)); // check whether the correct size is maintained
+
     return to_write;
 }
 
@@ -77,6 +85,8 @@ size_t
 ring_buffer_read(RingBuffer *ring, char *dest, size_t len)
 {
     if (!dest || len == 0) return 0;
+
+    assert(ring->count <= RING_BUFFER_SIZE); // check whether the counter is valid
 
     const size_t to_read = MIN(len, ring->count);
     if (to_read == 0) return 0;
@@ -95,34 +105,23 @@ ring_buffer_read(RingBuffer *ring, char *dest, size_t len)
     ring->head += to_read;
     ring->count -= to_read;
 
-    if (ring->head >= RING_BUFFER_SIZE)
-    {
-        const size_t adjustment = ring->head & ~mask;
-        ring->head &= RING_BUFFER_SIZE;
-        ring->tail -= adjustment;
-    }
+    ring->head %= RING_BUFFER_SIZE;
+    ring->tail %= RING_BUFFER_SIZE;
+
+    assert(ring->count == RING_DIFF(ring->tail, ring->head));  // check whether the correct size is maintained
+
     return to_read;
 }
 
-
-char *
-ring_buffer_find_newline(const RingBuffer *ring)
+/* Check the boundary of the buffer and sanitize it if necessary */
+static void
+line_accumulator_sanitize(LineAccumulator *acc)
 {
-    if (ring->count == 0) return NULL;
-
-    const size_t mask = RING_BUFFER_SIZE - 1;
-    const size_t head_pos = ring->head & mask;
-
-    /*Find the first newline in the buffer*/
-    const size_t end_chunk = MIN(ring->count, RING_BUFFER_SIZE - head_pos);
-    char *found = memchr(ring->data + head_pos, '\n', MIN(end_chunk, ring->count));
-
-    if (!found && ring->count > end_chunk)
+    if (acc->read_pos > acc->write_pos || acc->write_pos >= sizeof(acc->buffer))
     {
-        found = memchr(ring->data, '\n', ring->count - end_chunk);
+        line_accumulator_init(acc); // Reset the buffer if it is corrupted
+        return;
     }
-
-    return found;
 }
 
 gboolean
@@ -145,7 +144,8 @@ ring_buffer_read_line(RingBuffer *rb, LineAccumulator *acc, char **output)
     if (available == 0) return FALSE;
 
     /*Calculate the maximum space available for writing (reserve last byte for newline)*/
-    size_t writable = sizeof(acc->buffer) - acc->write_pos - 1;
+    size_t remaining_space = sizeof(acc->buffer) - acc->write_pos;
+    size_t writable = (remaining_space > 1) ? (remaining_space - 1) : 0;  // Reserve last byte for newline
     size_t read_size = MIN(available, writable);
 
     /*Perform ring buffer read*/
@@ -153,6 +153,7 @@ ring_buffer_read_line(RingBuffer *rb, LineAccumulator *acc, char **output)
     if (actual_read == 0) return FALSE;
 
     acc->write_pos += actual_read;
+    assert(acc->write_pos < LINE_ACCUMULATOR_SIZE); // Check whether the buffer is overflow
     acc->buffer[acc->write_pos] = '\0';
 
     /*Try to find a newline in the buffer again*/
@@ -170,11 +171,27 @@ ring_buffer_read_line(RingBuffer *rb, LineAccumulator *acc, char **output)
     /*If there is not enough space, compress the buffer*/
     if (sizeof(acc->buffer) - acc->write_pos < 128)
     {
-        size_t pending_data = acc->write_pos - acc->read_pos;
-        memmove(acc->buffer, acc->buffer + acc->read_pos, pending_data);
-        acc->read_pos = 0;
-        acc->write_pos = pending_data;
-        acc->buffer[acc->write_pos] = '\0';
+        line_accumulator_sanitize(acc); // Sanitize the buffer before compressing it
+
+        if (acc->read_pos < acc->write_pos)
+        {
+            const size_t pending_data = acc->write_pos - acc->read_pos;
+            const size_t safe_pending = MIN(pending_data, sizeof(acc->buffer));
+
+            assert(acc->read_pos + safe_pending <= LINE_ACCUMULATOR_SIZE); // Check whether the buffer is overflow
+
+            if (safe_pending > 0) // If there is any pending data, move it to the beginning of the buffer
+            {
+                memmove(acc->buffer, acc->buffer + acc->read_pos, safe_pending);
+                acc->write_pos = safe_pending;
+                acc->read_pos = 0;
+                acc->buffer[acc->write_pos] = '\0';
+            }
+            else
+            {
+                line_accumulator_init(acc); // Reset the buffer if there is no pending data
+            }
+        }
     }
 
     return FALSE;
