@@ -28,6 +28,7 @@
 #define ring_buffer_empty(r) ((r)->count == 0) // Check whether the buffer is empty
 #define RING_DIFF(tail, head) (( (tail) >= (head) ) ? ( (tail) - (head) ) : ( RING_BUFFER_SIZE - ( (head) - (tail) ) )) // Use for assertions
 
+G_STATIC_ASSERT(LINE_ACCUMULATOR_SIZE >= MAX_LINE_LENGTH); // Ensure the line accumulator size is large enough to hold a line
 G_STATIC_ASSERT((RING_BUFFER_SIZE & (RING_BUFFER_SIZE - 1)) == 0);
 
 void
@@ -44,6 +45,7 @@ void line_accumulator_init(LineAccumulator *acc)
     memset(acc->buffer, 0, sizeof(acc->buffer));
     acc->write_pos = 0;
     acc->read_pos = 0;
+    acc->current_line_length = 0;
     acc->buffer[0] = '\0'; 
 }
 
@@ -68,12 +70,16 @@ ring_buffer_write(RingBuffer *ring, const char *src, size_t len)
     const size_t tail_pos = ring->tail & mask;
     const size_t first_chunk = MIN(to_write, RING_BUFFER_SIZE - tail_pos);
 
-    char* dest_ptr = ring->data + tail_pos;
-    memcpy(dest_ptr, src, first_chunk);
-
-    if (to_write > first_chunk)
+    const size_t wrapped_write = (tail_pos + to_write) % RING_BUFFER_SIZE;
+    if (wrapped_write >= tail_pos)
     {
-        memcpy(ring->data, src + first_chunk, to_write - first_chunk);
+        memcpy(ring->data + tail_pos, src, to_write);
+    }
+    else
+    {
+        size_t first = RING_BUFFER_SIZE - tail_pos;
+        memcpy(ring->data + tail_pos, src, first);
+        memcpy(ring->data, src + first, to_write - first);
     }
 
     ring->tail += to_write;
@@ -140,7 +146,7 @@ line_accumulator_sanitize(LineAccumulator *acc)
     * Safe: trigger when the read pointer crosses the midpoint of the buffer
 */
 static void
-line_accumulator_compress(LineAccumulator *acc) 
+line_accumulator_compress(LineAccumulator *acc)
 {
     line_accumulator_sanitize(acc); // Sanitize the buffer before compressing it
 
@@ -188,56 +194,96 @@ line_accumulator_compress(LineAccumulator *acc)
     acc->buffer[acc->write_pos] = '\0';
     acc->read_pos = MIN(acc->read_pos, acc->write_pos);
     acc->write_pos = MIN(acc->write_pos, LINE_ACCUMULATOR_SIZE);
+
+    if (acc->read_pos == 0) acc->current_line_length = 0; // Reset the line length if the buffer is empty
+}
+
+/* Find a newline in the buffer */
+static gboolean
+ring_buffer_find_new_line(LineAccumulator *acc, char **output)
+{
+    const char *start = acc->buffer + acc->read_pos;
+    const size_t max_search_len = acc->write_pos - acc->read_pos;
+
+    const char *found = memchr(start, '\n', max_search_len); // use memchr to find the first newline
+
+    if (found)
+    {
+        const size_t offset = found - start;
+        const size_t newline_pos = acc->read_pos + offset;
+
+        const size_t actual_line_length = offset + acc->current_line_length;
+
+        /* Truncate the buffer if the line is too long */
+        if (actual_line_length >= (MAX_LINE_LENGTH - 1))
+        {
+            const size_t allowed_length = MAX_LINE_LENGTH - 1 - acc->current_line_length;
+            const size_t truncate_pos = acc->read_pos + MIN(allowed_length, offset); // Reason: find a line that exceeds the MAX_LINE_LENGTH limit
+
+            acc->buffer[truncate_pos] = '\0';
+            *output = acc->buffer + acc->read_pos;
+            acc->read_pos = truncate_pos + 1;
+        }
+        else // Normal line
+        {
+            acc->buffer[newline_pos] = '\0';
+            *output = acc->buffer + acc->read_pos;
+            acc->read_pos = newline_pos + 1;
+        }
+
+        acc->current_line_length = 0; // Reset the line length
+        goto compress_buffer;
+    }
+
+    /* No newline found, update the line length */
+    acc->current_line_length += max_search_len;
+
+    if (acc->current_line_length >= (MAX_LINE_LENGTH - 1)) // Line length exceeds the limit
+    {
+        const size_t allowed_length = MAX_LINE_LENGTH - 1;
+        const size_t truncate_pos = acc->read_pos + (allowed_length - (acc->current_line_length - max_search_len)); // Reason: not find a line and exceed the MAX_LINE_LENGTH limit
+
+        acc->buffer[truncate_pos] = '\0';
+        *output = acc->buffer + acc->read_pos;
+        acc->read_pos = truncate_pos + 1;
+        acc->current_line_length = 0; // Reset the line length
+        goto compress_buffer;
+    }
+
+    return FALSE; // The default return value should be FALSE
+
+compress_buffer:
+    line_accumulator_compress(acc);
+    return TRUE;
 }
 
 gboolean
 ring_buffer_read_line(RingBuffer *ring, LineAccumulator *acc, char **output)
 {
     /*Try to find a newline in the buffer*/
-    for (size_t i = acc->read_pos; i < acc->write_pos; ++i)
-    {
-        if (acc->buffer[i] == '\n')
-        {
-            acc->buffer[i] = '\0'; // Replace newline with null terminator
-            *output = acc->buffer + acc->read_pos; // Move to right position in buffer
-            acc->read_pos = i + 1; // Move read position to next character
-            return TRUE;
-        }
-    }
+    if (ring_buffer_find_new_line(acc, output)) return TRUE;
 
     /*Read new data from the ring buffer*/
     size_t available = ring_buffer_available(ring);
-    if (available == 0) goto compress_and_exit; // No more data to read
+    if (available == 0) goto compress_and_exit_failed; // No more space in the ring buffer
 
     /*Calculate the maximum space available for writing (reserve last byte for newline)*/
-    size_t remaining_space = sizeof(acc->buffer) - acc->write_pos;
-    size_t writable = (remaining_space > 1) ? (remaining_space - 1) : 0;  // Reserve last byte for newline
+    const size_t remaining_space = LINE_ACCUMULATOR_SIZE - acc->write_pos;
+    const size_t writable = remaining_space > 0 ? remaining_space : 0;
     size_t read_size = MIN(available, writable);
 
     /*Perform ring buffer read*/
     size_t actual_read = ring_buffer_read(ring, acc->buffer + acc->write_pos, read_size);
-    if (actual_read == 0) goto compress_and_exit; // No actual data read out
+    if (actual_read == 0) goto compress_and_exit_failed; // No actual data read out
 
     acc->write_pos += actual_read;
-    assert(acc->write_pos < LINE_ACCUMULATOR_SIZE); // Check whether the buffer is overflow
+    assert(acc->write_pos <= LINE_ACCUMULATOR_SIZE); // Check whether the buffer is overflow
     acc->buffer[acc->write_pos] = '\0';
 
     /*Try to find a newline in the buffer again*/
-    for (size_t i = acc->read_pos; i < acc->write_pos; ++i)
-    {
-        if (acc->buffer[i] == '\n')
-        {
-            acc->buffer[i] = '\0';
-            *output = acc->buffer + acc->read_pos;
-            acc->read_pos = i + 1; // Move read position to next character
+    if (ring_buffer_find_new_line(acc, output)) return TRUE;
 
-            /*Compress the buffer if necessary*/
-            line_accumulator_compress(acc);
-            return TRUE;
-        }
-    }
-
-compress_and_exit:
+compress_and_exit_failed: // The default return value should be FALSE
     line_accumulator_compress(acc);
-    return FALSE; // Default return value
+    return FALSE;
 }

@@ -20,6 +20,8 @@
 
 #pragma once
 
+
+/* the buffer size MUST be a power of 2 */
 #define RING_BUFFER_SIZE 8192
 #define LINE_ACCUMULATOR_SIZE 16384 // Double buffer for atomicity
 
@@ -34,6 +36,7 @@ typedef struct {
     char buffer[LINE_ACCUMULATOR_SIZE];
     size_t write_pos;
     size_t read_pos;
+    size_t current_line_length; // current line length
 } LineAccumulator;
 
 void
