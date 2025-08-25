@@ -366,6 +366,8 @@ update_context_new(void)
 static UpdateContext*
 update_context_ref(UpdateContext *ctx)
 {
+  g_return_val_if_fail(ctx != NULL, NULL);
+  g_return_val_if_fail(g_atomic_int_get(&ctx->ref_count) > 0, NULL);
   if (ctx) g_atomic_int_inc(&ctx->ref_count);
   return ctx;
 }
@@ -535,8 +537,10 @@ process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, UpdateContext *
         gchar *escaped = g_markup_escape_text(line, -1);
         data->message = escaped;
         data->ctx = update_context_ref(ctx);
-        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                       update_ui_callback,
+        g_main_context_invoke_full(
+                       g_main_context_default(),
+                       G_PRIORITY_HIGH_IDLE,
+                       (GSourceFunc) update_ui_callback,
                        data,
                        (GDestroyNotify)resource_clean_up);
     }
@@ -556,10 +560,13 @@ send_final_status(UpdateContext *ctx, gboolean success)
     complete_data->message = g_strdup(status_text);
     
     /* Send final status message to main thread */
-    if (G_LIKELY(complete_data->ctx && complete_data->ctx->update_status_page))
+    if (G_LIKELY((complete_data->ctx || g_atomic_int_get(&complete_data->ctx->ref_count) > 0 )
+                      && complete_data->ctx->update_status_page))
     {
-        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                       update_complete_callback,
+        g_main_context_invoke_full(
+                       g_main_context_default(),
+                       G_PRIORITY_HIGH_IDLE,
+                       (GSourceFunc) update_complete_callback,
                        complete_data,
                        (GDestroyNotify)resource_clean_up);
     }

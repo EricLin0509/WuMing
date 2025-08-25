@@ -41,7 +41,7 @@ typedef struct {
   gboolean completed;
   gboolean success;
 
-  GMutex scan_mutex; // Only protect "total_files" and "total_threats" fields
+  /* Protected by atomic operation */
   gint total_files; // Total files scanned
   gint total_threats; // Total threats found during scan
 
@@ -59,7 +59,7 @@ typedef struct {
   GtkWidget *threat_button;
   char *path; // file/folder path
 
-  /* Protected by atomic ref count */
+  /* Protected by atomic operation */
   volatile gint ref_count;
 } ScanContext;
 
@@ -80,7 +80,6 @@ scan_context_new(void)
 {
   ScanContext *ctx = g_new0(ScanContext, 1);
   g_mutex_init(&ctx->mutex);
-  g_mutex_init(&ctx->scan_mutex);
   g_mutex_init(&ctx->threats_mutex);
   ctx->ref_count = 1;
   return ctx;
@@ -89,6 +88,8 @@ scan_context_new(void)
 static ScanContext*
 scan_context_ref(ScanContext *ctx)
 {
+  g_return_val_if_fail(ctx != NULL, NULL);
+  g_return_val_if_fail(g_atomic_int_get(&ctx->ref_count) > 0, NULL);
   if (ctx) g_atomic_int_inc(&ctx->ref_count);
   return ctx;
 }
@@ -99,10 +100,8 @@ scan_context_unref(ScanContext *ctx)
   if (ctx && g_atomic_int_dec_and_test(&ctx->ref_count))
   {
     g_mutex_clear(&ctx->mutex);
-    g_mutex_clear(&ctx->scan_mutex);
     g_mutex_clear(&ctx->threats_mutex);
 
-    g_list_free_full(g_steal_pointer(&ctx->threat_paths), g_free); // Free the threat paths list
     g_clear_pointer(&ctx->path, g_free);
 
     g_atomic_int_set(&ctx->ref_count, INT_MIN);
@@ -123,6 +122,8 @@ set_completion_state(ScanContext *ctx, gboolean completed, gboolean success)
 static void
 get_completion_state(ScanContext *ctx, gboolean *out_completed, gboolean *out_success)
 {
+  if (!out_completed && !out_success) return; // No need to get anything if one of the output pointers is NULL
+
   g_mutex_lock(&ctx->mutex);
   if (out_completed) *out_completed = ctx->completed;
   if (out_success) *out_success = ctx->success;
@@ -133,41 +134,29 @@ get_completion_state(ScanContext *ctx, gboolean *out_completed, gboolean *out_su
 static void
 inc_total_threats(ScanContext *ctx)
 {
-  g_mutex_lock(&ctx->scan_mutex);
-  ctx->total_threats++;
-  g_mutex_unlock(&ctx->scan_mutex);
+  g_atomic_int_inc(&ctx->total_threats);
 }
 
 static gint
 get_total_threats(ScanContext *ctx)
 {
-  gint total_threats;
-  g_mutex_lock(&ctx->scan_mutex);
-  total_threats = ctx->total_threats;
-  g_mutex_unlock(&ctx->scan_mutex);
-  return total_threats;
+  return g_atomic_int_get(&ctx->total_threats);
 }
 
 /* thread-safe method to inc/get total files */
 static void
 inc_total_files(ScanContext *ctx)
 {
-  g_mutex_lock(&ctx->scan_mutex);
-  ctx->total_files++;
-  g_mutex_unlock(&ctx->scan_mutex);
+  g_atomic_int_inc(&ctx->total_files);
 }
 
 static gint
 get_total_files(ScanContext *ctx)
 {
-  gint total_files;
-  g_mutex_lock(&ctx->scan_mutex);
-  total_files = ctx->total_files;
-  g_mutex_unlock(&ctx->scan_mutex);
-  return total_files;
+  return g_atomic_int_get(&ctx->total_files);
 }
 
-/* thread-safe method to add/output a threat path to the list */
+/* thread-safe method to add/output/clear a threat path to the list */
 static void
 add_threat_path(ScanContext *ctx, const char *path)
 {
@@ -177,14 +166,17 @@ add_threat_path(ScanContext *ctx, const char *path)
 }
 
 static void
-output_threat_path(ScanContext *ctx) // This will prepend to the GtkBox
+output_threat_path(ScanContext *ctx) // This will add to the AdwStatusPage
 {
   ctx->threat_list_box = gtk_list_box_new(); // Create the list view for threats
   gtk_widget_add_css_class(ctx->threat_list_box, "boxed-list"); // Add boxed-list style class to the list view
   gtk_list_box_set_selection_mode(GTK_LIST_BOX(ctx->threat_list_box), GTK_SELECTION_NONE); // Disable selection for the list view
   
   g_mutex_lock(&ctx->threats_mutex);
-  GList *iter = ctx->threat_paths;
+  GList *copy = g_list_copy(ctx->threat_paths); // Make a copy of the threat paths list
+  g_mutex_unlock(&ctx->threats_mutex);
+
+  GList *iter = copy;
   while (iter)
   {
     GtkWidget *action_row = adw_action_row_new(); // Create the action row for the list view
@@ -192,9 +184,33 @@ output_threat_path(ScanContext *ctx) // This will prepend to the GtkBox
     gtk_list_box_append(GTK_LIST_BOX(ctx->threat_list_box), action_row);
     iter = iter->next;
   }
-  g_mutex_unlock(&ctx->threats_mutex);
+  g_list_free_full(g_steal_pointer(&ctx->threat_paths), g_free); // Free the copy of the threat paths list
 
   adw_status_page_set_child (ADW_STATUS_PAGE(ctx->threat_status_page), ctx->threat_list_box);
+}
+
+static void
+clear_threat_paths(ScanContext *ctx)
+{
+  g_mutex_lock(&ctx->threats_mutex);
+  GtkWidget *threat_list_box = ctx->threat_list_box;
+  if (threat_list_box && GTK_IS_WIDGET(threat_list_box))
+  {
+    gtk_list_box_remove_all(GTK_LIST_BOX(threat_list_box)); // First clear all the action rows in the list view
+
+    ctx->threat_list_box = NULL;
+
+    g_clear_pointer(&ctx->threat_list_box, gtk_widget_unparent); // Then unparent the list view
+  }
+
+  if (ctx->threat_paths)
+  {
+    g_list_free_full(g_steal_pointer(&ctx->threat_paths), g_free); // Free the threat paths list
+    ctx->threat_paths = NULL;
+  }
+
+  ctx->threat_list_box = NULL; // Reset the list view pointer
+  g_mutex_unlock(&ctx->threats_mutex);
 }
 
 static void
@@ -241,6 +257,12 @@ static gboolean
 scan_complete_callback(gpointer user_data)
 {
   IdleData *data = user_data;
+
+  if (!g_atomic_int_get(&data->ctx->ref_count)) // Context has been destroyed, exit the callback
+  {
+    g_warning("Invalid context in completion callback\n");
+    return G_SOURCE_REMOVE;
+  }
 
   gboolean is_success = FALSE;
   get_completion_state(data->ctx, NULL, &is_success); // Get the completion state for thread-safe access
@@ -361,8 +383,10 @@ process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, ScanContext *ct
         IdleData *data = g_new0(IdleData, 1);
         data->message = g_strdup(line);
         data->ctx = scan_context_ref(ctx);
-        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                       scan_ui_callback,
+        g_main_context_invoke_full(
+                       g_main_context_default(),
+                       G_PRIORITY_HIGH_IDLE,
+                       (GSourceFunc) scan_ui_callback,
                        data,
                        (GDestroyNotify)resource_clean_up);
     }
@@ -382,10 +406,13 @@ send_final_status(ScanContext *ctx, gboolean success)
     complete_data->message = g_strdup(status_text);
 
     /* Send final status message to main thread */
-    if (G_LIKELY(complete_data->ctx && complete_data->ctx->scan_status_page))
+    if (G_LIKELY((complete_data->ctx || g_atomic_int_get(&complete_data->ctx->ref_count) > 0 )
+                      && complete_data->ctx->scan_status_page))
     {
-        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                       scan_complete_callback,
+        g_main_context_invoke_full(
+                       g_main_context_default(),
+                       G_PRIORITY_HIGH_IDLE,
+                       (GSourceFunc) scan_complete_callback,
                        complete_data,
                        (GDestroyNotify)resource_clean_up);
     }
@@ -465,20 +492,8 @@ static void
 clear_box_list_and_force_close(GtkButton *close_button)
 {
   ScanContext *ctx = g_object_get_data(G_OBJECT(close_button), "scan-context");
-  GtkWidget *threat_list_box = ctx->threat_list_box;
 
-  if (threat_list_box && GTK_IS_WIDGET(threat_list_box))
-  {
-    gtk_list_box_remove_all(GTK_LIST_BOX(threat_list_box)); // First clear all the action rows in the list view
-
-    GtkWidget *parent = gtk_widget_get_parent(threat_list_box);
-    GtkBox *box = GTK_BOX(parent);
-
-    if (parent && GTK_IS_BOX(box))
-    {
-      gtk_box_remove(box, threat_list_box); // then remove the list view from the box button, this should also clear the GtkListBox
-    }
-  }
+  clear_threat_paths(ctx); // Clear the list view
 
   adw_dialog_force_close(ctx->scan_dialog);
   scan_context_unref(ctx); // unref at here to avoid fucked up the `ScanContext` before getting the `threat_list_box`
