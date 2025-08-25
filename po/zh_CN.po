@@ -35,7 +35,7 @@ msgstr "一个 ClamAV 图形前端"
 
 #: data/com.ericlin.wuming.metainfo.xml.in:10
 msgid "A simple ClamAV GUI frontend written in C using GTK4/LibAdwaita"
-msgstr "一个使用 GTK4/LibAdwaita 简单的 ClamAV 图形前端"
+msgstr "使用 GTK4/LibAdwaita 开发的简洁 ClamAV 图形界面"
 
 #: data/com.ericlin.wuming.metainfo.xml.in:14
 msgid "EricLin"
@@ -44,7 +44,7 @@ msgstr "EricLin"
 #: data/com.ericlin.wuming.metainfo.xml.in:52
 #: data/com.ericlin.wuming.metainfo.xml.in:56
 msgid "A caption"
-msgstr ""
+msgstr "说明文字"
 
 #: src/gtk/help-overlay.ui:11
 msgctxt "shortcut window"
@@ -71,7 +71,7 @@ msgstr "安全概览"
 
 #: src/wuming-window.ui:52 src/wuming-window.ui:97
 msgid "Coming Soon..."
-msgstr "敬请期待..."
+msgstr "即将推出..."
 
 #: src/wuming-window.ui:60 src/wuming-window.ui:61 src/wuming-window.ui:65
 #: src/scan-page.c:204
@@ -200,7 +200,7 @@ msgstr "扫描完成"
 
 #: src/libs/scan.c:377
 msgid "Scan Failed"
-msgstr "扫描文件"
+msgstr "扫描失败"
 
 #: src/libs/update-signature.c:551
 msgid "Update Complete"
