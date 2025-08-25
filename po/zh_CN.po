@@ -196,7 +196,7 @@ msgstr ""
 
 #: src/libs/scan.c:377
 msgid "Scan Complete"
-msgstr "更新完成"
+msgstr "扫描完成"
 
 #: src/libs/scan.c:377
 msgid "Scan Failed"
