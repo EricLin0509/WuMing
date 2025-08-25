@@ -58,13 +58,12 @@
   </screenshots>
 
   <releases>
-    <release version="0.0.1" date="2025-8-8">
-      <url type="details">https://example.org/changelog.html#version_1.0.1</url>
+    <release version="0.1" date="2025-8-25">
+      <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.1</url>
       <description translate="no">
-        <p>Release description</p>
+        <p>The first preview version</p>
         <ul>
-          <li>List of changes</li>
-          <li>List of changes</li>
+          <li>This version only implement the Scan Page and the Update Page</li>
         </ul>
       </description>
     </release>
