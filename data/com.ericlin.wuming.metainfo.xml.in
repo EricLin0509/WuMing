@@ -58,6 +58,15 @@
   </screenshots>
 
   <releases>
+    <release version="0.1.1" date="2025-8-26">
+      <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.1.1</url>
+      <description translate="no">
+        <p>Critical bug fix</p>
+        <ul>
+          <li>This version fix a improper cleanup</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1" date="2025-8-25">
       <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.1</url>
       <description translate="no">
