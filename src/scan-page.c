@@ -21,9 +21,22 @@
 #include <glib/gi18n.h>
 
 #include "scan-page.h"
+#include "libs/scan.h"
 
 struct _ScanPage {
   GtkWidget          parent_instance;
+
+  /*ScanDialog*/
+  AdwDialog          *dialog;
+  GtkWidget           *navigation_view;
+
+  AdwNavigationPage *scan_navigation_page;
+  GtkWidget          *scan_status;
+  GtkWidget          *close_button;
+
+  AdwNavigationPage *threat_navigation_page;
+  GtkWidget          *threat_status; // store the threat status
+  GtkWidget          *threat_button; // show the threat status
 
   /*Child*/
   GtkWidget          *clamp;
@@ -33,45 +46,83 @@ struct _ScanPage {
 
 G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
 
-/*Test functions*/
+static void
+reset_scan_dialog_and_start_scan (ScanPage *self, char *path)
+{
+  adw_status_page_set_title (ADW_STATUS_PAGE (self->scan_status), gettext("Scanning..."));
+  adw_status_page_set_description (ADW_STATUS_PAGE (self->scan_status), gettext ("Preparing..."));
+  gtk_widget_set_visible(self->threat_button, FALSE);
+  gtk_widget_set_sensitive (self->threat_button, FALSE);
+  gtk_widget_set_visible(self->close_button, FALSE);
+  gtk_widget_set_sensitive (self->close_button, FALSE);
+
+  /*Present dialog*/
+  adw_dialog_present (self->dialog, GTK_WIDGET (self));
+
+  /*Start scan*/
+  start_scan(self->dialog,
+             self->navigation_view,
+             self->scan_status,
+             self->close_button,
+             self->threat_navigation_page,
+             self->threat_status,
+             self->threat_button,
+             path);
+}
 
 static void
-show_chosen_file_path (GObject *source_object, GAsyncResult *res, gpointer data)
+start_scan_file (GObject *source_object, GAsyncResult *res, gpointer data)
 {
-  GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
+  GtkFileDialog *file_dialog = GTK_FILE_DIALOG (source_object);
+  ScanPage *self = data;
   GFile *file = NULL;
   GError *error = NULL;
 
-  if (file = gtk_file_dialog_open_finish (dialog, res, &error))
+  if (file = gtk_file_dialog_open_finish (file_dialog, res, &error))
     {
-      g_print("[Info] You chose %s\n", g_file_get_path (file));
+      char *filepath = g_file_get_path (file);
+
+      /* Reset widget and start scannning */
+      reset_scan_dialog_and_start_scan (self, filepath);
+
+      g_object_unref (file); // Only unref the file if it is successfully opened
     }
   else
     {
       if (error->code == GTK_DIALOG_ERROR_DISMISSED)
-            g_warning ("[Info] User canceled!\n");
+            g_warning ("[INFO] User canceled!\n");
       else
-            g_warning ("[Error] Failed to open the file!\n");
+            g_warning ("[ERROR] Failed to open the file!\n");
+
+      g_clear_error (&error);
     }
 }
 
 static void
-show_chosen_folder_path (GObject *source_object, GAsyncResult *res, gpointer data)
+start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
 {
-  GtkFileDialog *dialog = GTK_FILE_DIALOG (source_object);
+  GtkFileDialog *file_dialog = GTK_FILE_DIALOG (source_object);
+  ScanPage *self = data;
   GFile *file = NULL;
   GError *error = NULL;
 
-  if (file = gtk_file_dialog_select_folder_finish (dialog, res, &error))
+  if (file = gtk_file_dialog_select_folder_finish (file_dialog, res, &error))
     {
-      g_print("[Info] You chose %s\n", g_file_get_path (file));
+      char *folderpath = g_file_get_path (file);
+
+      /* Reset widget and start scannning */
+      reset_scan_dialog_and_start_scan (self, folderpath);
+
+      g_object_unref (file); // Only unref the file if it is successfully opened
     }
   else
     {
       if (error->code == GTK_DIALOG_ERROR_DISMISSED)
-            g_warning ("[Info] User canceled!\n");
+            g_warning ("[INFO] User canceled!\n");
       else
-            g_warning ("[Error] Failed to open the folder!\n");
+            g_warning ("[ERROR] Failed to open the folder!\n");
+
+      g_clear_error (&error);
     }
 }
 
@@ -81,13 +132,13 @@ static void
 file_chooser (GtkButton* file_button, gpointer user_data)
 {
   gtk_widget_set_sensitive (GTK_WIDGET (file_button), FALSE);
-  g_print("[Info] Choose a file\n");
+  g_print("[INFO] Choose a file\n");
 
   GtkWidget *window = gtk_widget_get_ancestor (GTK_WIDGET (file_button), ADW_TYPE_APPLICATION_WINDOW);
 
   GtkFileDialog *dialog;
   dialog = gtk_file_dialog_new ();
-  gtk_file_dialog_open (dialog, GTK_WINDOW (window), NULL, show_chosen_file_path, NULL);
+  gtk_file_dialog_open (dialog, GTK_WINDOW (window), NULL, start_scan_file, user_data);
 
   g_object_unref (dialog);
   gtk_widget_set_sensitive (GTK_WIDGET (file_button), TRUE);
@@ -97,18 +148,79 @@ static void
 folder_chooser (GtkButton* folder_button, gpointer user_data)
 {
   gtk_widget_set_sensitive (GTK_WIDGET (folder_button), FALSE);
-  g_print("[Info] Choose a folder\n");
+  g_print("[INFO] Choose a folder\n");
 
   GtkWidget *window = gtk_widget_get_ancestor (GTK_WIDGET (folder_button), ADW_TYPE_APPLICATION_WINDOW);
 
   GtkFileDialog *dialog;
   dialog = gtk_file_dialog_new ();
-  gtk_file_dialog_select_folder (dialog, GTK_WINDOW (window), NULL, show_chosen_folder_path, NULL);
+  gtk_file_dialog_select_folder (dialog, GTK_WINDOW (window), NULL, start_scan_folder, user_data);
 
   g_object_unref (dialog);
   gtk_widget_set_sensitive (GTK_WIDGET (folder_button), TRUE);
 }
 
+static void
+show_threat_status(ScanPage *self)
+{
+  adw_navigation_view_push (ADW_NAVIGATION_VIEW (self->navigation_view), self->threat_navigation_page);
+}
+
+static void
+build_scan_dialog (ScanPage *self)
+{
+  self->dialog = g_object_ref_sink(adw_dialog_new());
+  adw_dialog_set_can_close(ADW_DIALOG (self->dialog), FALSE);
+  adw_dialog_set_content_height (self->dialog, 320);
+  adw_dialog_set_content_width (self->dialog, 420);
+
+  /* Add AdwNavigationView */
+  self->navigation_view = adw_navigation_view_new ();
+  adw_dialog_set_child (self->dialog, self->navigation_view);
+
+  /* Scan Page */
+  GtkWidget *scan_toolbar = adw_toolbar_view_new();
+  GtkWidget *scan_header = adw_header_bar_new();
+  adw_header_bar_set_show_end_title_buttons (ADW_HEADER_BAR (scan_header), FALSE); // Hide the buttons on the right side
+
+  adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (scan_toolbar), scan_header);
+
+  self->scan_status = adw_status_page_new ();
+
+  GtkWidget *box_button = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
+  gtk_widget_set_halign (box_button, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign (box_button, GTK_ALIGN_CENTER);
+  adw_status_page_set_child (ADW_STATUS_PAGE (self->scan_status), box_button);
+
+  self->threat_button = gtk_button_new_with_label (gettext("Show threats"));
+  gtk_widget_add_css_class (self->threat_button, "warning");
+  gtk_box_append (GTK_BOX (box_button), self->threat_button);
+
+  self->close_button = gtk_button_new_with_label (gettext("Close"));
+  gtk_box_append (GTK_BOX (box_button), self->close_button);
+
+  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (scan_toolbar), self->scan_status); // Add AdwStatusPage to AdwToolbarView
+
+  self->scan_navigation_page = adw_navigation_page_new(scan_toolbar, gettext("Scan"));
+  adw_navigation_view_add (ADW_NAVIGATION_VIEW (self->navigation_view), self->scan_navigation_page);
+
+  /* Threat Page */
+  GtkWidget *threat_toolbar = adw_toolbar_view_new();
+  GtkWidget *threat_header = adw_header_bar_new();
+  adw_header_bar_set_show_end_title_buttons (ADW_HEADER_BAR (threat_header), FALSE); // Hide the buttons on the right side
+
+  adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (threat_toolbar), threat_header);
+
+  self->threat_status = adw_status_page_new ();
+  adw_status_page_set_title(ADW_STATUS_PAGE (self->threat_status), gettext("Found Threats"));
+  
+  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (threat_toolbar), self->threat_status); // Add AdwStatusPage to AdwToolbarView
+
+  self->threat_navigation_page = adw_navigation_page_new(threat_toolbar, gettext("Threats"));
+  adw_navigation_view_add (ADW_NAVIGATION_VIEW (self->navigation_view), self->threat_navigation_page);
+
+  g_signal_connect_swapped (self->threat_button, "clicked", G_CALLBACK (show_threat_status), self);
+}
 
 /*GObject Essential Functions */
 
@@ -117,6 +229,9 @@ scan_page_dispose(GObject *gobject)
 {
   ScanPage *self = SCAN_PAGE (gobject);
 
+  GtkWidget *dialog = GTK_WIDGET(self->dialog); // Cast it for cleaning up
+
+  g_clear_pointer (&dialog, gtk_widget_unparent);
   g_clear_pointer (&self->clamp, gtk_widget_unparent);
 
   G_OBJECT_CLASS(scan_page_parent_class)->dispose(gobject);
@@ -157,6 +272,9 @@ scan_page_init (ScanPage *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  g_signal_connect (self->scan_a_file_button, "clicked", G_CALLBACK (file_chooser), NULL);
-  g_signal_connect (self->scan_a_folder_button, "clicked", G_CALLBACK (folder_chooser), NULL);
+  /*Build ScanDialog*/
+  build_scan_dialog (self);
+
+  g_signal_connect (self->scan_a_file_button, "clicked", G_CALLBACK (file_chooser), self);
+  g_signal_connect (self->scan_a_folder_button, "clicked", G_CALLBACK (folder_chooser), self);
 }

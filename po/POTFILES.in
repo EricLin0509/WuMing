@@ -5,10 +5,11 @@ data/com.ericlin.wuming.metainfo.xml.in
 data/com.ericlin.wuming.gschema.xml
 src/gtk/help-overlay.ui
 src/main.c
-src/systemd-control.c
 src/wuming-window.c
 src/wuming-window.ui
+src/scan-page.c
 src/scan-page.ui
-src/update-signature.c
 src/update-signature-page.c
 src/update-signature-page.ui
+src/libs/scan.c
+src/libs/update-signature.c

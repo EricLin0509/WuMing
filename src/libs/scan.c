@@ -1,0 +1,517 @@
+/* scan.c
+ *
+ * Copyright 2025 EricLin
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+#include <glib/gi18n.h>
+#include <time.h>
+#include <limits.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/mman.h>
+#include <sys/wait.h>
+#include <sys/prctl.h>
+
+#include "ring-buffer.h"
+#include "dynamic-timeout.h"
+#include "scan.h"
+
+#include "../scan-page.h"
+
+#define CLAMSCAN_PATH "/usr/bin/clamscan"
+
+typedef struct {
+  /* Protected by mutex */
+  GMutex mutex; // Only protect initialization, "completed" and "success"  fields
+  gboolean completed;
+  gboolean success;
+
+  GMutex scan_mutex; // Only protect "total_files" and "total_threats" fields
+  gint total_files; // Total files scanned
+  gint total_threats; // Total threats found during scan
+
+  GMutex threats_mutex; // Only protect "threat_paths" and "threat_list" fields
+  GList *threat_paths; // List of threats found during scan
+  GtkWidget *threat_list_box; // List view of threats found after scan
+
+  /*No need to protect these fields because they always same after initialize*/
+  AdwDialog *scan_dialog;
+  GtkWidget *navigation_view; // use for pushing the `threat_navigation_page` to the navigation view
+  GtkWidget *scan_status_page;
+  GtkWidget *close_button;
+  AdwNavigationPage *threat_navigation_page; // use for pushing it to the navigation view
+  GtkWidget *threat_status_page; // use for adding the `threat_list_box` to the status page
+  GtkWidget *threat_button;
+  char *path; // file/folder path
+
+  /* Protected by atomic ref count */
+  volatile gint ref_count;
+} ScanContext;
+
+typedef struct {
+  ScanContext *ctx;
+  char *message;
+} IdleData;
+
+typedef struct {
+    int pipefd;
+    RingBuffer *ring_buf;
+    LineAccumulator *acc;
+    ScanContext *ctx;
+} IOContext;
+
+static ScanContext*
+scan_context_new(void)
+{
+  ScanContext *ctx = g_new0(ScanContext, 1);
+  g_mutex_init(&ctx->mutex);
+  g_mutex_init(&ctx->scan_mutex);
+  g_mutex_init(&ctx->threats_mutex);
+  ctx->ref_count = 1;
+  return ctx;
+}
+
+static ScanContext*
+scan_context_ref(ScanContext *ctx)
+{
+  if (ctx) g_atomic_int_inc(&ctx->ref_count);
+  return ctx;
+}
+
+static void
+scan_context_unref(ScanContext *ctx)
+{
+  if (ctx && g_atomic_int_dec_and_test(&ctx->ref_count))
+  {
+    g_mutex_clear(&ctx->mutex);
+    g_mutex_clear(&ctx->scan_mutex);
+    g_mutex_clear(&ctx->threats_mutex);
+
+    g_list_free_full(g_steal_pointer(&ctx->threat_paths), g_free); // Free the threat paths list
+    g_clear_pointer(&ctx->path, g_free);
+
+    g_atomic_int_set(&ctx->ref_count, INT_MIN);
+    g_free(ctx);
+  }
+}
+
+/* thread-safe method to get/set states */
+static void
+set_completion_state(ScanContext *ctx, gboolean completed, gboolean success)
+{
+  g_mutex_lock(&ctx->mutex);
+  ctx->completed = completed;
+  ctx->success = success;
+  g_mutex_unlock(&ctx->mutex);
+}
+
+static void
+get_completion_state(ScanContext *ctx, gboolean *out_completed, gboolean *out_success)
+{
+  g_mutex_lock(&ctx->mutex);
+  if (out_completed) *out_completed = ctx->completed;
+  if (out_success) *out_success = ctx->success;
+  g_mutex_unlock(&ctx->mutex);
+}
+
+/* thread-safe method to inc/get total threats */
+static void
+inc_total_threats(ScanContext *ctx)
+{
+  g_mutex_lock(&ctx->scan_mutex);
+  ctx->total_threats++;
+  g_mutex_unlock(&ctx->scan_mutex);
+}
+
+static gint
+get_total_threats(ScanContext *ctx)
+{
+  gint total_threats;
+  g_mutex_lock(&ctx->scan_mutex);
+  total_threats = ctx->total_threats;
+  g_mutex_unlock(&ctx->scan_mutex);
+  return total_threats;
+}
+
+/* thread-safe method to inc/get total files */
+static void
+inc_total_files(ScanContext *ctx)
+{
+  g_mutex_lock(&ctx->scan_mutex);
+  ctx->total_files++;
+  g_mutex_unlock(&ctx->scan_mutex);
+}
+
+static gint
+get_total_files(ScanContext *ctx)
+{
+  gint total_files;
+  g_mutex_lock(&ctx->scan_mutex);
+  total_files = ctx->total_files;
+  g_mutex_unlock(&ctx->scan_mutex);
+  return total_files;
+}
+
+/* thread-safe method to add/output a threat path to the list */
+static void
+add_threat_path(ScanContext *ctx, const char *path)
+{
+  g_mutex_lock(&ctx->threats_mutex);
+  ctx->threat_paths = g_list_append(ctx->threat_paths, g_strdup(path));
+  g_mutex_unlock(&ctx->threats_mutex);
+}
+
+static void
+output_threat_path(ScanContext *ctx) // This will prepend to the GtkBox
+{
+  ctx->threat_list_box = gtk_list_box_new(); // Create the list view for threats
+  gtk_widget_add_css_class(ctx->threat_list_box, "boxed-list"); // Add boxed-list style class to the list view
+  gtk_list_box_set_selection_mode(GTK_LIST_BOX(ctx->threat_list_box), GTK_SELECTION_NONE); // Disable selection for the list view
+  
+  g_mutex_lock(&ctx->threats_mutex);
+  GList *iter = ctx->threat_paths;
+  while (iter)
+  {
+    GtkWidget *action_row = adw_action_row_new(); // Create the action row for the list view
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(action_row), (const char *)iter->data);
+    gtk_list_box_append(GTK_LIST_BOX(ctx->threat_list_box), action_row);
+    iter = iter->next;
+  }
+  g_mutex_unlock(&ctx->threats_mutex);
+
+  adw_status_page_set_child (ADW_STATUS_PAGE(ctx->threat_status_page), ctx->threat_list_box);
+}
+
+static void
+resource_clean_up(IdleData *data)
+{
+  scan_context_unref (data->ctx);
+  g_free(data->message);
+  g_free(data);
+}
+
+static gboolean
+scan_ui_callback(gpointer user_data)
+{
+  IdleData *data = (IdleData *)user_data;
+
+  char *status_marker = NULL; // Check file is OK or FOUND
+
+  if ((status_marker = strstr(data->message, "FOUND")) != NULL)
+  {
+    inc_total_files(data->ctx);
+    inc_total_threats(data->ctx);
+
+    /* Add threat path to the list */
+    char *colon = strchr(data->message, ':'); // Find the colon separator
+    if (colon)
+    {
+      *colon = '\0'; // Replace the colon with null terminator
+      add_threat_path(data->ctx, data->message);
+    }
+  }
+  else if ((status_marker = strstr(data->message, "OK")) != NULL) inc_total_files(data->ctx);
+
+  gint total_files = get_total_files(data->ctx);
+  gint total_threats = get_total_threats(data->ctx);
+
+  char *status_text = g_strdup_printf(gettext("%d files scanned\n%d threats found"), total_files, total_threats);
+  adw_status_page_set_description(ADW_STATUS_PAGE(data->ctx->scan_status_page), status_text);
+  g_free(status_text);
+
+  return G_SOURCE_REMOVE;
+}
+
+static gboolean
+scan_complete_callback(gpointer user_data)
+{
+  IdleData *data = user_data;
+
+  gboolean is_success = FALSE;
+  get_completion_state(data->ctx, NULL, &is_success); // Get the completion state for thread-safe access
+
+  if (data->ctx && data->ctx->total_threats > 0) // If threats found, output the list view
+  {
+    output_threat_path(data->ctx);
+    
+    if (data->ctx && data->ctx->threat_button && GTK_IS_WIDGET(data->ctx->threat_button))
+    {
+      gtk_widget_set_sensitive(data->ctx->threat_button, TRUE);
+      gtk_widget_set_visible(data->ctx->threat_button, TRUE);
+    }
+
+    if (data->ctx &&
+        data->ctx->threat_navigation_page && GTK_IS_WIDGET(data->ctx->threat_navigation_page) &&
+        data->ctx->navigation_view && GTK_IS_WIDGET(data->ctx->navigation_view))
+    {
+      adw_navigation_view_push(ADW_NAVIGATION_VIEW(data->ctx->navigation_view), data->ctx->threat_navigation_page);
+    }
+  }
+
+  if (data->ctx && data->ctx->scan_status_page && GTK_IS_WIDGET(data->ctx->scan_status_page))
+  {
+    adw_status_page_set_title(
+      ADW_STATUS_PAGE(data->ctx->scan_status_page),
+      data->message
+    );
+  }
+
+  if (data->ctx && data->ctx->close_button && GTK_IS_WIDGET(data->ctx->close_button))
+  {
+    gtk_widget_set_visible(data->ctx->close_button, TRUE);
+    gtk_widget_set_sensitive(data->ctx->close_button, TRUE);
+  }
+
+  return G_SOURCE_REMOVE;
+}
+
+static
+gboolean spawn_scan_process(int pipefd[2], pid_t *pid, char *path)
+{
+    if (pipe(pipefd) == -1)
+    {
+        g_warning("Failed to create pipe: %s", strerror(errno));
+        goto error_clean_up;
+    }
+
+    if ((*pid = fork()) == -1)
+    {
+        g_warning("Failed to fork: %s", strerror(errno));
+        goto error_clean_up;
+    }
+
+    if (*pid == 0) // Child process
+    {
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+
+        execl(CLAMSCAN_PATH, "clamscan", path, "--recursive", NULL);
+        exit(EXIT_FAILURE);
+    }
+
+    close(pipefd[1]);
+    return TRUE;
+
+error_clean_up:
+    close(pipefd[0]);
+    close(pipefd[1]);
+    return FALSE;
+}
+
+static
+gboolean wait_for_process(pid_t pid)
+{
+    int status;
+    if (waitpid(pid, &status, 0) == -1)
+    {
+        perror("waitpid");
+        return FALSE;
+    }
+
+    /*
+      * 0: no threat found
+      * 1: threats found
+      *  else: failed to scan
+    */
+    return WIFEXITED(status) &&
+              (WEXITSTATUS(status) == 0 || WEXITSTATUS(status) == 1);
+}
+
+static
+gboolean handle_io_event(IOContext *io_ctx)
+{
+    char read_buf[512];
+    ssize_t n = read(io_ctx->pipefd, read_buf, sizeof(read_buf));
+
+    if (n > 0)
+    {
+        size_t written = ring_buffer_write(io_ctx->ring_buf, read_buf, n);
+        if (written < (size_t)n)
+        {
+            g_warning("Ring buffer overflow, lost %zd bytes", n - written);
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static void
+process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, ScanContext *ctx)
+{
+    char *line;
+    while (ring_buffer_read_line(ring_buf, acc, &line))
+    {
+        IdleData *data = g_new0(IdleData, 1);
+        data->message = g_strdup(line);
+        data->ctx = scan_context_ref(ctx);
+        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                       scan_ui_callback,
+                       data,
+                       (GDestroyNotify)resource_clean_up);
+    }
+}
+
+static void
+send_final_status(ScanContext *ctx, gboolean success)
+{
+    set_completion_state(ctx, TRUE, success);
+
+    const char *status_text = success ?
+        gettext("Scan Complete") : gettext("Scan Failed");
+
+    /* Create final status message */
+    IdleData *complete_data = g_new0(IdleData, 1);
+    complete_data->ctx = scan_context_ref(ctx);
+    complete_data->message = g_strdup(status_text);
+
+    /* Send final status message to main thread */
+    if (G_LIKELY(complete_data->ctx && complete_data->ctx->scan_status_page))
+    {
+        g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                       scan_complete_callback,
+                       complete_data,
+                       (GDestroyNotify)resource_clean_up);
+    }
+    else
+    {
+        g_warning("Attempted to send status to invalid context");
+        scan_context_unref(complete_data->ctx);
+        g_free(complete_data->message);
+        g_free(complete_data);
+    }
+}
+
+static gpointer
+scan_thread(gpointer data)
+{
+    ScanContext *ctx = data;
+    int pipefd[2];
+    pid_t pid;
+
+    /*Initialize ring buffer and line accumulator*/
+    RingBuffer ring_buf;
+    ring_buffer_init(&ring_buf);
+    LineAccumulator acc;
+    line_accumulator_init(&acc);
+
+    /*Spawn scan process*/
+    if (!spawn_scan_process(pipefd, &pid, ctx->path))
+    {
+        scan_context_unref(ctx);
+        return NULL;
+    }
+
+    /*Initialize IO context*/
+    IOContext io_ctx = {
+        .pipefd = pipefd[0],
+        .ring_buf = &ring_buf,
+        .acc = &acc,
+        .ctx = ctx
+    };
+
+    /*Start scan thread*/
+    struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
+    int idle_counter = 0;
+    int dynamic_timeout = BASE_TIMEOUT_MS;
+    gboolean eof_received = FALSE;
+
+    while (!eof_received)
+    {
+        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout);
+        int ready = poll(&fds, 1, timeout);
+
+        if (ready > 0)
+        {
+            idle_counter = 0;
+            dynamic_timeout = BASE_TIMEOUT_MS;
+
+            if (!handle_io_event(&io_ctx))
+            {
+                eof_received = TRUE;
+            }
+        }
+
+        process_output_lines(&ring_buf, &acc, ctx);
+    }
+
+    /*Clean up*/
+    process_output_lines(&ring_buf, &acc, ctx);
+    gboolean success = wait_for_process(pid);
+    send_final_status(ctx, success);
+
+    close(pipefd[0]);
+    return NULL;
+}
+
+/* Clear the list view and force close the dialog */
+static void
+clear_box_list_and_force_close(GtkButton *close_button)
+{
+  ScanContext *ctx = g_object_get_data(G_OBJECT(close_button), "scan-context");
+  GtkWidget *threat_list_box = ctx->threat_list_box;
+
+  if (threat_list_box && GTK_IS_WIDGET(threat_list_box))
+  {
+    gtk_list_box_remove_all(GTK_LIST_BOX(threat_list_box)); // First clear all the action rows in the list view
+
+    GtkWidget *parent = gtk_widget_get_parent(threat_list_box);
+    GtkBox *box = GTK_BOX(parent);
+
+    if (parent && GTK_IS_BOX(box))
+    {
+      gtk_box_remove(box, threat_list_box); // then remove the list view from the box button, this should also clear the GtkListBox
+    }
+  }
+
+  adw_dialog_force_close(ctx->scan_dialog);
+  scan_context_unref(ctx); // unref at here to avoid fucked up the `ScanContext` before getting the `threat_list_box`
+}
+
+void
+start_scan(AdwDialog *dialog, GtkWidget *navigation_view, GtkWidget *scan_status, GtkWidget *close_button, AdwNavigationPage *threat_navigation_page, GtkWidget *threat_status, GtkWidget *threat_button, char *path)
+{
+  g_signal_connect(GTK_BUTTON(close_button), "clicked", G_CALLBACK(clear_box_list_and_force_close), NULL);
+
+  ScanContext *ctx = scan_context_new();
+
+  g_mutex_lock(&ctx->mutex);
+  ctx->completed = FALSE;
+  ctx->success = FALSE;
+  ctx->total_files = 0;
+  ctx->total_threats = 0;
+  ctx->threat_paths = NULL;
+  ctx->threat_list_box = NULL;
+  ctx->scan_dialog = dialog;
+  ctx->navigation_view = navigation_view;
+  ctx->scan_status_page = scan_status;
+  ctx->close_button = close_button;
+  ctx->threat_navigation_page = threat_navigation_page;
+  ctx->threat_status_page = threat_status;
+  ctx->threat_button = threat_button;
+  ctx->path = path;
+  ctx->ref_count = G_ATOMIC_REF_COUNT_INIT;
+  g_mutex_unlock(&ctx->mutex);
+
+  g_object_set_data(G_OBJECT(close_button), "scan-context", ctx); // Bind the scan context to the close button for later use, see `clear_box_list_and_force_close`
+
+  /* Start scan thread */
+  g_thread_new("scan-thread", scan_thread, ctx);
+}
+

@@ -69,8 +69,12 @@ update_signature_page_show_date(UpdateSignaturePage *self, scan_result result)
 void
 update_signature_page_show_isuptodate(UpdateSignaturePage *self, bool is_uptodate)
 {
-  if (is_uptodate) adw_action_row_set_subtitle (self->status_row, gettext("Is up to date"));
-  else adw_action_row_set_subtitle (self->status_row, gettext("Outdated!"));
+  if (is_uptodate)adw_action_row_set_subtitle (self->status_row, gettext("Is up to date"));
+  else 
+  {
+    adw_action_row_set_subtitle (self->status_row, gettext("Outdated!"));
+    gtk_widget_add_css_class (GTK_WIDGET (self->update_button), "suggested-action");
+  }
 }
 
 void
@@ -85,6 +89,18 @@ update_signature_page_show_servicestat(UpdateSignaturePage *self)
 }
 
 static void
+reset_update_dialog_and_start_update(UpdateSignaturePage *self)
+{
+  adw_status_page_set_title (ADW_STATUS_PAGE (self->update_status), gettext("Updating..."));
+  adw_status_page_set_description (ADW_STATUS_PAGE (self->update_status), gettext("Asking for permission..."));
+  gtk_widget_set_visible(self->close_button, FALSE);
+  gtk_widget_set_sensitive (self->close_button, FALSE);
+
+  adw_dialog_present (self->dialog, GTK_WIDGET (self));
+  start_update(self->dialog, self->update_status, self->close_button, GTK_WIDGET (self->update_button));
+}
+
+static void
 update_signature_cb(GtkButton *update_button, gpointer page)
 {
   gtk_widget_set_sensitive (GTK_WIDGET (update_button), FALSE);
@@ -92,16 +108,37 @@ update_signature_cb(GtkButton *update_button, gpointer page)
 
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE(page);
 
-  /*Reset Widget*/
-  adw_status_page_set_title (ADW_STATUS_PAGE (self->update_status), gettext("Updating..."));
-  adw_status_page_set_description (ADW_STATUS_PAGE (self->update_status), NULL);
-  gtk_widget_set_visible(self->close_button, FALSE);
-  gtk_widget_set_sensitive (self->close_button, FALSE);
-
-  adw_dialog_present (self->dialog, GTK_WIDGET (page));
-  start_update(self->dialog, self->update_status, self->close_button, GTK_WIDGET (update_button));
+  /*Reset Widget and start update*/
+  reset_update_dialog_and_start_update(self);
 
   gtk_widget_set_sensitive (GTK_WIDGET (update_button), TRUE);
+}
+
+static void
+build_update_dialog(UpdateSignaturePage *self)
+{
+  self->dialog = g_object_ref_sink(adw_dialog_new());
+  adw_dialog_set_can_close(ADW_DIALOG (self->dialog), FALSE);
+  adw_dialog_set_content_height (self->dialog, 320);
+  adw_dialog_set_content_width (self->dialog, 420);
+
+  GtkWidget *toolbar = adw_toolbar_view_new();
+  GtkWidget *header = adw_header_bar_new();
+  GtkWidget *title = gtk_label_new(gettext("Update Signature"));
+  gtk_widget_add_css_class(title, "heading");
+  adw_header_bar_set_title_widget(ADW_HEADER_BAR(header), title);
+  adw_header_bar_set_show_end_title_buttons(ADW_HEADER_BAR(header), FALSE); // Hide the buttons on the right side
+  adw_toolbar_view_add_top_bar(ADW_TOOLBAR_VIEW(toolbar), header);
+
+  adw_dialog_set_child(self->dialog, toolbar);
+
+  self->update_status = adw_status_page_new ();
+  adw_toolbar_view_set_content(ADW_TOOLBAR_VIEW(toolbar), self->update_status);
+
+  self->close_button = gtk_button_new ();
+  gtk_widget_set_halign (self->close_button, GTK_ALIGN_CENTER);
+  gtk_button_set_label (GTK_BUTTON (self->close_button), gettext("Close"));
+  adw_status_page_set_child (ADW_STATUS_PAGE (self->update_status), self->close_button);
 }
 
 /*GObject Essential Functions */
@@ -111,7 +148,9 @@ update_signature_page_dispose(GObject *gobject)
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE (gobject);
 
-  g_clear_object(&self->dialog);
+  GtkWidget *dialog = GTK_WIDGET (self->dialog); // Cast it for cleaning up
+
+  g_clear_pointer(&dialog, gtk_widget_unparent);
   g_clear_pointer(&self->clamp, gtk_widget_unparent);
 
   G_OBJECT_CLASS(update_signature_page_parent_class)->dispose(gobject);
@@ -134,7 +173,7 @@ update_signature_page_class_init (UpdateSignaturePageClass *klass)
 
     gtk_widget_class_set_layout_manager_type(widget_class, GTK_TYPE_BIN_LAYOUT);
 
-	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/update-signature-page.ui");
+	  gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/update-signature-page.ui");
 
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, clamp);
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, status_row);
@@ -154,27 +193,8 @@ update_signature_page_init (UpdateSignaturePage *self)
   gtk_widget_init_template (GTK_WIDGET (self));
 
   /*Build UpdateDialog*/
-  self->dialog = g_object_ref_sink(adw_dialog_new());
-  adw_dialog_set_can_close(ADW_DIALOG (self->dialog), FALSE);
-  adw_dialog_set_content_height (self->dialog, 300);
-  adw_dialog_set_content_width (self->dialog, 400);
-
-  GtkWidget *box_main = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
-  gtk_widget_set_valign (box_main, GTK_ALIGN_CENTER);
-  adw_dialog_set_child (self->dialog, box_main);
-
-  self->update_status = adw_status_page_new ();
-  gtk_box_append (GTK_BOX (box_main), self->update_status);
-
-  GtkWidget *box_button = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_widget_set_halign (box_button, GTK_ALIGN_CENTER);
-  gtk_widget_set_valign (box_button, GTK_ALIGN_CENTER);
-  gtk_box_append (GTK_BOX (box_main), box_button);
-
-  self->close_button = gtk_button_new ();
-  gtk_widget_set_valign (self->close_button, GTK_ALIGN_CENTER);
-  gtk_button_set_label (GTK_BUTTON (self->close_button), gettext("Close"));
-  gtk_box_append (GTK_BOX (box_button), self->close_button);
+  build_update_dialog(self);
 
   g_signal_connect (self->update_button, "clicked", G_CALLBACK (update_signature_cb), self);
+  g_signal_connect_swapped(GTK_BUTTON(self->close_button), "clicked", G_CALLBACK(adw_dialog_force_close), ADW_DIALOG (self->dialog));
 }

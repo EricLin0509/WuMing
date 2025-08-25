@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-17 23:18+0800\n"
+"POT-Creation-Date: 2025-08-25 23:08+0800\n"
 "PO-Revision-Date: 2025-08-07 20:36+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -74,10 +74,12 @@ msgid "Coming Soon..."
 msgstr "敬请期待..."
 
 #: src/wuming-window.ui:60 src/wuming-window.ui:61 src/wuming-window.ui:65
+#: src/scan-page.c:204
 msgid "Scan"
 msgstr "扫描"
 
 #: src/wuming-window.ui:76 src/wuming-window.ui:77 src/wuming-window.ui:81
+#: src/update-signature-page.c:127
 msgid "Update Signature"
 msgstr "更新病毒库"
 
@@ -97,6 +99,30 @@ msgstr "快捷键"
 msgid "_About WuMing"
 msgstr "关于无名"
 
+#: src/scan-page.c:52
+msgid "Scanning..."
+msgstr "扫描中..."
+
+#: src/scan-page.c:53
+msgid "Preparing..."
+msgstr "准备中..."
+
+#: src/scan-page.c:195
+msgid "Show threats"
+msgstr "显示威胁"
+
+#: src/scan-page.c:199 src/update-signature-page.c:140
+msgid "Close"
+msgstr "关闭"
+
+#: src/scan-page.c:215
+msgid "Found Threats"
+msgstr "发现威胁"
+
+#: src/scan-page.c:219
+msgid "Threats"
+msgstr "威胁"
+
 #: src/scan-page.ui:21
 msgid "Scan file"
 msgstr "扫描文件"
@@ -105,45 +131,37 @@ msgstr "扫描文件"
 msgid "Scan folder"
 msgstr "扫描文件夹"
 
-#: src/update-signature.c:494
-msgid "Update Complete"
-msgstr "更新完成"
-
-#: src/update-signature.c:494
-msgid "Update Failed"
-msgstr "更新失败"
-
-#: src/update-signature-page.c:51
+#: src/update-signature-page.c:53
 msgid "Warning! No signature found! Please Update the signature!"
 msgstr "警告！未找到病毒库！请先更新病毒库！"
 
-#: src/update-signature-page.c:58
+#: src/update-signature-page.c:60
 #, c-format
 msgid "Warning! Only found main.cvd! Date: %d.%d.%d %d"
 msgstr "警告！只找到 main.cvd！日期：%d.%d.%d %d"
 
-#: src/update-signature-page.c:62
+#: src/update-signature-page.c:64
 #, c-format
 msgid "Current signature date: %d.%d.%d %d"
 msgstr "当前病毒库日期：%d.%d.%d %d"
 
-#: src/update-signature-page.c:70
+#: src/update-signature-page.c:72
 msgid "Is up to date"
 msgstr "已是最新"
 
-#: src/update-signature-page.c:71
+#: src/update-signature-page.c:75
 msgid "Outdated!"
 msgstr "已过期"
 
-#: src/update-signature-page.c:80
+#: src/update-signature-page.c:86
 msgid "Enabled"
 msgstr "已启用"
 
-#: src/update-signature-page.c:81
+#: src/update-signature-page.c:87
 msgid "Disabled"
 msgstr "已禁用"
 
-#: src/update-signature-page.c:82
+#: src/update-signature-page.c:88
 msgid "Failed to check!"
 msgstr "检查失败！"
 
@@ -151,9 +169,9 @@ msgstr "检查失败！"
 msgid "Updating..."
 msgstr "更新中..."
 
-#: src/update-signature-page.c:175
-msgid "Close"
-msgstr "关闭"
+#: src/update-signature-page.c:95
+msgid "Asking for permission..."
+msgstr "正在获取权限..."
 
 #: src/update-signature-page.ui:22
 msgid "Current Signature Status"
@@ -166,3 +184,28 @@ msgstr "更新"
 #: src/update-signature-page.ui:44
 msgid "Freshclam service status"
 msgstr "Freshclam 服务状态"
+
+#: src/libs/scan.c:233
+#, c-format
+msgid ""
+"%d files scanned\n"
+"%d threats found"
+msgstr ""
+"%d 个文件已扫描\n"
+"发现 %d 个威胁"
+
+#: src/libs/scan.c:377
+msgid "Scan Complete"
+msgstr "更新完成"
+
+#: src/libs/scan.c:377
+msgid "Scan Failed"
+msgstr "扫描文件"
+
+#: src/libs/update-signature.c:551
+msgid "Update Complete"
+msgstr "更新完成"
+
+#: src/libs/update-signature.c:551
+msgid "Update Failed"
+msgstr "更新失败"

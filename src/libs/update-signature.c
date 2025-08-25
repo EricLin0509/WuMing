@@ -29,18 +29,13 @@
 #include <sys/prctl.h>
 
 #include "ring-buffer.h"
+#include "dynamic-timeout.h"
 #include "update-signature.h"
 
 #include "../update-signature-page.h"
 
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
 #define PKEXEC_PATH "/usr/bin/pkexec"
-
-#define JITTER_RANGE 30
-#define MAX_IDLE_COUNT 5 // If idle_counter greater than this, use MAX_TIMEOUT_MS
-#define BASE_TIMEOUT_MS 50
-#define MAX_TIMEOUT_MS 1000
-
 
 typedef struct {
     char *result_ref;
@@ -381,6 +376,7 @@ update_context_unref(UpdateContext *ctx)
   if (ctx && g_atomic_int_dec_and_test(&ctx->ref_count))
   {
     g_mutex_clear(&ctx->mutex);
+    g_atomic_int_set(&ctx->ref_count, INT_MIN);
     g_free(ctx);
   }
 }
@@ -536,26 +532,14 @@ process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, UpdateContext *
     while (ring_buffer_read_line(ring_buf, acc, &line))
     {
         IdleData *data = g_new0(IdleData, 1);
-        data->message = g_strdup(line);
+        gchar *escaped = g_markup_escape_text(line, -1);
+        data->message = escaped;
         data->ctx = update_context_ref(ctx);
         g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                        update_ui_callback,
                        data,
                        (GDestroyNotify)resource_clean_up);
     }
-}
-
-static int calculate_dynamic_timeout(int *idle_counter, int *current_timeout)
-{
-    const int jitter = rand() % JITTER_RANGE;
-    
-    if (++(*idle_counter) > MAX_IDLE_COUNT)
-    {
-        *current_timeout = MIN(*current_timeout * 2, MAX_TIMEOUT_MS);
-        *idle_counter = 0;
-    }
-    
-    return CLAMP(*current_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
 }
 
 static void 
@@ -587,7 +571,6 @@ send_final_status(UpdateContext *ctx, gboolean success)
         g_free(complete_data);
     }
 }
-
 
 static gpointer
 update_thread(gpointer data)
@@ -643,7 +626,6 @@ update_thread(gpointer data)
     }
 
     /*Clean up*/
-    process_output_lines(&ring_buf, &acc, ctx);
     gboolean success = wait_for_process(pid);
     send_final_status(ctx, success);
     
@@ -652,12 +634,9 @@ update_thread(gpointer data)
     return NULL;
 }
 
-
 void
 start_update(AdwDialog *dialog, GtkWidget *page, GtkWidget *close_button, GtkWidget *update_button)
 {
-  g_signal_connect_swapped(GTK_BUTTON(close_button), "clicked", G_CALLBACK(adw_dialog_force_close), ADW_DIALOG (dialog));
-
   UpdateContext *ctx = update_context_new();
 
   g_mutex_lock(&ctx->mutex);

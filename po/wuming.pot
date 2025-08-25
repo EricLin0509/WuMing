@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-17 23:18+0800\n"
+"POT-Creation-Date: 2025-08-25 23:08+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -75,10 +75,12 @@ msgid "Coming Soon..."
 msgstr ""
 
 #: src/wuming-window.ui:60 src/wuming-window.ui:61 src/wuming-window.ui:65
+#: src/scan-page.c:204
 msgid "Scan"
 msgstr ""
 
 #: src/wuming-window.ui:76 src/wuming-window.ui:77 src/wuming-window.ui:81
+#: src/update-signature-page.c:127
 msgid "Update Signature"
 msgstr ""
 
@@ -98,6 +100,30 @@ msgstr ""
 msgid "_About WuMing"
 msgstr ""
 
+#: src/scan-page.c:52
+msgid "Scanning..."
+msgstr ""
+
+#: src/scan-page.c:53
+msgid "Preparing..."
+msgstr ""
+
+#: src/scan-page.c:195
+msgid "Show threats"
+msgstr ""
+
+#: src/scan-page.c:199 src/update-signature-page.c:140
+msgid "Close"
+msgstr ""
+
+#: src/scan-page.c:215
+msgid "Found Threats"
+msgstr ""
+
+#: src/scan-page.c:219
+msgid "Threats"
+msgstr ""
+
 #: src/scan-page.ui:21
 msgid "Scan file"
 msgstr ""
@@ -106,45 +132,37 @@ msgstr ""
 msgid "Scan folder"
 msgstr ""
 
-#: src/update-signature.c:494
-msgid "Update Complete"
-msgstr ""
-
-#: src/update-signature.c:494
-msgid "Update Failed"
-msgstr ""
-
-#: src/update-signature-page.c:51
+#: src/update-signature-page.c:53
 msgid "Warning! No signature found! Please Update the signature!"
 msgstr ""
 
-#: src/update-signature-page.c:58
+#: src/update-signature-page.c:60
 #, c-format
 msgid "Warning! Only found main.cvd! Date: %d.%d.%d %d"
 msgstr ""
 
-#: src/update-signature-page.c:62
+#: src/update-signature-page.c:64
 #, c-format
 msgid "Current signature date: %d.%d.%d %d"
 msgstr ""
 
-#: src/update-signature-page.c:70
+#: src/update-signature-page.c:72
 msgid "Is up to date"
 msgstr ""
 
-#: src/update-signature-page.c:71
+#: src/update-signature-page.c:75
 msgid "Outdated!"
 msgstr ""
 
-#: src/update-signature-page.c:80
+#: src/update-signature-page.c:86
 msgid "Enabled"
 msgstr ""
 
-#: src/update-signature-page.c:81
+#: src/update-signature-page.c:87
 msgid "Disabled"
 msgstr ""
 
-#: src/update-signature-page.c:82
+#: src/update-signature-page.c:88
 msgid "Failed to check!"
 msgstr ""
 
@@ -152,8 +170,8 @@ msgstr ""
 msgid "Updating..."
 msgstr ""
 
-#: src/update-signature-page.c:175
-msgid "Close"
+#: src/update-signature-page.c:95
+msgid "Asking for permission..."
 msgstr ""
 
 #: src/update-signature-page.ui:22
@@ -166,4 +184,27 @@ msgstr ""
 
 #: src/update-signature-page.ui:44
 msgid "Freshclam service status"
+msgstr ""
+
+#: src/libs/scan.c:233
+#, c-format
+msgid ""
+"%d files scanned\n"
+"%d threats found"
+msgstr ""
+
+#: src/libs/scan.c:377
+msgid "Scan Complete"
+msgstr ""
+
+#: src/libs/scan.c:377
+msgid "Scan Failed"
+msgstr ""
+
+#: src/libs/update-signature.c:551
+msgid "Update Complete"
+msgstr ""
+
+#: src/libs/update-signature.c:551
+msgid "Update Failed"
 msgstr ""

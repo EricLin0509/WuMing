@@ -49,9 +49,23 @@ struct _WumingWindow
 
 G_DEFINE_FINAL_TYPE (WumingWindow, wuming_window, ADW_TYPE_APPLICATION_WINDOW)
 
+/* GObject essential functions */
+static void
+wuming_window_dispose (GObject *object)
+{
+    G_OBJECT_CLASS (wuming_window_parent_class)->dispose (object);
+}
+
+static void
+wuming_window_finalize (GObject *object)
+{
+    G_OBJECT_CLASS (wuming_window_parent_class)->finalize (object);
+}
+
 static void
 wuming_window_class_init (WumingWindowClass *klass)
 {
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/wuming-window.ui");
@@ -110,4 +124,6 @@ wuming_window_init (WumingWindow *self)
     update_signature_page_show_isuptodate(self->update_signature_page, result->is_uptodate);
     update_signature_page_show_servicestat (self->update_signature_page);
     g_free (result);
+
+    g_object_unref (settings); // Free the GSettings object
 }
