@@ -117,11 +117,13 @@ update_signature_cb(GtkButton *update_button, gpointer page)
 static void
 build_update_dialog(UpdateSignaturePage *self)
 {
+  /* Create dialog */
   self->dialog = g_object_ref_sink(adw_dialog_new());
   adw_dialog_set_can_close(ADW_DIALOG (self->dialog), FALSE);
   adw_dialog_set_content_height (self->dialog, 320);
   adw_dialog_set_content_width (self->dialog, 420);
 
+  /* Create header */
   GtkWidget *toolbar = adw_toolbar_view_new();
   GtkWidget *header = adw_header_bar_new();
   GtkWidget *title = gtk_label_new(gettext("Update Signature"));
@@ -132,6 +134,7 @@ build_update_dialog(UpdateSignaturePage *self)
 
   adw_dialog_set_child(self->dialog, toolbar);
 
+  /* Update Status */
   self->update_status = adw_status_page_new ();
   adw_toolbar_view_set_content(ADW_TOOLBAR_VIEW(toolbar), self->update_status);
 

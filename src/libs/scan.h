@@ -30,4 +30,6 @@ start_scan(AdwDialog *dialog,
              AdwNavigationPage *threat_navigation_page,
              GtkWidget *threat_status,
              GtkWidget *threat_button,
+             AdwNavigationPage *cancel_navigation_page,
+             GtkWidget *cancel_button,
              char *path);

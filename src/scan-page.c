@@ -38,6 +38,10 @@ struct _ScanPage {
   GtkWidget          *threat_status; // store the threat status
   GtkWidget          *threat_button; // show the threat status
 
+  AdwNavigationPage *cancel_navigation_page;
+  GtkWidget          *cancel_status; // store the cancel status
+  GtkWidget          *cancel_button; // comfirm the cancel status
+
   /*Child*/
   GtkWidget          *clamp;
   GtkButton          *scan_a_file_button;
@@ -56,6 +60,10 @@ reset_scan_dialog_and_start_scan (ScanPage *self, char *path)
   gtk_widget_set_visible(self->close_button, FALSE);
   gtk_widget_set_sensitive (self->close_button, FALSE);
 
+  /* Pop pages to the scan page */
+  while (adw_navigation_view_get_visible_page (ADW_NAVIGATION_VIEW (self->navigation_view))!= self->scan_navigation_page)
+    adw_navigation_view_pop (ADW_NAVIGATION_VIEW (self->navigation_view));
+
   /*Present dialog*/
   adw_dialog_present (self->dialog, GTK_WIDGET (self));
 
@@ -67,6 +75,8 @@ reset_scan_dialog_and_start_scan (ScanPage *self, char *path)
              self->threat_navigation_page,
              self->threat_status,
              self->threat_button,
+             self->cancel_navigation_page,
+             self->cancel_button,
              path);
 }
 
@@ -90,9 +100,9 @@ start_scan_file (GObject *source_object, GAsyncResult *res, gpointer data)
   else
     {
       if (error->code == GTK_DIALOG_ERROR_DISMISSED)
-            g_warning ("[INFO] User canceled!\n");
+            g_warning ("[INFO] User canceled the file selection!");
       else
-            g_warning ("[ERROR] Failed to open the file!\n");
+            g_warning ("[ERROR] Failed to open the file!");
 
       g_clear_error (&error);
     }
@@ -118,9 +128,9 @@ start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
   else
     {
       if (error->code == GTK_DIALOG_ERROR_DISMISSED)
-            g_warning ("[INFO] User canceled!\n");
+            g_warning ("[INFO] User canceled the folder selection!");
       else
-            g_warning ("[ERROR] Failed to open the folder!\n");
+            g_warning ("[ERROR] Failed to open the folder!");
 
       g_clear_error (&error);
     }
@@ -138,7 +148,7 @@ file_chooser (GtkButton* file_button, gpointer user_data)
 
   GtkFileDialog *dialog;
   dialog = gtk_file_dialog_new ();
-  gtk_file_dialog_open (dialog, GTK_WINDOW (window), NULL, start_scan_file, user_data);
+  gtk_file_dialog_open (dialog, GTK_WINDOW (window), NULL, start_scan_file, user_data); // Select a file
 
   g_object_unref (dialog);
   gtk_widget_set_sensitive (GTK_WIDGET (file_button), TRUE);
@@ -154,7 +164,7 @@ folder_chooser (GtkButton* folder_button, gpointer user_data)
 
   GtkFileDialog *dialog;
   dialog = gtk_file_dialog_new ();
-  gtk_file_dialog_select_folder (dialog, GTK_WINDOW (window), NULL, start_scan_folder, user_data);
+  gtk_file_dialog_select_folder (dialog, GTK_WINDOW (window), NULL, start_scan_folder, user_data); // Select a folder
 
   g_object_unref (dialog);
   gtk_widget_set_sensitive (GTK_WIDGET (folder_button), TRUE);
@@ -169,8 +179,9 @@ show_threat_status(ScanPage *self)
 static void
 build_scan_dialog (ScanPage *self)
 {
+  /* Create dialog */
   self->dialog = g_object_ref_sink(adw_dialog_new());
-  adw_dialog_set_can_close(ADW_DIALOG (self->dialog), FALSE);
+  adw_dialog_set_can_close(ADW_DIALOG (self->dialog), FALSE); // Make sure the `close-attempt` signal can be emitted
   adw_dialog_set_content_height (self->dialog, 320);
   adw_dialog_set_content_width (self->dialog, 420);
 
@@ -181,22 +192,22 @@ build_scan_dialog (ScanPage *self)
   /* Scan Page */
   GtkWidget *scan_toolbar = adw_toolbar_view_new();
   GtkWidget *scan_header = adw_header_bar_new();
-  adw_header_bar_set_show_end_title_buttons (ADW_HEADER_BAR (scan_header), FALSE); // Hide the buttons on the right side
+  // Only show the close button on the scan page
 
   adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (scan_toolbar), scan_header);
 
   self->scan_status = adw_status_page_new ();
 
-  GtkWidget *box_button = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
+  GtkWidget *box_button = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5); // Create a box to store the buttons
   gtk_widget_set_halign (box_button, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (box_button, GTK_ALIGN_CENTER);
   adw_status_page_set_child (ADW_STATUS_PAGE (self->scan_status), box_button);
 
-  self->threat_button = gtk_button_new_with_label (gettext("Show threats"));
+  self->threat_button = gtk_button_new_with_label (gettext("Show threats")); // Create a button to show the threats
   gtk_widget_add_css_class (self->threat_button, "warning");
   gtk_box_append (GTK_BOX (box_button), self->threat_button);
 
-  self->close_button = gtk_button_new_with_label (gettext("Close"));
+  self->close_button = gtk_button_new_with_label (gettext("Close")); // Close button on the scan page
   gtk_box_append (GTK_BOX (box_button), self->close_button);
 
   adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (scan_toolbar), self->scan_status); // Add AdwStatusPage to AdwToolbarView
@@ -218,6 +229,28 @@ build_scan_dialog (ScanPage *self)
 
   self->threat_navigation_page = adw_navigation_page_new(threat_toolbar, gettext("Threats"));
   adw_navigation_view_add (ADW_NAVIGATION_VIEW (self->navigation_view), self->threat_navigation_page);
+
+  /* Cancel Page */
+  GtkWidget *cancel_toolbar = adw_toolbar_view_new();
+  GtkWidget *cancel_header = adw_header_bar_new();
+  adw_header_bar_set_show_end_title_buttons (ADW_HEADER_BAR (cancel_header), FALSE); // Hide the buttons on the right side
+
+  adw_toolbar_view_add_top_bar (ADW_TOOLBAR_VIEW (cancel_toolbar), cancel_header);
+
+  self->cancel_status = adw_status_page_new ();
+  adw_status_page_set_title(ADW_STATUS_PAGE (self->cancel_status), gettext("Cancel Scan Process?"));
+  adw_status_page_set_description (ADW_STATUS_PAGE (self->cancel_status), gettext("This will stop the current scan process. Are you sure?"));
+
+  self->cancel_button = gtk_button_new_with_label (gettext("Cancel"));
+  gtk_widget_add_css_class (self->cancel_button, "destructive-action");
+  gtk_widget_set_halign (self->cancel_button, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign (self->cancel_button, GTK_ALIGN_CENTER);
+  adw_status_page_set_child (ADW_STATUS_PAGE (self->cancel_status), self->cancel_button);
+  
+  adw_toolbar_view_set_content (ADW_TOOLBAR_VIEW (cancel_toolbar), self->cancel_status); // Add AdwStatusPage to AdwToolbarView
+
+  self->cancel_navigation_page = adw_navigation_page_new(cancel_toolbar, gettext("Cancel Scan Process"));
+  adw_navigation_view_add (ADW_NAVIGATION_VIEW (self->navigation_view), self->cancel_navigation_page);
 
   g_signal_connect_swapped (self->threat_button, "clicked", G_CALLBACK (show_threat_status), self);
 }
