@@ -416,6 +416,9 @@ update_ui_callback(gpointer user_data)
 {
   IdleData *data = (IdleData *)user_data;
 
+  g_return_val_if_fail(data && data->ctx && g_atomic_int_get(&data->ctx->ref_count) > 0, 
+                      G_SOURCE_REMOVE);
+
   if (data->ctx && data->ctx->update_status_page && GTK_IS_WIDGET(data->ctx->update_status_page))
     adw_status_page_set_description(
       ADW_STATUS_PAGE(data->ctx->update_status_page),
@@ -430,10 +433,13 @@ update_complete_callback(gpointer user_data)
 {
   IdleData *data = user_data;
 
+  g_return_val_if_fail(data && data->ctx && g_atomic_int_get(&data->ctx->ref_count) > 0, 
+                      G_SOURCE_REMOVE);
+
   gboolean is_success = FALSE;
   get_completion_state(data->ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
-  if (data->ctx && data->ctx->update_status_page && GTK_IS_WIDGET(data->ctx->update_status_page))
+  if (data->ctx->update_status_page && GTK_IS_WIDGET(data->ctx->update_status_page))
   {
     adw_status_page_set_title(
       ADW_STATUS_PAGE(data->ctx->update_status_page),
@@ -441,13 +447,13 @@ update_complete_callback(gpointer user_data)
     );
   }
 
-  if (data->ctx && data->ctx->close_button && GTK_IS_WIDGET(data->ctx->close_button))
+  if (data->ctx->close_button && GTK_IS_WIDGET(data->ctx->close_button))
   {
     gtk_widget_set_visible(data->ctx->close_button, TRUE);
     gtk_widget_set_sensitive(data->ctx->close_button, TRUE);
   }
 
-  if (data->ctx && data->ctx->main_page && GTK_IS_WIDGET(data->ctx->main_page) && is_success)
+  if (data->ctx->main_page && GTK_IS_WIDGET(data->ctx->main_page) && is_success) // Re-scan the signature if update is successful
   {
     /*Re-scan the signature*/
     scan_result *result = g_new0 (scan_result, 1);
@@ -462,8 +468,8 @@ update_complete_callback(gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
-static
-gboolean spawn_update_process(int pipefd[2], pid_t *pid)
+static gboolean
+spawn_update_process(int pipefd[2], pid_t *pid)
 {
     if (pipe(pipefd) == -1)
     {
@@ -497,27 +503,39 @@ error_clean_up:
     return FALSE;
 }
 
-static
-gboolean wait_for_process(pid_t pid)
+static gboolean
+wait_for_process(pid_t pid)
 {
     int status;
     if (waitpid(pid, &status, 0) == -1)
     {
-        perror("waitpid");
+        if (errno != EINTR) // Handle signal interruptions
+        {
+            g_warning("Process wait error: %s", g_strerror(errno));
+            return FALSE;
+        }
+    }
+
+    if (WIFSIGNALED(status)) // Get termination signal
+    {
+        g_warning("Process terminated by signal %d", WTERMSIG(status));
         return FALSE;
     }
-    return WIFEXITED(status) && (WEXITSTATUS(status) == 0);
+
+    const gint exit_status = WEXITSTATUS(status);
+    g_debug("Process exited with status %d", exit_status);
+    return exit_status == 0;
 }
 
-static
-gboolean handle_io_event(IOContext *io_ctx)
+static gboolean
+handle_io_event(IOContext *io_ctx)
 {
     char read_buf[512];
-    ssize_t n = read(io_ctx->pipefd, read_buf, sizeof(read_buf));
-    
-    if (n > 0)
+    ssize_t n = 0;
+
+    if ((n = read(io_ctx->pipefd, read_buf, sizeof(read_buf))) > 0) // Read from the pipe
     {
-        size_t written = ring_buffer_write(io_ctx->ring_buf, read_buf, n);
+        size_t written = ring_buffer_write(io_ctx->ring_buf, read_buf, n); // Write to the ring buffer
         if (written < (size_t)n)
         {
             g_warning("Ring buffer overflow, lost %zd bytes", n - written);
