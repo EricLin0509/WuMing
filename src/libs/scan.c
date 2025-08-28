@@ -319,6 +319,7 @@ scan_complete_callback(gpointer user_data)
       data->ctx->navigation_view && GTK_IS_WIDGET(data->ctx->navigation_view) && 
       adw_navigation_view_get_visible_page(ADW_NAVIGATION_VIEW(data->ctx->navigation_view)) == data->ctx->cancel_navigation_page) // If the current page is the cancel page, pop it
   {
+    g_print("[INFO] Scan process done, popping the cancel page\n");
     adw_navigation_view_pop(ADW_NAVIGATION_VIEW(data->ctx->navigation_view));
   }
 

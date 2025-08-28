@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-25 23:08+0800\n"
+"POT-Creation-Date: 2025-08-28 14:56+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -75,12 +75,12 @@ msgid "Coming Soon..."
 msgstr "Coming Soon..."
 
 #: src/wuming-window.ui:60 src/wuming-window.ui:61 src/wuming-window.ui:65
-#: src/scan-page.c:204
+#: src/scan-page.c:215
 msgid "Scan"
 msgstr "Scan"
 
 #: src/wuming-window.ui:76 src/wuming-window.ui:77 src/wuming-window.ui:81
-#: src/update-signature-page.c:127
+#: src/update-signature-page.c:129
 msgid "Update Signature"
 msgstr "Update Signature"
 
@@ -90,50 +90,63 @@ msgstr "Check History"
 
 #: src/wuming-window.ui:110
 msgid "_Preferences"
-msgstr "_Preferences"
+msgstr "Preferences"
 
 #: src/wuming-window.ui:114
 msgid "_Keyboard Shortcuts"
-msgstr "_Keyboard Shortcuts"
+msgstr "Keyboard Shortcuts"
 
 #: src/wuming-window.ui:118
 msgid "_About WuMing"
-msgstr "_About WuMing"
+msgstr "About WuMing"
 
-#: src/scan-page.c:52
-#, fuzzy
+#: src/scan-page.c:56
 msgid "Scanning..."
-msgstr "Updating..."
+msgstr "Scanning..."
 
-#: src/scan-page.c:53
-#, fuzzy
+#: src/scan-page.c:57
 msgid "Preparing..."
-msgstr "Updating..."
+msgstr "Preparing..."
 
-#: src/scan-page.c:195
-#, fuzzy
+#: src/scan-page.c:206
 msgid "Show threats"
-msgstr "Show Shortcuts"
+msgstr "Show threats"
 
-#: src/scan-page.c:199 src/update-signature-page.c:140
+#: src/scan-page.c:210 src/update-signature-page.c:143
 msgid "Close"
 msgstr "Close"
 
-#: src/scan-page.c:215
+#: src/scan-page.c:226
 msgid "Found Threats"
-msgstr ""
+msgstr "Found Threats"
 
-#: src/scan-page.c:219
+#: src/scan-page.c:230
 msgid "Threats"
-msgstr ""
+msgstr "Threats"
+
+#: src/scan-page.c:241
+msgid "Cancel Scan Process?"
+msgstr "Cancel Scan Process?"
+
+#: src/scan-page.c:242
+msgid "This will stop the current scan process. Are you sure?"
+msgstr "This will stop the current scan process. Are you sure?"
+
+#: src/scan-page.c:244
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/scan-page.c:252
+msgid "Cancel Scan Process"
+msgstr "Cancel Scan Process"
 
 #: src/scan-page.ui:21
 msgid "Scan file"
-msgstr "Scan"
+msgstr "Scan file"
 
 #: src/scan-page.ui:37
 msgid "Scan folder"
-msgstr ""
+msgstr "Scan folder"
 
 #: src/update-signature-page.c:53
 msgid "Warning! No signature found! Please Update the signature!"
@@ -159,15 +172,15 @@ msgstr "Outdated!"
 
 #: src/update-signature-page.c:86
 msgid "Enabled"
-msgstr ""
+msgstr "Enabled"
 
 #: src/update-signature-page.c:87
 msgid "Disabled"
-msgstr ""
+msgstr "Disabled"
 
 #: src/update-signature-page.c:88
 msgid "Failed to check!"
-msgstr ""
+msgstr "Failed to check!"
 
 #: src/update-signature-page.c:94
 msgid "Updating..."
@@ -175,7 +188,7 @@ msgstr "Updating..."
 
 #: src/update-signature-page.c:95
 msgid "Asking for permission..."
-msgstr ""
+msgstr "Asking for permission..."
 
 #: src/update-signature-page.ui:22
 msgid "Current Signature Status"
@@ -187,29 +200,37 @@ msgstr "Update"
 
 #: src/update-signature-page.ui:44
 msgid "Freshclam service status"
-msgstr ""
+msgstr "Freshclam service status"
 
-#: src/libs/scan.c:233
+#: src/libs/scan.c:284
 #, c-format
 msgid ""
 "%d files scanned\n"
 "%d threats found"
 msgstr ""
+"%d files scanned\n"
+"%d threats found"
 
-#: src/libs/scan.c:377
-#, fuzzy
+#: src/libs/scan.c:314
+msgid "User cancelled the scan"
+msgstr "User cancelled the scan"
+
+#: src/libs/scan.c:385
+msgid "Scan Canceled"
+msgstr "Scan Canceled"
+
+#: src/libs/scan.c:389
 msgid "Scan Complete"
 msgstr "Update Complete"
 
-#: src/libs/scan.c:377
-#, fuzzy
+#: src/libs/scan.c:393
 msgid "Scan Failed"
-msgstr "Scan"
+msgstr "Scan Failed"
 
-#: src/libs/update-signature.c:551
+#: src/libs/update-signature.c:486
 msgid "Update Complete"
 msgstr "Update Complete"
 
-#: src/libs/update-signature.c:551
+#: src/libs/update-signature.c:486
 msgid "Update Failed"
 msgstr "Update Failed"

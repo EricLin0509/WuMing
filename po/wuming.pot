@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-25 23:08+0800\n"
+"POT-Creation-Date: 2025-08-28 14:56+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -75,12 +75,12 @@ msgid "Coming Soon..."
 msgstr ""
 
 #: src/wuming-window.ui:60 src/wuming-window.ui:61 src/wuming-window.ui:65
-#: src/scan-page.c:204
+#: src/scan-page.c:215
 msgid "Scan"
 msgstr ""
 
 #: src/wuming-window.ui:76 src/wuming-window.ui:77 src/wuming-window.ui:81
-#: src/update-signature-page.c:127
+#: src/update-signature-page.c:129
 msgid "Update Signature"
 msgstr ""
 
@@ -100,28 +100,44 @@ msgstr ""
 msgid "_About WuMing"
 msgstr ""
 
-#: src/scan-page.c:52
+#: src/scan-page.c:56
 msgid "Scanning..."
 msgstr ""
 
-#: src/scan-page.c:53
+#: src/scan-page.c:57
 msgid "Preparing..."
 msgstr ""
 
-#: src/scan-page.c:195
+#: src/scan-page.c:206
 msgid "Show threats"
 msgstr ""
 
-#: src/scan-page.c:199 src/update-signature-page.c:140
+#: src/scan-page.c:210 src/update-signature-page.c:143
 msgid "Close"
 msgstr ""
 
-#: src/scan-page.c:215
+#: src/scan-page.c:226
 msgid "Found Threats"
 msgstr ""
 
-#: src/scan-page.c:219
+#: src/scan-page.c:230
 msgid "Threats"
+msgstr ""
+
+#: src/scan-page.c:241
+msgid "Cancel Scan Process?"
+msgstr ""
+
+#: src/scan-page.c:242
+msgid "This will stop the current scan process. Are you sure?"
+msgstr ""
+
+#: src/scan-page.c:244
+msgid "Cancel"
+msgstr ""
+
+#: src/scan-page.c:252
+msgid "Cancel Scan Process"
 msgstr ""
 
 #: src/scan-page.ui:21
@@ -186,25 +202,33 @@ msgstr ""
 msgid "Freshclam service status"
 msgstr ""
 
-#: src/libs/scan.c:233
+#: src/libs/scan.c:284
 #, c-format
 msgid ""
 "%d files scanned\n"
 "%d threats found"
 msgstr ""
 
-#: src/libs/scan.c:377
+#: src/libs/scan.c:314
+msgid "User cancelled the scan"
+msgstr ""
+
+#: src/libs/scan.c:385
+msgid "Scan Canceled"
+msgstr ""
+
+#: src/libs/scan.c:389
 msgid "Scan Complete"
 msgstr ""
 
-#: src/libs/scan.c:377
+#: src/libs/scan.c:393
 msgid "Scan Failed"
 msgstr ""
 
-#: src/libs/update-signature.c:551
+#: src/libs/update-signature.c:486
 msgid "Update Complete"
 msgstr ""
 
-#: src/libs/update-signature.c:551
+#: src/libs/update-signature.c:486
 msgid "Update Failed"
 msgstr ""
