@@ -19,16 +19,11 @@
  */
 
 #include <glib/gi18n.h>
-#include <time.h>
 #include <limits.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <sys/mman.h>
-#include <sys/wait.h>
-#include <sys/prctl.h>
 
-#include "ring-buffer.h"
-#include "dynamic-timeout.h"
+#include "thread-components.h"
 #include "scan.h"
 
 #include "../scan-page.h"
@@ -73,13 +68,6 @@ typedef struct {
   ScanContext *ctx;
   char *message;
 } IdleData;
-
-typedef struct {
-    int pipefd;
-    RingBuffer *ring_buf;
-    LineAccumulator *acc;
-    ScanContext *ctx;
-} IOContext;
 
 static ScanContext*
 scan_context_new(void)
@@ -135,9 +123,8 @@ set_completion_state(ScanContext *ctx, gboolean completed, gboolean success)
 static void
 get_completion_state(ScanContext *ctx, gboolean *out_completed, gboolean *out_success)
 {
-  if (!out_completed && !out_success) return; // No need to get anything if one of the output pointers is NULL
-
   g_mutex_lock(&ctx->mutex);
+  /* If one of the output pointers is NULL, only return the another one */
   if (out_completed) *out_completed = ctx->completed;
   if (out_success) *out_success = ctx->success;
   g_mutex_unlock(&ctx->mutex);
@@ -369,90 +356,6 @@ scan_complete_callback(gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
-static gboolean
-spawn_scan_process(int pipefd[2], pid_t *pid, char *path)
-{
-    if (pipe(pipefd) == -1)
-    {
-        g_warning("Failed to create pipe: %s", strerror(errno));
-        goto error_clean_up;
-    }
-
-    if ((*pid = fork()) == -1)
-    {
-        g_warning("Failed to fork: %s", strerror(errno));
-        goto error_clean_up;
-    }
-
-    if (*pid == 0) // Child process
-    {
-        prctl(PR_SET_PDEATHSIG, SIGTERM);
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        dup2(pipefd[1], STDERR_FILENO);
-
-        execl(CLAMSCAN_PATH, "clamscan", path, "--recursive", NULL);
-        exit(EXIT_FAILURE);
-    }
-
-    close(pipefd[1]);
-    return TRUE;
-
-error_clean_up:
-    close(pipefd[0]);
-    close(pipefd[1]);
-    return FALSE;
-}
-
-static gboolean
-wait_for_process(pid_t pid)
-{
-    int status;
-    if (waitpid(pid, &status, 0) == -1)
-    {
-        if (errno != EINTR) // Handle signal interruptions
-        {
-            g_warning("Process wait error: %s", g_strerror(errno));
-            return FALSE;
-        }
-    }
-
-    if (WIFSIGNALED(status)) // Get termination signal
-    {
-        g_warning("Process terminated by signal %d", WTERMSIG(status));
-        return FALSE;
-    }
-
-    const gint exit_status = WEXITSTATUS(status);
-    g_debug("Process exited with status %d", exit_status);
-
-    /*
-      * 0: No threats found
-      * 1: Threats found
-      * else: exit with error
-    */
-    return exit_status == 0 || exit_status == 1;
-}
-
-
-static gboolean
-handle_io_event(IOContext *io_ctx)
-{
-    char read_buf[512];
-    ssize_t n = 0;
-
-    if ((n = read(io_ctx->pipefd, read_buf, sizeof(read_buf))) > 0) // Read from the pipe
-    {
-        size_t written = ring_buffer_write(io_ctx->ring_buf, read_buf, n); // Write to the ring buffer
-        if (written < (size_t)n)
-        {
-            g_warning("Ring buffer overflow, lost %zd bytes", n - written);
-        }
-        return TRUE;
-    }
-    return FALSE;
-}
-
 static void
 process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, ScanContext *ctx)
 {
@@ -529,7 +432,8 @@ scan_thread(gpointer data)
     line_accumulator_init(&acc);
 
     /*Spawn scan process*/
-    if (!spawn_scan_process(pipefd, &pid, ctx->path))
+    if (!spawn_new_process(pipefd, &pid, 
+        CLAMSCAN_PATH, "clamscan", ctx->path, "--recursive", NULL))
     {
         scan_context_unref(ctx);
         return NULL;
@@ -540,7 +444,6 @@ scan_thread(gpointer data)
         .pipefd = pipefd[0],
         .ring_buf = &ring_buf,
         .acc = &acc,
-        .ctx = ctx
     };
 
     /*Start scan thread*/
@@ -578,7 +481,7 @@ scan_thread(gpointer data)
 
     /*Clean up*/
     process_output_lines(&ring_buf, &acc, ctx);
-    gboolean success = wait_for_process(pid);
+    gboolean success = wait_for_process(pid, TRUE);
     send_final_status(ctx, success);
 
     close(pipefd[0]);
@@ -600,8 +503,7 @@ static void
 cancel_scan_attempt(ScanContext *ctx)
 {
   gboolean is_completed = FALSE;
-  gboolean is_success = FALSE;
-  get_completion_state(ctx, &is_completed, &is_success);
+  get_completion_state(ctx, &is_completed, NULL);
   /* Only push the cancel page if the scan is not completed */
   if (!is_completed) adw_navigation_view_push(ADW_NAVIGATION_VIEW(ctx->navigation_view), ctx->cancel_navigation_page);
   else clear_box_list_and_force_close(ctx);

@@ -1,0 +1,168 @@
+/* thread-components.c
+ *
+ * Copyright 2025 EricLin
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+/* This store some essential thread components for this program */
+
+#include <assert.h>
+#include <stdarg.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/prctl.h>
+
+#include "thread-components.h"
+
+/* Calculate the dynamic timeout based on the idle_counter and current_timeout */
+int
+calculate_dynamic_timeout(int *idle_counter, int *current_timeout)
+{
+    const int jitter = rand() % JITTER_RANGE; // Add random jitter to the timeout to minimize the wake up of threads at the same time
+
+    if (++(*idle_counter) > MAX_IDLE_COUNT)
+    {
+        *current_timeout = MIN(*current_timeout * 2, MAX_TIMEOUT_MS); // Increase the timeout if the thread is idle for a long time
+        *idle_counter = 0;
+    }
+
+    return CLAMP(*current_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
+}
+
+/* Wait for the process to finish and return the exit status */
+/*
+ * is_scan_process: if true, the process is a scan process, and it should have three exit status:
+ * 0: no threat found
+ * 1: threats found
+ * else: error occurred
+*/
+gboolean
+wait_for_process(pid_t pid, gboolean is_scan_process)
+{
+    int status;
+    if (waitpid(pid, &status, 0) == -1)
+    {
+        if (errno != EINTR) // Handle signal interruptions
+        {
+            g_warning("Process wait error: %s", g_strerror(errno));
+            return FALSE;
+        }
+    }
+
+    if (WIFSIGNALED(status)) // Get termination signal
+    {
+        g_warning("Process terminated by signal %d", WTERMSIG(status));
+        return FALSE;
+    }
+
+    const gint exit_status = WEXITSTATUS(status);
+    g_debug("Process exited with status %d", exit_status);
+    
+    if (!is_scan_process) return exit_status == 0; // If the process is not a scan process (update process), return the exit status directly
+
+    return exit_status == 0 || exit_status == 1; // If the process is a scan process, return true if no threat found or threats found
+}
+
+/* Handle the input/output event */
+gboolean
+handle_io_event(IOContext *io_ctx)
+{
+    char read_buf[512];
+    ssize_t n = 0;
+
+    if ((n = read(io_ctx->pipefd, read_buf, sizeof(read_buf))) > 0) // Read from the pipe
+    {
+        size_t written = ring_buffer_write(io_ctx->ring_buf, read_buf, n); // Write to the ring buffer
+        if (written < (size_t)n)
+        {
+            g_warning("Ring buffer overflow, lost %zd bytes", n - written);
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
+
+/* Build the command arguments */
+static GPtrArray *
+build_command_args(const char *command, va_list args)
+{
+    GPtrArray *argv = g_ptr_array_new();
+    g_ptr_array_add(argv, (gpointer)command);
+    
+    char *arg;
+    while ((arg = va_arg(args, char *)) != NULL)
+    {
+        g_ptr_array_add(argv, arg);
+    }
+
+    // Add a NULL argument to indicate the end of the arguments list
+    g_ptr_array_add(argv, NULL);
+
+    return argv;
+}
+
+/* Spawn a new process */
+// path & command: use for `execv()`
+// This function MUST end with a NULL argument to indicate the end of the arguments list
+gboolean
+spawn_new_process(int pipefd[2], pid_t *pid, const char *path, const char *command, ...)
+{
+    if (access(path, X_OK) == -1) // First check if the path is valid
+    {
+        g_warning("Cannot execute %s: %s", path, strerror(errno));
+        goto error_clean_up;
+    }
+
+    if (pipe(pipefd) == -1) // Create a pipe for communication
+    {
+        g_warning("Failed to create pipe: %s", strerror(errno));
+        goto error_clean_up;
+    }
+
+    if ((*pid = fork()) == -1) // Fork a new process
+    {
+        g_warning("Failed to fork: %s", strerror(errno));
+        goto error_clean_up;
+    }
+
+    if (*pid == 0) // Child process
+    {
+        prctl(PR_SET_PDEATHSIG, SIGTERM); // Ensure the child process can be terminated when the parent process dies
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+
+        va_list args;
+        va_start(args, command);
+        GPtrArray *argv = build_command_args(command, args);
+        va_end(args);
+        assert(g_ptr_array_index(argv, argv->len-1) == NULL); // Check whether the last argument is NULL
+
+        execv(path, (char **)argv->pdata);
+
+        g_ptr_array_free(argv, TRUE);
+        exit(EXIT_FAILURE);
+    }
+    
+    close(pipefd[1]);
+    return TRUE;
+
+error_clean_up:
+    close(pipefd[0]);
+    close(pipefd[1]);
+    return FALSE;
+}

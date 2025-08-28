@@ -20,16 +20,12 @@
 
 #include <glib/gi18n.h>
 #include <clamav.h>
-#include <time.h>
 #include <limits.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/mman.h>
-#include <sys/wait.h>
-#include <sys/prctl.h>
 
-#include "ring-buffer.h"
-#include "dynamic-timeout.h"
+#include "thread-components.h"
 #include "update-signature.h"
 
 #include "../update-signature-page.h"
@@ -347,13 +343,6 @@ typedef struct {
   char *message;
 } IdleData;
 
-typedef struct {
-    int pipefd;
-    RingBuffer *ring_buf;
-    LineAccumulator *acc;
-    UpdateContext *ctx;
-} IOContext;
-
 static UpdateContext*
 update_context_new(void)
 {
@@ -398,6 +387,7 @@ static void
 get_completion_state(UpdateContext *ctx, gboolean *out_completed, gboolean *out_success)
 {
   g_mutex_lock(&ctx->mutex);
+  /* If one of the output pointers is NULL, only return the another one */
   if (out_completed) *out_completed = ctx->completed;
   if (out_success) *out_success = ctx->success;
   g_mutex_unlock(&ctx->mutex);
@@ -468,83 +458,6 @@ update_complete_callback(gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
-static gboolean
-spawn_update_process(int pipefd[2], pid_t *pid)
-{
-    if (pipe(pipefd) == -1)
-    {
-        g_warning("Failed to create pipe: %s", strerror(errno));
-        goto error_clean_up;
-    }
-
-    if ((*pid = fork()) == -1)
-    {
-        g_warning("Failed to fork: %s", strerror(errno));
-        goto error_clean_up;
-    }
-
-    if (*pid == 0) // Child process
-    {
-        prctl(PR_SET_PDEATHSIG, SIGTERM);
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        dup2(pipefd[1], STDERR_FILENO);
-        
-        execl(PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL);
-        exit(EXIT_FAILURE);
-    }
-    
-    close(pipefd[1]);
-    return TRUE;
-
-error_clean_up:
-    close(pipefd[0]);
-    close(pipefd[1]);
-    return FALSE;
-}
-
-static gboolean
-wait_for_process(pid_t pid)
-{
-    int status;
-    if (waitpid(pid, &status, 0) == -1)
-    {
-        if (errno != EINTR) // Handle signal interruptions
-        {
-            g_warning("Process wait error: %s", g_strerror(errno));
-            return FALSE;
-        }
-    }
-
-    if (WIFSIGNALED(status)) // Get termination signal
-    {
-        g_warning("Process terminated by signal %d", WTERMSIG(status));
-        return FALSE;
-    }
-
-    const gint exit_status = WEXITSTATUS(status);
-    g_debug("Process exited with status %d", exit_status);
-    return exit_status == 0;
-}
-
-static gboolean
-handle_io_event(IOContext *io_ctx)
-{
-    char read_buf[512];
-    ssize_t n = 0;
-
-    if ((n = read(io_ctx->pipefd, read_buf, sizeof(read_buf))) > 0) // Read from the pipe
-    {
-        size_t written = ring_buffer_write(io_ctx->ring_buf, read_buf, n); // Write to the ring buffer
-        if (written < (size_t)n)
-        {
-            g_warning("Ring buffer overflow, lost %zd bytes", n - written);
-        }
-        return TRUE;
-    }
-    return FALSE;
-}
-
 static void
 process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, UpdateContext *ctx)
 {
@@ -611,7 +524,8 @@ update_thread(gpointer data)
     line_accumulator_init(&acc);
     
     /*Spawn update process*/
-    if (!spawn_update_process(pipefd, &pid))
+    if (!spawn_new_process(pipefd, &pid,
+        PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL))
     {
         update_context_unref(ctx);
         return NULL;
@@ -622,7 +536,6 @@ update_thread(gpointer data)
         .pipefd = pipefd[0],
         .ring_buf = &ring_buf,
         .acc = &acc,
-        .ctx = ctx
     };
 
     /*Start update thread*/
@@ -651,7 +564,7 @@ update_thread(gpointer data)
     }
 
     /*Clean up*/
-    gboolean success = wait_for_process(pid);
+    gboolean success = wait_for_process(pid, FALSE);
     send_final_status(ctx, success);
     
     close(pipefd[0]);
