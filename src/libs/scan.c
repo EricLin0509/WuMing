@@ -26,6 +26,8 @@
 #include "thread-components.h"
 #include "scan.h"
 
+#include "delete-file.h"
+
 #include "../scan-page.h"
 
 #define CLAMSCAN_PATH "/usr/bin/clamscan"
@@ -212,8 +214,23 @@ output_threat_path(ScanContext *ctx) // This will add to the AdwStatusPage
   while (iter)
   {
     GtkWidget *action_row = adw_action_row_new(); // Create the action row for the list view
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(action_row), (const char *)iter->data);
+    gtk_widget_add_css_class(action_row, "property"); // Add property syle class to the action row
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(action_row), (const char *)iter->data);
+
+    /* Delete button for the action row */
+    GtkWidget *delete_button = gtk_button_new_with_label(gettext("Delete"));
+    gtk_widget_set_halign(delete_button, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(delete_button, GTK_ALIGN_CENTER);
+    
+    adw_action_row_add_suffix(ADW_ACTION_ROW(action_row), delete_button);
+
     gtk_list_box_append(GTK_LIST_BOX(ctx->threat_list_box), action_row);
+
+    /* Set file properties and connect signal */
+    DeleteFileData *delete_data = delete_file_data_new(action_row);
+    set_file_properties(delete_data); // Set the file properties for the action row
+    g_signal_connect_swapped(delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
+
     iter = iter->next;
   }
   g_list_free_full(g_steal_pointer(&ctx->threat_paths), g_free); // Free the copy of the threat paths list
