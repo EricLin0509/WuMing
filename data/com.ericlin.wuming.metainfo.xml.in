@@ -58,6 +58,17 @@
   </screenshots>
 
   <releases>
+    <release version="0.2.beta1" date="2025-8-30">
+      <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.2.beta1</url>
+      <description translate="no">
+        <p>First beta version</p>
+        <ul>
+          <li>Allow user to cancel the scan</li>
+          <li>Allow user delete infected files</li>
+          <li>Minor fixes and cleanup</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.1" date="2025-8-26">
       <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.1.1</url>
       <description translate="no">
