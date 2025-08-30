@@ -16,14 +16,37 @@ WuMing is a simple ClamAV GUI frontend written in C using GTK4/LibAdwaita. It is
 - Take action on infected files
 - View scan history
 
+## Screenshots
+
+### Light mode
+
+![Scan Page light mode](imgs/scan-light.png)
+
+![Update Page light mode](imgs/update-light.png)
+
+### Dark mode
+
+![Scan Page dark mode](imgs/scan-dark.png)
+
+![Update Page dark mode](imgs/update-dark.png)
+
 ## Roadmap
 
 - [x] Update ClamAV signatures
-    - ~~need to replace Pkexec with GPermission library~~ (Won't work)
-    - ~~check whether clamav-freshclam systemd service is running~~ (Done)
 - [x] scan files and directories
-- [ ] take action on infected files
+- [ ] take action on infected files (partial)
+    - need to implement a elevated helper app to handle system files (e.g. files in `/usr`)
 - [ ] add secuirty overview page
 - [ ] add check history page
 - [ ] add settings page
 - [ ] allow user to customize scan options (e.g. allow 4GB files, scan archives, etc.)
+
+## Installation
+
+### Arch Linux
+
+Is available in the Arch User Repository (AUR). You can install it using your favorite AUR helper.
+
+```
+yay -S wuming
+```
