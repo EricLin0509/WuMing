@@ -11,5 +11,6 @@ src/scan-page.c
 src/scan-page.ui
 src/update-signature-page.c
 src/update-signature-page.ui
+src/libs/delete-file.c
 src/libs/scan.c
 src/libs/update-signature.c

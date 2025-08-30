@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-28 14:56+0800\n"
+"POT-Creation-Date: 2025-08-30 07:12+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -194,34 +194,58 @@ msgstr ""
 msgid "Current Signature Status"
 msgstr ""
 
-#: src/update-signature-page.ui:31
+#: src/update-signature-page.ui:30
 msgid "Update"
 msgstr ""
 
-#: src/update-signature-page.ui:44
+#: src/update-signature-page.ui:43
 msgid "Freshclam service status"
 msgstr ""
 
-#: src/libs/scan.c:284
+#: src/libs/delete-file.c:368
+msgid "Maybe a system file, delete it with caution!"
+msgstr ""
+
+#: src/libs/delete-file.c:369
+msgid "Normal file"
+msgstr ""
+
+#: src/libs/delete-file.c:384
+msgid "Delete failed!"
+msgstr ""
+
+#: src/libs/delete-file.c:394
+msgid "Blocked by policy, try removing it manually!"
+msgstr ""
+
+#: src/libs/delete-file.c:402
+msgid "File may compromised, try removing it manually!"
+msgstr ""
+
+#: src/libs/scan.c:221
+msgid "Delete"
+msgstr ""
+
+#: src/libs/scan.c:301
 #, c-format
 msgid ""
 "%d files scanned\n"
 "%d threats found"
 msgstr ""
 
-#: src/libs/scan.c:314
+#: src/libs/scan.c:331
 msgid "User cancelled the scan"
 msgstr ""
 
-#: src/libs/scan.c:385
+#: src/libs/scan.c:403
 msgid "Scan Canceled"
 msgstr ""
 
-#: src/libs/scan.c:389
+#: src/libs/scan.c:407
 msgid "Scan Complete"
 msgstr ""
 
-#: src/libs/scan.c:393
+#: src/libs/scan.c:411
 msgid "Scan Failed"
 msgstr ""
 
