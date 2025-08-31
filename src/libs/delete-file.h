@@ -25,13 +25,7 @@
 #include <adwaita.h>
 #include <sys/stat.h>
 
-typedef struct {
-    int dir_fd; // Directory file descriptor
-    int file_fd; // Use for checking whether the file is modified
-    char *base_name; // Base name of the file used by `unlinkat()`
-    struct stat dir_stat; // Directory stat, used for checking whether the directory has been modified
-    struct stat file_stat; // File stat, used for checking whether the file has been modified
-} FileSecurityContext; // File security context
+#include "file-security.h"
 
 typedef struct {
     char *path;
@@ -60,7 +54,6 @@ delete_file_data_clear(DeleteFileData *data);
 */
 void
 set_file_properties(DeleteFileData *data);
-
 
 /* Delete threat files */
 /*
