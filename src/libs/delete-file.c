@@ -141,10 +141,30 @@ policy_forbid_operation(DeleteFileData *data)
 
 /* file validation fail operation */
 static void
-file_validation_fail_operation(DeleteFileData *data)
+file_validation_fail_operation(DeleteFileData *data, FileSecurityStatus status)
 {
     gtk_widget_set_sensitive(data->action_row, FALSE);
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("File may compromised, try removing it manually!"));
+    switch (status)
+    {
+        case FILE_SECURITY_DIR_MODIFIED:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Directory modified, try removing it manually!"));
+            break;
+        case FILE_SECURITY_FILE_MODIFIED:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("File may compromised, try removing it manually!"));
+            break;
+        case FILE_SECURITY_DIR_NOT_FOUND:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Directory not found!"));
+            break;
+        case FILE_SECURITY_FILE_NOT_FOUND:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("File not found!"));
+            break;
+        case FILE_SECURITY_INVALID_PATH:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Invalid path!"));
+            break;
+        default:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Unknown error!"));
+            break;
+    }
 }
 
 /* Add audit log for if user attempted to delete a file */
@@ -180,10 +200,11 @@ delete_threat_file(DeleteFileData *data)
     }
 
     /* Check file integrity using unclosed file descriptor */
-    if (!validate_by_fd(data->security_context))
+    FileSecurityStatus status = FILE_SECURITY_OK;
+    if ((status = validate_by_fd(data->security_context)) != FILE_SECURITY_OK)
     {
         g_critical("[SECURITY] File integrity check failed!");
-        file_validation_fail_operation(data);
+        file_validation_fail_operation(data, status);
         return;
     }
 

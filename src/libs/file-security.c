@@ -281,8 +281,15 @@ context_compare(const struct stat *original_stat, const struct stat *current_sta
     return descriptor_match && content_match && create_time_match && modification_time_match;
 }
 
+static void
+close_new_fd(int *new_dir_fd, int *new_file_fd)
+{
+    if (*new_dir_fd != -1) close(*new_dir_fd);
+    if (*new_file_fd != -1) close(*new_file_fd);
+}
+
 /* Check file integrity using unclosed file descriptor */
-gboolean
+FileSecurityStatus
 validate_by_fd(FileSecurityContext *context)
 {
     // Check if the context is valid
@@ -291,7 +298,7 @@ validate_by_fd(FileSecurityContext *context)
         g_critical("[SECURITY] Invalid context: dir_fd=%d file_fd=%d", 
                     context ? context->dir_fd : -1, 
                     context ? context->file_fd : -1);
-        return FALSE;   
+        return FILE_SECURITY_INVALID_PATH;
     }
 
     struct stat current_stat; // Store the current file stat
@@ -303,14 +310,16 @@ validate_by_fd(FileSecurityContext *context)
     if (new_dir_fd == -1)
     {
         g_critical("[SECURITY] Failed to reopen directory: %s", strerror(errno));
-        goto error_clean_up;
+        close_new_fd(&new_dir_fd, &new_file_fd);
+        return FILE_SECURITY_DIR_NOT_FOUND;
     }
 
     if (fstat(new_dir_fd, &current_stat) == -1
         || !context_compare(&context->dir_stat, &current_stat, TRUE)) // Check if the directory has been modified
     {
         g_critical("[SECURITY] Directory has been modified");
-        goto error_clean_up;
+        close_new_fd(&new_dir_fd, &new_file_fd);
+        return FILE_SECURITY_DIR_MODIFIED;
     }
 
     // Reopen the file
@@ -318,25 +327,21 @@ validate_by_fd(FileSecurityContext *context)
     if (new_file_fd == -1)
     {
         g_critical("[SECURITY] Failed to reopen file: %s", strerror(errno));
-        goto error_clean_up;
+        close_new_fd(&new_dir_fd, &new_file_fd);
+        return FILE_SECURITY_FILE_NOT_FOUND;
     }
 
     if (fstat(new_file_fd, &current_stat) == -1
         || !context_compare(&context->file_stat, &current_stat, FALSE)) // Check if the file has been modified
     {
         g_critical("[SECURITY] File has been modified");
-        goto error_clean_up;
+        close_new_fd(&new_dir_fd, &new_file_fd);
+        return FILE_SECURITY_FILE_MODIFIED;
     }
 
 
     // Close the new file and directory fd
-    close(new_file_fd);
-    close(new_dir_fd);
+    close_new_fd(&new_dir_fd, &new_file_fd);
 
-    return TRUE;
-
-error_clean_up:
-    if (new_dir_fd != -1) close(new_dir_fd);
-    if (new_file_fd != -1) close(new_file_fd);
-    return FALSE;
+    return FILE_SECURITY_OK;
 }

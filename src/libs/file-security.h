@@ -31,6 +31,15 @@ typedef struct {
     struct stat file_stat; // File stat, used for checking whether the file has been modified
 } FileSecurityContext; // File security context
 
+typedef enum {
+    FILE_SECURITY_OK, // File is safe
+    FILE_SECURITY_DIR_MODIFIED, // Directory has been modified
+    FILE_SECURITY_FILE_MODIFIED, // File has been modified
+    FILE_SECURITY_DIR_NOT_FOUND, // Directory not found
+    FILE_SECURITY_FILE_NOT_FOUND, // File not found
+    FILE_SECURITY_INVALID_PATH, // Invalid path
+} FileSecurityStatus; // File security status
+
 /* Initialize the file security context */
 FileSecurityContext *
 file_security_context_new(const gchar *path);
@@ -48,5 +57,5 @@ gboolean
 secure_open_and_verify(FileSecurityContext *context, const gchar *path);
 
 /* Check file integrity using unclosed file descriptor */
-gboolean
+FileSecurityStatus
 validate_by_fd(FileSecurityContext *context);
