@@ -160,6 +160,8 @@ error_clean_up:
     return FALSE;
 }
 
+/* Open the file securely and KEEP discriptor open */
+// Warning: The file descriptor will remain open until the function `file_security_context_clear` is called
 gboolean
 secure_open_and_verify(FileSecurityContext *context, const gchar *path)
 {
@@ -179,7 +181,7 @@ secure_open_and_verify(FileSecurityContext *context, const gchar *path)
     context->dir_fd = open(dir_path, DIRECTORY_OPEN_FLAGS); // use `O_NOFOLLOW` to avoid following symlinks
     if (context->dir_fd == -1)
     {
-        g_critical("[ERROR] Failed to open directory: %s", path);
+        g_critical("[ERROR] Failed to open directory: %s", dir_path);
         g_critical("[SECURITY] open(%s) failed: %s", dir_path, strerror(errno));
         return FALSE;
     }
@@ -251,30 +253,31 @@ context_compare(const struct stat *original_stat, const struct stat *current_sta
         return FALSE;
     }
 
+    /* If checking a directory, only compare the device ID */
+    if (is_check_directory) return (original_stat->st_dev == current_stat->st_dev);
+
+    /* Otherwise, compare all the metadata, content, create time, modification time */
+
     // Metadata comparison
     const gboolean descriptor_match = 
         (original_stat->st_dev == current_stat->st_dev &&
          original_stat->st_ino == current_stat->st_ino);
-
-    // Create time comparison
-    const gboolean create_time_match = 
-        (original_stat->st_ctime == current_stat->st_ctime &&
-         original_stat->st_ctim.tv_nsec == current_stat->st_ctim.tv_nsec);
 
     // Content comparison
     const gboolean content_match = 
         (original_stat->st_nlink == current_stat->st_nlink &&
          original_stat->st_size == current_stat->st_size);
 
+    // Create time comparison
+    const gboolean create_time_match = 
+        (original_stat->st_ctime == current_stat->st_ctime &&
+         original_stat->st_ctim.tv_nsec == current_stat->st_ctim.tv_nsec);
+
     // Modification time comparison
     const gboolean modification_time_match = 
         (original_stat->st_mtime == current_stat->st_mtime &&
          original_stat->st_mtim.tv_nsec == current_stat->st_mtim.tv_nsec);
 
-    // if check directory, only compare the device id
-    if (is_check_directory) return (original_stat->st_dev == current_stat->st_dev);
-
-    // Otherwise, compare the metadata, content, creation time, and modification time
     return descriptor_match && content_match && create_time_match && modification_time_match;
 }
 

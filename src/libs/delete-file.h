@@ -37,8 +37,9 @@ typedef struct {
 
 /* Create a new delete file data structure */
 // Tips: this also creates a new security context for the file
+// Warning: the AdwActionRow MUST be added to the GtkListBox before calling this function
 DeleteFileData *
-delete_file_data_new(GtkWidget *action_row);
+delete_file_data_new(GtkWidget *list_box, GtkWidget *action_row);
 
 /* Clear the delete file data structure */
 // Tips: this also clears the security context for the file
@@ -52,7 +53,7 @@ delete_file_data_clear(DeleteFileData *data);
   * and set the properties of the AdwActionRow
   * Warning: the AdwActionRow widget MUST have `subtitle` property
 */
-void
+gboolean
 set_file_properties(DeleteFileData *data);
 
 /* Delete threat files */

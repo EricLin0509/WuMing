@@ -227,10 +227,19 @@ output_threat_path(ScanContext *ctx) // This will add to the AdwStatusPage
     gtk_list_box_append(GTK_LIST_BOX(ctx->threat_list_box), action_row);
 
     /* Set file properties and connect signal */
-    DeleteFileData *delete_data = delete_file_data_new(action_row);
-    set_file_properties(delete_data); // Set the file properties for the action row
+    DeleteFileData *delete_data = delete_file_data_new(ctx->threat_list_box, action_row);
+    if (!set_file_properties(delete_data)) // Set the file properties for the action row
+    {
+      /* If failed to set file properties, disable the AdwActionRow */
+      g_critical("Failed to set file properties");
+      adw_preferences_row_set_title(ADW_PREFERENCES_ROW(action_row), gettext("Failed to set file properties"));
+      gtk_widget_set_sensitive(action_row, FALSE);
+      goto next;
+    }
+
     g_signal_connect_swapped(delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
 
+  next:
     iter = iter->next;
   }
   g_list_free_full(g_steal_pointer(&ctx->threat_paths), g_free); // Free the copy of the threat paths list

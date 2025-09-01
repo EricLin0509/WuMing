@@ -31,25 +31,36 @@
 // Warning: this macro should be started and ended with a space, otherwise may cause comparison error
 #define SYSTEM_DIRECTORIES " /usr /lib /lib64 /etc /opt /var /sys /proc " // System directories that should be warned before deleting
 
-#ifndef O_PATH // Compatibility for some Linux distributions
-# define O_PATH 010000000
-#endif
-
+/* Create a new delete file data structure */
+// Tips: this also creates a new security context for the file
+// Warning: the AdwActionRow MUST be added to the GtkListBox before calling this function
 DeleteFileData *
-delete_file_data_new(GtkWidget *action_row)
+delete_file_data_new(GtkWidget *list_box, GtkWidget *action_row)
 {
+    if (!list_box || !GTK_IS_WIDGET(list_box) ||
+       !action_row || !GTK_IS_WIDGET(action_row) || 
+       gtk_widget_get_parent(action_row) != list_box) // Check if the action_row is a child of the list_box
+    {
+        g_critical("[ERROR] Invalid parameters, list_box: %p, action_row: %p", list_box, action_row);
+        return NULL;
+    }
+
     DeleteFileData *data = g_new0(DeleteFileData, 1);
     data->path = adw_action_row_get_subtitle(ADW_ACTION_ROW(action_row)), // This string SHOULDN'T be freed because it's owned by the action row
-    data->list_box = gtk_widget_get_parent(action_row),
+    data->list_box = list_box;
     data->action_row = action_row;
     data->security_context = file_security_context_new(data->path);
 
     return data;
 }
 
+/* Clear the delete file data structure */
+// Tips: this also clears the security context for the file
 void
 delete_file_data_clear(DeleteFileData *data)
 {
+    g_return_if_fail(data != NULL);
+
     file_security_context_clear(data->security_context);
     g_free(data);
 }
@@ -61,26 +72,26 @@ delete_file_data_clear(DeleteFileData *data)
   * and set the properties of the AdwActionRow
   * Warning: the AdwActionRow widget MUST have `subtitle` property
 */
-void
+gboolean
 set_file_properties(DeleteFileData *data)
 {
-    g_return_if_fail(data != NULL);
-    g_return_if_fail(data->security_context != NULL);
+    g_return_val_if_fail(data != NULL, FALSE);
+    g_return_val_if_fail(data->security_context != NULL, FALSE);
 
     if (!secure_open_and_verify(data->security_context, data->path)) // Initialize the file security context
     {
-        g_critical("[ERROR] failed to initialize file security context");
-        return;
+        g_critical("[ERROR] Failed to initialize file security context");
+        return FALSE;
     }
 
-    if (!data->action_row || !GTK_IS_WIDGET(data->action_row)) return; // Check if the action row is valid
+    if (!data->action_row || !GTK_IS_WIDGET(data->action_row)) return FALSE; // Check if the action row is valid
 
     char *path = data->path;
 
     if (!path || !*path || path[0] != '/') // Check if the path is valid and is absolute
     {
         g_warning("Invalid absolute path: %s", path ? path : "(null)");
-        return;
+        return FALSE;
     }
 
     /* Get the first directory name in the path */
@@ -104,6 +115,7 @@ set_file_properties(DeleteFileData *data)
 
     g_free(query);
     g_free(path_prefix);
+    return TRUE;
 }
 
 /* Disable the action row and set the title to "Failed to delete file" */
