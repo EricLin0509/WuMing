@@ -212,8 +212,28 @@ delete_threat_file(DeleteFileData *data)
     if (unlinkat(data->security_context->dir_fd, 
                     data->security_context->base_name, 0) == -1)
     {
-        g_critical("[ERROR] Failed to delete file: %s", data->path);
-        error_operation(data, NULL); // Show the error message
+        switch (errno)
+        {
+        case EACCES:
+            g_critical("[ERROR] Permission denied!");
+            error_operation(data, NULL);
+            break;
+        case EISDIR:
+            g_critical("[ERROR] Is a directory!");
+            error_operation(data, NULL);
+            break;
+        case EROFS:
+            g_critical("[ERROR] Read-only file system!");
+            error_operation(data, NULL);
+            break;
+        case ENOENT:
+            g_critical("[ERROR] File not found!");
+            error_operation(data, NULL);
+        default:
+            g_critical("[ERROR] Unknown error!");
+            error_operation(data, NULL);
+            break;
+        }
     }
     else // If the file is deleted successfully, show the success message and add audit log
     {
