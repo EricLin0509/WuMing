@@ -24,12 +24,17 @@
 #include <syslog.h>
 #include <inttypes.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/random.h>
 #include <fcntl.h>
 
 #include "delete-file.h"
+#include "wuming-unlinkat-helper.h"
 
 // Warning: this macro should be started and ended with a space, otherwise may cause comparison error
 #define SYSTEM_DIRECTORIES " /usr /lib /lib64 /etc /opt /var /sys /proc " // System directories that should be warned before deleting
+
+#define PKEXEC_PATH "/usr/bin/pkexec" // Path to the `pkexec` binary
 
 /* Create a new delete file data structure */
 // Tips: this also creates a new security context for the file
@@ -179,6 +184,100 @@ log_deletion_attempt(const char *path)
     g_free(log_entry);
 }
 
+/* Generate a random key for authentication */
+static uint32_t
+generate_auth_key(void)
+{
+    uint32_t key = 0;
+    if (getrandom(&key, sizeof(key), 0) != sizeof(key))
+    {
+        g_critical("Failed to generate secure key: %s", strerror(errno));
+        return 0;
+    }
+    return key;
+}
+
+/* Delete threat files in elevated mode */
+static void
+delete_threat_file_elevated(DeleteFileData *data)
+{
+    g_return_if_fail(data && data->security_context);
+
+    // Generate a random name for the FIFO
+    char fifo_path[256];
+    snprintf(fifo_path, sizeof(fifo_path), "/tmp/wuming_fifo_%d_%d", getpid(), rand());
+
+    // Create and set permissions for the FIFO
+    if (mkfifo(fifo_path, 0600) == -1) {
+        g_critical("[ERROR] mkfifo failed: %s", strerror(errno));
+        error_operation(data, NULL);
+        return;
+    }
+
+    // Generate the auth key for authentication
+    uint32_t gen_key = generate_auth_key();
+
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        g_critical("[ERROR] fork failed");
+        unlink(fifo_path);
+        error_operation(data, NULL);
+        return;
+    }
+
+    if (pid == 0) // Child process
+    {
+        char key_str[16];
+        snprintf(key_str, sizeof(key_str), "%" PRIu32, gen_key);
+
+        execl(PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in meson.build
+              fifo_path, data->path, key_str, NULL);
+
+        g_critical("Failed to execute helper");
+        unlink(fifo_path);
+        exit(1);
+    }
+    else // Parent process
+    {
+        int fifo_fd = open(fifo_path, O_WRONLY);
+
+        if (fifo_fd == -1)
+        {
+            g_critical("[ERROR] Failed to open FIFO");
+            unlink(fifo_path);
+            error_operation(data, NULL);
+            return;
+        }
+
+        /* Prepare the data to send */
+        HelperData helper_data = {
+            .auth_key = gen_key,
+
+            // StatData
+            .data = {
+                .dir_stat = data->security_context->dir_stat,
+                .file_stat = data->security_context->file_stat,
+            },
+        };
+
+        // Write the data to the FIFO
+        ssize_t written = write(fifo_fd, &helper_data, HELPER_DATA_SIZE);
+        if (written != HELPER_DATA_SIZE)
+        {
+            g_critical("[ERROR] FIFO write incomplete: %zd/%zu", written, HELPER_DATA_SIZE);
+        }
+
+        close(fifo_fd);
+        unlink(fifo_path); // remove the FIFO
+        waitpid(pid, NULL, 0);
+
+        // Show the success message and add audit log
+        log_deletion_attempt(data->path);
+        gtk_list_box_remove(GTK_LIST_BOX(data->list_box), data->action_row); // Remove the action row from the list view
+    }
+}
+
 /* Delete threat files */
 /*
   * this function should pass a AdwActionRow widget to the function
@@ -215,8 +314,8 @@ delete_threat_file(DeleteFileData *data)
         switch (errno)
         {
         case EACCES:
-            g_critical("[ERROR] Permission denied!");
-            error_operation(data, NULL);
+            g_warning("[WARNING] Permission denied, use elevated mode to delete the file");
+            delete_threat_file_elevated(data);
             break;
         case EISDIR:
             g_critical("[ERROR] Is a directory!");
