@@ -26,23 +26,37 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <signal.h>
 
 #include "wuming-unlinkat-helper.h"
 #include "file-security.h"
 
-#define VERIFY_KEY(auth_key, key_received) ((auth_key) == (key_received) ? TRUE : FALSE) // Verify the authentication key
+/* Verify the authentication key */
+static inline gboolean 
+verify_key(uint32_t expected, uint32_t received)
+{
+    return expected == received;
+}
 
 /* Get the authentication key from the command line argument */
 static uint32_t
 get_auth_key(const char *auth_key_str)
 {
     uint32_t auth_key = 0;
-    if (sscanf(auth_key_str, "%u", &auth_key) != 1)
+    if (sscanf(auth_key_str, "%" PRIu32, &auth_key) != 1)
     {
         g_critical("Invalid authentication key: %s", auth_key_str);
         return 0;
     }
     return auth_key;
+}
+
+/* Prevent handle `SIGTRAP` (breakpoint) and `SIGILL` (illegal instruction) signal when the program is running */
+void
+breakpoint_handler(int signal)
+{
+    g_critical("[ERROR] Breakpoint detected, aborting...");
+    exit(EXIT_FAILURE);
 }
 
 /* Similiar to `validate_by_fd` in `file-security.c`, but this function use struct `stat` to validate the file security status. */
@@ -87,6 +101,18 @@ validate_by_stat(FileSecurityContext *context, const struct stat *stat_data, con
 }
 
 int main(int argc, const char *argv[]) {
+    // Register the breakpoint handler
+    signal(SIGTRAP, breakpoint_handler);
+    signal(SIGILL, breakpoint_handler);
+    
+    // Check if the program is running as root
+    if (getuid() != 0)
+    {
+        g_critical("This program must be run as root");
+        return EXIT_FAILURE;
+    }
+
+    // Check the number of command line arguments
     if (argc != 4)
     {
         g_critical("Invalid arguments");
@@ -118,7 +144,7 @@ int main(int argc, const char *argv[]) {
 
     // Get authentication key from the command line argument
     const uint32_t auth_key = get_auth_key(argv[3]);
-    if (!VERIFY_KEY(auth_key, helper_data.auth_key))
+    if (!verify_key(auth_key, helper_data.auth_key))
     {
         g_critical("Authentication key mismatch, aborting...");
         close(fifo_fd);

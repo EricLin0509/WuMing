@@ -30,6 +30,7 @@
 
 #include "delete-file.h"
 #include "wuming-unlinkat-helper.h"
+#include "subprocess-components.h"
 
 // Warning: this macro should be started and ended with a space, otherwise may cause comparison error
 #define SYSTEM_DIRECTORIES " /usr /lib /lib64 /etc /opt /var /sys /proc " // System directories that should be warned before deleting
@@ -177,7 +178,7 @@ static void
 log_deletion_attempt(const char *path)
 {
     gchar *sanitized_path = g_filename_display_name(path); // Sanitize the path to avoid log injection
-    gchar *log_entry = g_strdup_printf("[AUDIT] User performed %s delete on %s", 
+    gchar *log_entry = g_strdup_printf("[AUDIT] User %s performed delete on %s", 
                                      g_get_user_name(), sanitized_path);
     syslog(LOG_AUTH | LOG_WARNING, "%s", log_entry);
     g_free(sanitized_path);
@@ -208,7 +209,8 @@ delete_threat_file_elevated(DeleteFileData *data)
     snprintf(fifo_path, sizeof(fifo_path), "/tmp/wuming_fifo_%d_%d", getpid(), rand());
 
     // Create and set permissions for the FIFO
-    if (mkfifo(fifo_path, 0600) == -1) {
+    if (mkfifo(fifo_path, 0600) == -1)
+    {
         g_critical("[ERROR] mkfifo failed: %s", strerror(errno));
         error_operation(data, NULL);
         return;
@@ -217,65 +219,66 @@ delete_threat_file_elevated(DeleteFileData *data)
     // Generate the auth key for authentication
     uint32_t gen_key = generate_auth_key();
 
-    pid_t pid = fork();
-    if (pid == -1)
+    char key_str[16]; // Use for passing the key through the command line
+    snprintf(key_str, sizeof(key_str), "%" PRIu32, gen_key);
+    
+    pid_t pid;
+
+    if (!spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
+                                    fifo_path, data->path, key_str, NULL))
     {
-        g_critical("[ERROR] fork failed");
+        g_critical("[ERROR] Failed to spawn helper process: %s", strerror(errno));
+        error_operation(data, NULL);
+        return;
+    }
+
+    /* Prepare the data to send */
+    HelperData helper_data = {
+        .auth_key = gen_key,
+
+        // StatData
+        .data = {
+            .dir_stat = data->security_context->dir_stat,
+            .file_stat = data->security_context->file_stat,
+        }
+    };
+
+    /* Send the data through the FIFO */
+    int fifo_fd = open(fifo_path, O_WRONLY);
+    if (fifo_fd == -1)
+    {
+        g_critical("[ERROR] Failed to open FIFO");
         unlink(fifo_path);
         error_operation(data, NULL);
         return;
     }
 
-    if (pid == 0) // Child process
+    ssize_t written = write(fifo_fd, &helper_data, HELPER_DATA_SIZE);
+    if (written != HELPER_DATA_SIZE)
     {
-        char key_str[16];
-        snprintf(key_str, sizeof(key_str), "%" PRIu32, gen_key);
-
-        execl(PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in meson.build
-              fifo_path, data->path, key_str, NULL);
-
-        g_critical("Failed to execute helper");
-        unlink(fifo_path);
-        exit(1);
+        g_critical("[ERROR] FIFO write incomplete: %zd of %zu bytes written", written, HELPER_DATA_SIZE);
+        goto error_clean_up;
     }
-    else // Parent process
+
+    close(fifo_fd);
+    if (!wait_for_process(pid, FALSE))
     {
-        int fifo_fd = open(fifo_path, O_WRONLY);
-
-        if (fifo_fd == -1)
-        {
-            g_critical("[ERROR] Failed to open FIFO");
-            unlink(fifo_path);
-            error_operation(data, NULL);
-            return;
-        }
-
-        /* Prepare the data to send */
-        HelperData helper_data = {
-            .auth_key = gen_key,
-
-            // StatData
-            .data = {
-                .dir_stat = data->security_context->dir_stat,
-                .file_stat = data->security_context->file_stat,
-            },
-        };
-
-        // Write the data to the FIFO
-        ssize_t written = write(fifo_fd, &helper_data, HELPER_DATA_SIZE);
-        if (written != HELPER_DATA_SIZE)
-        {
-            g_critical("[ERROR] FIFO write incomplete: %zd/%zu", written, HELPER_DATA_SIZE);
-        }
-
-        close(fifo_fd);
-        unlink(fifo_path); // remove the FIFO
-        waitpid(pid, NULL, 0);
-
-        // Show the success message and add audit log
-        log_deletion_attempt(data->path);
-        gtk_list_box_remove(GTK_LIST_BOX(data->list_box), data->action_row); // Remove the action row from the list view
+        g_critical("[ERROR] Helper process exit with error");
+        goto error_clean_up;
     }
+
+    // Clean up
+    close(fifo_fd);
+    unlink(fifo_path);
+    gtk_list_box_remove(GTK_LIST_BOX(data->list_box), data->action_row); // Remove the action row from the list view
+    log_deletion_attempt(data->path);
+    return;
+
+error_clean_up:
+    close(fifo_fd);
+    unlink(fifo_path);
+    error_operation(data, NULL);
+    return;
 }
 
 /* Delete threat files */

@@ -123,19 +123,19 @@ spawn_new_process(int pipefd[2], pid_t *pid, const char *path, const char *comma
 {
     if (access(path, X_OK) == -1) // First check if the path is valid
     {
-        g_warning("Cannot execute %s: %s", path, strerror(errno));
+        g_critical("[ERROR] Cannot execute %s: %s", path, strerror(errno));
         goto error_clean_up;
     }
 
     if (pipe(pipefd) == -1) // Create a pipe for communication
     {
-        g_warning("Failed to create pipe: %s", strerror(errno));
+        g_critical("[ERROR] Failed to create pipe: %s", strerror(errno));
         goto error_clean_up;
     }
 
     if ((*pid = fork()) == -1) // Fork a new process
     {
-        g_warning("Failed to fork: %s", strerror(errno));
+        g_critical("[ERROR] Failed to fork: %s", strerror(errno));
         goto error_clean_up;
     }
 
@@ -165,4 +165,44 @@ error_clean_up:
     close(pipefd[0]);
     close(pipefd[1]);
     return FALSE;
+}
+
+/* Spawn a new process but with no pipes */
+// No pipes means you can pass `FIFO` or `Unix Socket` as input/output
+// But this function won't provide any parameters to pass `FIFO` or `Unix Socket` , you need to pass directly in the command line
+// It might be useful when you design your own programs and communicate each other through `FIFO` or `Unix Socket`
+// path & command: use for `execv()`
+// This function MUST end with a NULL argument to indicate the end of the arguments list
+gboolean
+spawn_new_process_no_pipes(pid_t *pid, const char *path, const char *command, ...)
+{
+    if (access(path, X_OK) == -1) // First check if the path is valid
+    {
+        g_critical("[ERROR] Cannot execute %s: %s", path, strerror(errno));
+        return FALSE;
+    }
+
+    if ((*pid = fork()) == -1) // Fork a new process
+    {
+        g_critical("[ERROR] Failed to fork: %s", strerror(errno));
+        return FALSE;
+    }
+
+    if (*pid == 0) // Child process
+    {
+        prctl(PR_SET_PDEATHSIG, SIGTERM); // Ensure the child process can be terminated when the parent process dies
+
+        va_list args;
+        va_start(args, command);
+        GPtrArray *argv = build_command_args(command, args);
+        va_end(args);
+        assert(g_ptr_array_index(argv, argv->len-1) == NULL); // Check whether the last argument is NULL
+
+        execv(path, (char **)argv->pdata);
+
+        g_ptr_array_free(argv, TRUE);
+        exit(EXIT_FAILURE);
+    }
+
+    return TRUE;
 }

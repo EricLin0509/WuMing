@@ -60,3 +60,12 @@ handle_io_event(IOContext *io_ctx);
 // This function MUST end with a NULL argument to indicate the end of the arguments list
 gboolean
 spawn_new_process(int pipefd[2], pid_t *pid, const char *path, const char *command, ...);
+
+/* Spawn a new process but with no pipes */
+// No pipes means you can pass `FIFO` or `Unix Socket` as input/output
+// But this function won't provide any parameters to pass `FIFO` or `Unix Socket` , you need to pass directly in the command line
+// It might be useful when you design your own programs and communicate each other through `FIFO` or `Unix Socket`
+// path & command: use for `execv()`
+// This function MUST end with a NULL argument to indicate the end of the arguments list
+gboolean
+spawn_new_process_no_pipes(pid_t *pid, const char *path, const char *command, ...);
