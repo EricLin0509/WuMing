@@ -3,7 +3,7 @@ wuming_sources += [
  'libs/ring-buffer.c',
  'libs/file-security.c',
  'libs/delete-file.c',
- 'libs/thread-components.c',
+ 'libs/subprocess-components.c',
  'libs/update-signature.c',
  'libs/scan.c',
 ]

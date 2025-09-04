@@ -25,7 +25,7 @@
 #include <poll.h>
 #include <sys/mman.h>
 
-#include "thread-components.h"
+#include "subprocess-components.h"
 #include "update-signature.h"
 
 #include "../update-signature-page.h"

@@ -1,4 +1,4 @@
-/* thread-components.c
+/* subprocess-components.c
  *
  * Copyright 2025 EricLin
  *
@@ -18,7 +18,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/* This store some essential thread components for this program */
+/* This store some functions to control the subprocess */
 
 #include <assert.h>
 #include <stdarg.h>
@@ -26,7 +26,7 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 
-#include "thread-components.h"
+#include "subprocess-components.h"
 
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
 int

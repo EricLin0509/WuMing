@@ -1,4 +1,4 @@
-/* thread-components.h
+/* subproccess-components.h
  *
  * Copyright 2025 EricLin
  *
@@ -18,7 +18,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/* This store some essential thread components for this program */
+/* This store some functions to control the subprocess */
 
 #pragma once
 

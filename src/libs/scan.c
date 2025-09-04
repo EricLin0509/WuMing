@@ -23,7 +23,7 @@
 #include <fcntl.h>
 #include <poll.h>
 
-#include "thread-components.h"
+#include "subprocess-components.h"
 #include "scan.h"
 
 #include "delete-file.h"
