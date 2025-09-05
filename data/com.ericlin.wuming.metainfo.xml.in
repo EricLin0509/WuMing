@@ -58,6 +58,16 @@
   </screenshots>
 
   <releases>
+    <release version="0.2.beta2" date="2025-9-6">
+      <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.2.beta2</url>
+      <description translate="no">
+        <p>Add helper program</p>
+        <ul>
+          <li>Add a elevated helper program to delete files in system directories</li>
+          <li>Minor fixes and some optimizations</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.beta1" date="2025-8-30">
       <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.2.beta1</url>
       <description translate="no">
