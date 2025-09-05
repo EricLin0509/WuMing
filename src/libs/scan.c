@@ -237,7 +237,7 @@ add_threat_path(ScanContext *ctx, const char *path)
   // Add `DeleteFileData` to the GList
   // This shouldn't be freed by `delete_file_data_clear`, instead free it in `clear_threat_paths` using `g_list_free_full`
   // Otherwize, will cause double free when `clear_threat_paths` is called.
-  ctx->threat_paths = g_list_append(ctx->threat_paths, delete_data);
+  ctx->threat_paths = g_list_prepend(ctx->threat_paths, delete_data);
 
   g_signal_connect_swapped(delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
 
