@@ -77,6 +77,11 @@ scan_context_new(void)
   ScanContext *ctx = g_new0(ScanContext, 1);
   g_mutex_init(&ctx->mutex);
   g_mutex_init(&ctx->threats_mutex);
+
+  ctx->threat_list_box = gtk_list_box_new(); // Create the list view for threats
+  gtk_widget_add_css_class(ctx->threat_list_box, "boxed-list"); // Add boxed-list style class to the list view
+  gtk_list_box_set_selection_mode(GTK_LIST_BOX(ctx->threat_list_box), GTK_SELECTION_NONE); // Disable selection for the list view
+
   ctx->cancellable = g_cancellable_new(); // Initialize the cancellable object
   ctx->ref_count = 1;
   return ctx;
@@ -183,73 +188,81 @@ get_total_files(ScanContext *ctx)
   return g_atomic_int_get(&ctx->total_files);
 }
 
+/* Create a new `AdwActionRow` for the threat list view */
+static GtkWidget*
+create_threat_action_row(GtkWidget **delete_button, const char *path)
+{
+  GtkWidget *action_row = adw_action_row_new(); // Create the action row for the list view
+  gtk_widget_add_css_class(action_row, "property"); // Add property syle class to the action row
+  adw_action_row_set_subtitle(ADW_ACTION_ROW(action_row), path);
+
+  /* Delete button for the action row */
+  *delete_button = gtk_button_new_with_label(gettext("Delete"));
+  gtk_widget_set_halign(*delete_button, GTK_ALIGN_CENTER);
+  gtk_widget_set_valign(*delete_button, GTK_ALIGN_CENTER);
+  
+  adw_action_row_add_suffix(ADW_ACTION_ROW(action_row), *delete_button); // Add the delete button to the action row
+
+  return action_row;
+}
+
 /* thread-safe method to add/output/clear a threat path to the list */
 static void
 add_threat_path(ScanContext *ctx, const char *path)
 {
+  g_return_if_fail(ctx);
+  g_return_if_fail(path);
+
   g_mutex_lock(&ctx->threats_mutex);
-  ctx->threat_paths = g_list_append(ctx->threat_paths, g_strdup(path));
+
+  GtkWidget *delete_button = NULL;
+  GtkWidget *action_row = create_threat_action_row(&delete_button, path); // Create the action row for the list view
+
+  gtk_list_box_append(GTK_LIST_BOX(ctx->threat_list_box), action_row);
+
+  /* Set file properties and connect signal */
+  DeleteFileData *delete_data = delete_file_data_new(ctx->threat_list_box, action_row);
+  if (!set_file_properties(delete_data)) // Set the file properties for the action row
+  {
+    /* If failed to set file properties, disable the AdwActionRow */
+    g_critical("Failed to set file properties");
+    delete_file_data_clear(delete_data); // Free the delete data
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(action_row), gettext("Failed to set file properties"));
+    gtk_widget_set_sensitive(action_row, FALSE);
+
+    g_mutex_unlock(&ctx->threats_mutex); // Release the lock before return
+    return; // Otherwize, will cause double free when `clear_threat_paths` called.
+  }
+
+  // Add `DeleteFileData` to the GList
+  // This shouldn't be freed by `delete_file_data_clear`, instead free it in `clear_threat_paths` using `g_list_free_full`
+  // Otherwize, will cause double free when `clear_threat_paths` is called.
+  ctx->threat_paths = g_list_append(ctx->threat_paths, delete_data);
+
+  g_signal_connect_swapped(delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
+
   g_mutex_unlock(&ctx->threats_mutex);
 }
 
 static void
 output_threat_path(ScanContext *ctx) // This will add to the AdwStatusPage
 {
-  ctx->threat_list_box = gtk_list_box_new(); // Create the list view for threats
-  if (!ctx->threat_list_box)
-  {
-    g_critical("Failed to create list box");
-    return;
-  }
-
-  gtk_widget_add_css_class(ctx->threat_list_box, "boxed-list"); // Add boxed-list style class to the list view
-  gtk_list_box_set_selection_mode(GTK_LIST_BOX(ctx->threat_list_box), GTK_SELECTION_NONE); // Disable selection for the list view
+  g_return_if_fail(ctx);
+  g_return_if_fail(ctx->threat_list_box);
   
-  GList *copy = NULL;
   g_mutex_lock(&ctx->threats_mutex);
-  if (ctx->threat_paths) copy = g_list_copy(ctx->threat_paths); // Make a copy of the threat paths list
+  adw_status_page_set_child (ADW_STATUS_PAGE(ctx->threat_status_page), ctx->threat_list_box); // Add the list view to the status page
   g_mutex_unlock(&ctx->threats_mutex);
-
-  GList *iter = copy;
-  while (iter)
-  {
-    GtkWidget *action_row = adw_action_row_new(); // Create the action row for the list view
-    gtk_widget_add_css_class(action_row, "property"); // Add property syle class to the action row
-    adw_action_row_set_subtitle(ADW_ACTION_ROW(action_row), (const char *)iter->data);
-
-    /* Delete button for the action row */
-    GtkWidget *delete_button = gtk_button_new_with_label(gettext("Delete"));
-    gtk_widget_set_halign(delete_button, GTK_ALIGN_CENTER);
-    gtk_widget_set_valign(delete_button, GTK_ALIGN_CENTER);
-    
-    adw_action_row_add_suffix(ADW_ACTION_ROW(action_row), delete_button);
-
-    gtk_list_box_append(GTK_LIST_BOX(ctx->threat_list_box), action_row);
-
-    /* Set file properties and connect signal */
-    DeleteFileData *delete_data = delete_file_data_new(ctx->threat_list_box, action_row);
-    if (!set_file_properties(delete_data)) // Set the file properties for the action row
-    {
-      /* If failed to set file properties, disable the AdwActionRow */
-      g_critical("Failed to set file properties");
-      adw_preferences_row_set_title(ADW_PREFERENCES_ROW(action_row), gettext("Failed to set file properties"));
-      gtk_widget_set_sensitive(action_row, FALSE);
-      goto next;
-    }
-
-    g_signal_connect_swapped(delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
-
-  next:
-    iter = iter->next;
-  }
-  g_list_free_full(g_steal_pointer(&ctx->threat_paths), g_free); // Free the copy of the threat paths list
-
-  adw_status_page_set_child (ADW_STATUS_PAGE(ctx->threat_status_page), ctx->threat_list_box);
 }
 
 static void
 clear_threat_paths(ScanContext *ctx)
 {
+  g_debug("Clearing threat paths\n");
+
+  g_return_if_fail(ctx);
+  g_return_if_fail(ctx->threat_list_box);
+
   g_mutex_lock(&ctx->threats_mutex);
   GtkWidget *threat_list_box = ctx->threat_list_box;
   if (threat_list_box && GTK_IS_WIDGET(threat_list_box))
@@ -564,7 +577,6 @@ start_scan(AdwDialog *dialog,
   ctx->total_files = 0;
   ctx->total_threats = 0;
   ctx->threat_paths = NULL;
-  ctx->threat_list_box = NULL;
   ctx->scan_dialog = dialog;
   ctx->scan_dialog_handler_id = 
           g_signal_connect_swapped(ctx->scan_dialog, "close-attempt", G_CALLBACK(cancel_scan_attempt), ctx); // Connect the close-attempt signal to the cancel_scan_attempt function

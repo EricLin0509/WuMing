@@ -69,6 +69,8 @@ delete_file_data_clear(DeleteFileData *data)
 
     file_security_context_clear(data->security_context);
     g_free(data);
+
+    data = NULL;
 }
 
 /* Set file properties */
@@ -257,6 +259,7 @@ delete_threat_file_elevated(DeleteFileData *data)
     if (written != HELPER_DATA_SIZE)
     {
         g_critical("[ERROR] FIFO write incomplete: %zd of %zu bytes written", written, HELPER_DATA_SIZE);
+        close(fifo_fd);
         goto error_clean_up;
     }
 
@@ -268,14 +271,12 @@ delete_threat_file_elevated(DeleteFileData *data)
     }
 
     // Clean up
-    close(fifo_fd);
     unlink(fifo_path);
     gtk_list_box_remove(GTK_LIST_BOX(data->list_box), data->action_row); // Remove the action row from the list view
     log_deletion_attempt(data->path);
     return;
 
 error_clean_up:
-    close(fifo_fd);
     unlink(fifo_path);
     error_operation(data, NULL);
     return;
@@ -343,7 +344,4 @@ delete_threat_file(DeleteFileData *data)
         gtk_list_box_remove(GTK_LIST_BOX(data->list_box), data->action_row); // Remove the action row from the list view
         log_deletion_attempt(data->path);
     }
-
-    // Clean up
-    delete_file_data_clear(data);
 }
