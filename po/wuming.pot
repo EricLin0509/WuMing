@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-30 07:12+0800\n"
+"POT-Creation-Date: 2025-09-06 02:34+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -202,50 +202,74 @@ msgstr ""
 msgid "Freshclam service status"
 msgstr ""
 
-#: src/libs/delete-file.c:368
+#: src/libs/delete-file.c:120
 msgid "Maybe a system file, delete it with caution!"
 msgstr ""
 
-#: src/libs/delete-file.c:369
+#: src/libs/delete-file.c:121
 msgid "Normal file"
 msgstr ""
 
-#: src/libs/delete-file.c:384
+#: src/libs/delete-file.c:137
 msgid "Delete failed!"
 msgstr ""
 
-#: src/libs/delete-file.c:394
+#: src/libs/delete-file.c:147
 msgid "Blocked by policy, try removing it manually!"
 msgstr ""
 
-#: src/libs/delete-file.c:402
+#: src/libs/delete-file.c:158
+msgid "Directory modified, try removing it manually!"
+msgstr ""
+
+#: src/libs/delete-file.c:161
 msgid "File may compromised, try removing it manually!"
 msgstr ""
 
-#: src/libs/scan.c:221
+#: src/libs/delete-file.c:164
+msgid "Directory not found!"
+msgstr ""
+
+#: src/libs/delete-file.c:167
+msgid "File not found!"
+msgstr ""
+
+#: src/libs/delete-file.c:170
+msgid "Invalid path!"
+msgstr ""
+
+#: src/libs/delete-file.c:173
+msgid "Unknown error!"
+msgstr ""
+
+#: src/libs/scan.c:200
 msgid "Delete"
 msgstr ""
 
-#: src/libs/scan.c:301
+#: src/libs/scan.c:230
+msgid "Failed to set file properties"
+msgstr ""
+
+#: src/libs/scan.c:323
 #, c-format
 msgid ""
 "%d files scanned\n"
 "%d threats found"
 msgstr ""
 
-#: src/libs/scan.c:331
+#: src/libs/scan.c:353
 msgid "User cancelled the scan"
 msgstr ""
 
-#: src/libs/scan.c:403
+#: src/libs/scan.c:425
 msgid "Scan Canceled"
 msgstr ""
 
-#: src/libs/scan.c:407
+#: src/libs/scan.c:429
 msgid "Scan Complete"
 msgstr ""
 
-#: src/libs/scan.c:411
+#: src/libs/scan.c:433
 msgid "Scan Failed"
 msgstr ""
 

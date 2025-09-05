@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-30 07:12+0800\n"
+"POT-Creation-Date: 2025-09-06 02:34+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -202,31 +202,55 @@ msgstr "Update"
 msgid "Freshclam service status"
 msgstr "Freshclam service status"
 
-#: src/libs/delete-file.c:368
+#: src/libs/delete-file.c:120
 msgid "Maybe a system file, delete it with caution!"
-msgstr ""
+msgstr "Maybe a system file, delete it with caution!"
 
-#: src/libs/delete-file.c:369
+#: src/libs/delete-file.c:121
 msgid "Normal file"
 msgstr "Normal file"
 
-#: src/libs/delete-file.c:384
+#: src/libs/delete-file.c:137
 msgid "Delete failed!"
 msgstr "Delete failed!"
 
-#: src/libs/delete-file.c:394
+#: src/libs/delete-file.c:147
 msgid "Blocked by policy, try removing it manually!"
 msgstr "Blocked by policy, try removing it manually!"
 
-#: src/libs/delete-file.c:402
+#: src/libs/delete-file.c:158
+msgid "Directory modified, try removing it manually!"
+msgstr "Directory modified, try removing it manually!"
+
+#: src/libs/delete-file.c:161
 msgid "File may compromised, try removing it manually!"
 msgstr "File may compromised, try removing it manually!"
 
-#: src/libs/scan.c:221
+#: src/libs/delete-file.c:164
+msgid "Directory not found!"
+msgstr "Directory not found!"
+
+#: src/libs/delete-file.c:167
+msgid "File not found!"
+msgstr "File not found!"
+
+#: src/libs/delete-file.c:170
+msgid "Invalid path!"
+msgstr "Invalid path!"
+
+#: src/libs/delete-file.c:173
+msgid "Unknown error!"
+msgstr "Unknown error!"
+
+#: src/libs/scan.c:200
 msgid "Delete"
 msgstr "Delete"
 
-#: src/libs/scan.c:301
+#: src/libs/scan.c:230
+msgid "Failed to set file properties"
+msgstr "Failed to set file properties"
+
+#: src/libs/scan.c:323
 #, c-format
 msgid ""
 "%d files scanned\n"
@@ -235,19 +259,19 @@ msgstr ""
 "%d files scanned\n"
 "%d threats found"
 
-#: src/libs/scan.c:331
+#: src/libs/scan.c:353
 msgid "User cancelled the scan"
 msgstr "User cancelled the scan"
 
-#: src/libs/scan.c:403
+#: src/libs/scan.c:425
 msgid "Scan Canceled"
 msgstr "Scan Canceled"
 
-#: src/libs/scan.c:407
+#: src/libs/scan.c:429
 msgid "Scan Complete"
 msgstr "Update Complete"
 
-#: src/libs/scan.c:411
+#: src/libs/scan.c:433
 msgid "Scan Failed"
 msgstr "Scan Failed"
 
