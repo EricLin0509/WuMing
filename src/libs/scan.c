@@ -218,7 +218,7 @@ add_threat_path(ScanContext *ctx, const char *path)
   GtkWidget *delete_button = NULL;
   GtkWidget *action_row = create_threat_action_row(&delete_button, path); // Create the action row for the list view
 
-  gtk_list_box_append(GTK_LIST_BOX(ctx->threat_list_box), action_row);
+  gtk_list_box_prepend(GTK_LIST_BOX(ctx->threat_list_box), action_row);
 
   /* Set file properties and connect signal */
   DeleteFileData *delete_data = delete_file_data_new(ctx->threat_list_box, action_row);
