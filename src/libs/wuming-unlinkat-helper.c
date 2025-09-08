@@ -21,9 +21,8 @@
 
 /* This is the elevated helper program for `unlinkat()` operation */
 
+#include <gio/gio.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <signal.h>
@@ -100,7 +99,9 @@ validate_by_stat(FileSecurityContext *context, const struct stat *stat_data, con
     return descriptor_match && content_match && create_time_match && modification_time_match;
 }
 
-int main(int argc, const char *argv[]) {
+gint
+command_line_handler(GApplication* self, GApplicationCommandLine* command_line, gpointer user_data)
+{
     // Register the breakpoint handler
     signal(SIGTRAP, breakpoint_handler);
     signal(SIGILL, breakpoint_handler);
@@ -111,6 +112,10 @@ int main(int argc, const char *argv[]) {
         g_critical("This program must be run as root");
         return EXIT_FAILURE;
     }
+
+    // Get the command line arguments
+    gint argc;
+    gchar **argv = g_application_command_line_get_arguments(command_line, &argc); // Get the command line arguments;
 
     // Check the number of command line arguments
     if (argc != 4)
@@ -174,11 +179,26 @@ int main(int argc, const char *argv[]) {
     g_print("[INFO] The file has been unlinked successfully with elevated privileges.\n");
 
     file_security_context_clear(context); // Free the file security context
+    g_strfreev (argv); // Free the command line arguments
     close(fifo_fd);
     return EXIT_SUCCESS;
 
 error_clean_up:
     file_security_context_clear(context); // Free the file security context
+    g_strfreev (argv); // Free the command line arguments
     close(fifo_fd);
     return EXIT_FAILURE;
+}
+
+int main(int argc, char *argv[]) {
+    g_autoptr(GApplication) app = NULL;
+    int status;
+
+    app = g_application_new("com.ericlin.wuming.unlinkat-helper", G_APPLICATION_HANDLES_COMMAND_LINE);
+
+    g_signal_connect(app, "command-line", G_CALLBACK(command_line_handler), NULL);
+
+    status = g_application_run (G_APPLICATION (app), argc, argv);
+
+    return status;
 }
