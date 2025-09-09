@@ -490,6 +490,7 @@ scan_thread(gpointer data)
     struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
     int idle_counter = 0;
     int dynamic_timeout = BASE_TIMEOUT_MS;
+    int ready = 0; // Whether there is data to read from the pipe
     gboolean eof_received = FALSE;
 
     while (!eof_received)
@@ -502,25 +503,21 @@ scan_thread(gpointer data)
           break;
         }
 
-        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout);
-        int ready = poll(&fds, 1, timeout);
+        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout, &ready);
+        ready = poll(&fds, 1, timeout);
 
         if (ready > 0)
         {
-            idle_counter = 0;
-            dynamic_timeout = BASE_TIMEOUT_MS;
+          process_output_lines(&ring_buf, &acc, ctx);
 
-            if (!handle_io_event(&io_ctx))
-            {
-                eof_received = TRUE;
-            }
+          if (!handle_io_event(&io_ctx))
+          {
+              eof_received = TRUE;
+          }
         }
-
-        process_output_lines(&ring_buf, &acc, ctx);
     }
 
     /*Clean up*/
-    process_output_lines(&ring_buf, &acc, ctx);
     gboolean success = wait_for_process(pid, TRUE);
     send_final_status(ctx, success);
 

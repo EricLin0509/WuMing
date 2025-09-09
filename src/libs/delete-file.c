@@ -222,7 +222,7 @@ try_send_data(const char *fifo_path, pid_t pid, HelperData *helper_data)
 
         fifo_fd = open(fifo_path, O_WRONLY | O_NONBLOCK); // Use `O_NONBLOCK` to try connection
 
-        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout);
+        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout, NULL);
         int ready = poll(&fds, 1, timeout); // Use poll to wait for the response
 
         if (ready > 0 && (fds.revents & POLLOUT))

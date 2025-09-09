@@ -38,8 +38,12 @@ typedef struct {
 } IOContext;
 
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
+/*
+  * ready_status: this is the result of `poll()`, it indicates whether the subprocess is ready to read/write
+  * This parameter can be NULL if you don't need to reset the idle_counter
+*/
 int
-calculate_dynamic_timeout(int *idle_counter, int *current_timeout);
+calculate_dynamic_timeout(int *idle_counter, int *current_timeout, int *ready_status);
 
 /* Wait for the process to finish and return the exit status */
 /*

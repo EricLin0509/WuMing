@@ -30,10 +30,24 @@
 #include "subprocess-components.h"
 
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
+/*
+  * ready_status: this is the result of `poll()`, it indicates whether the subprocess is ready to read/write
+  * This parameter can be NULL if you don't need to reset the idle_counter
+*/
 int
-calculate_dynamic_timeout(int *idle_counter, int *current_timeout)
+calculate_dynamic_timeout(int *idle_counter, int *current_timeout, int *ready_status)
 {
+    /* Check the input parameters */
+    g_return_val_if_fail(idle_counter != NULL, 0);
+    g_return_val_if_fail(current_timeout != NULL, 0);
+
     const int jitter = rand() % JITTER_RANGE; // Add random jitter to the timeout to minimize the wake up of threads at the same time
+
+    if (ready_status != NULL && *ready_status > 0) // Optional parameter, reset the idle_counter if the subprocess is ready to read/write
+    {
+        *idle_counter = 0; // Reset the idle_counter if the subprocess is ready to read/write
+        *current_timeout = BASE_TIMEOUT_MS; // Reset the timeout to the base value
+    }
 
     if (++(*idle_counter) > MAX_IDLE_COUNT)
     {
