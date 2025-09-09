@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
 
@@ -205,4 +206,17 @@ spawn_new_process_no_pipes(pid_t *pid, const char *path, const char *command, ..
     }
 
     return TRUE;
+}
+
+/* Check whether the subprocess is still alive */
+gboolean
+is_subprocess_alive(pid_t pid)
+{
+    int status;
+    pid_t result = waitpid(pid, &status, WNOHANG); // Use `WNOHANG` to check if the process is still alive
+
+    if (result == 0) return TRUE; // The process is still alive
+    if (result == -1) return FALSE; // Error occurred
+
+    return WIFEXITED(status) && WEXITSTATUS(status) == 0; // The process has exited with status 0
 }

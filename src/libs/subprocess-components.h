@@ -69,3 +69,7 @@ spawn_new_process(int pipefd[2], pid_t *pid, const char *path, const char *comma
 // This function MUST end with a NULL argument to indicate the end of the arguments list
 gboolean
 spawn_new_process_no_pipes(pid_t *pid, const char *path, const char *command, ...);
+
+/* Check whether the subprocess is still alive */
+gboolean
+is_subprocess_alive(pid_t pid);

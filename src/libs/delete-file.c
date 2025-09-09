@@ -27,6 +27,7 @@
 #include <sys/wait.h>
 #include <sys/random.h>
 #include <fcntl.h>
+#include <poll.h>
 
 #include "delete-file.h"
 #include "wuming-unlinkat-helper.h"
@@ -200,6 +201,60 @@ generate_auth_key(void)
     return key;
 }
 
+/* Try to send the data through the FIFO and wait for the response */
+static gboolean
+try_send_data(const char *fifo_path, pid_t pid, HelperData *helper_data)
+{
+    int fifo_fd = -1;
+
+    struct pollfd fds = { .fd = fifo_fd, .events = POLLOUT };
+    int idle_counter = 0;
+    int dynamic_timeout = BASE_TIMEOUT_MS;
+
+    /* Try `O_NONBLOCK` to try connection and wait for the response */
+    while (fifo_fd == -1)
+    {
+        if (!is_subprocess_alive(pid))
+        {
+            g_critical("[ERROR] Helper process exit unexpectedly");
+            return FALSE;
+        }
+
+        fifo_fd = open(fifo_path, O_WRONLY | O_NONBLOCK); // Use `O_NONBLOCK` to try connection
+
+        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout);
+        int ready = poll(&fds, 1, timeout); // Use poll to wait for the response
+
+        if (ready > 0 && (fds.revents & POLLOUT))
+        {
+            fifo_fd = open(fifo_path, O_WRONLY); // Open the FIFO in Block mode immediately after suceessful connection
+            break;
+        }
+    }
+
+    if (fcntl(fifo_fd, F_GETFD) == -1) // Get the file descriptor flags to check if it's a pipe
+    {
+        g_critical("[ERROR] Failed to get file descriptor flags: %s", strerror(errno));
+        return FALSE;
+    }
+
+    ssize_t written = write(fifo_fd, helper_data, HELPER_DATA_SIZE);
+    if (written != HELPER_DATA_SIZE)
+    {
+        g_critical("[ERROR] FIFO write incomplete: %zd of %zu bytes written", written, HELPER_DATA_SIZE);
+
+        if (errno == EPIPE) g_critical("[ERROR] Broken pipe, helper process exit unexpectedly");
+        else g_critical("Filesystem error: %s", strerror(errno));
+
+        close(fifo_fd);
+        return FALSE;
+    }
+
+    close(fifo_fd);
+
+    return TRUE;
+}
+
 /* Delete threat files in elevated mode */
 static void
 delete_threat_file_elevated(DeleteFileData *data)
@@ -246,24 +301,8 @@ delete_threat_file_elevated(DeleteFileData *data)
     };
 
     /* Send the data through the FIFO */
-    int fifo_fd = open(fifo_path, O_WRONLY);
-    if (fifo_fd == -1)
-    {
-        g_critical("[ERROR] Failed to open FIFO");
-        unlink(fifo_path);
-        error_operation(data, NULL);
-        return;
-    }
+    if (!try_send_data(fifo_path, pid, &helper_data)) goto skipped_elevated_mode;
 
-    ssize_t written = write(fifo_fd, &helper_data, HELPER_DATA_SIZE);
-    if (written != HELPER_DATA_SIZE)
-    {
-        g_critical("[ERROR] FIFO write incomplete: %zd of %zu bytes written", written, HELPER_DATA_SIZE);
-        close(fifo_fd);
-        goto error_clean_up;
-    }
-
-    close(fifo_fd);
     if (!wait_for_process(pid, FALSE))
     {
         g_critical("[ERROR] Helper process exit with error");
@@ -279,6 +318,11 @@ delete_threat_file_elevated(DeleteFileData *data)
 error_clean_up:
     unlink(fifo_path);
     error_operation(data, NULL);
+    return;
+
+skipped_elevated_mode:
+    g_warning("[WARNING] User cancelled the elevation request");
+    unlink(fifo_path);
     return;
 }
 
