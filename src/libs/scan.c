@@ -255,6 +255,16 @@ output_threat_path(ScanContext *ctx) // This will add to the AdwStatusPage
   g_mutex_unlock(&ctx->threats_mutex);
 }
 
+/* clear the GList `data` field callback function */
+static inline void
+clear_list_elements_func(void *data)
+{
+  g_return_if_fail(data);
+  DeleteFileData *delete_data = data; // Cast the data to `DeleteFileData` pointer
+  delete_file_data_clear(delete_data);
+}
+
+/* clear all the threat paths in the list view and the list of threat paths */
 static void
 clear_threat_paths(ScanContext *ctx)
 {
@@ -276,7 +286,7 @@ clear_threat_paths(ScanContext *ctx)
 
   if (ctx->threat_paths)
   {
-    g_list_free_full(g_steal_pointer(&ctx->threat_paths), g_free); // Free the threat paths list
+    g_list_free_full(g_steal_pointer(&ctx->threat_paths), (GDestroyNotify)clear_list_elements_func); // Free the threat paths list
     ctx->threat_paths = NULL;
   }
 
