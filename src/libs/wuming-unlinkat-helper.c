@@ -26,15 +26,23 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <signal.h>
+#include <sys/mman.h>
 
 #include "wuming-unlinkat-helper.h"
 #include "file-security.h"
 
 /* Verify the authentication key */
-static inline gboolean 
+static inline gboolean
 verify_key(uint32_t expected, uint32_t received)
 {
     return expected == received;
+}
+
+/* Verify the magic number of the shared memory */
+static inline gboolean 
+verify_magic(uint32_t magic)
+{
+    return magic == SHM_MAGIC;
 }
 
 /* Get the authentication key from the command line argument */
@@ -120,40 +128,44 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     // Check the number of command line arguments
     if (argc != 4)
     {
-        g_critical("Invalid arguments");
-        g_critical("Usage: %s <fifo_path> <file_path> <auth_key>", argv[0]);
+        g_critical("[ERROR] Invalid arguments");
+        g_critical("Usage: %s <shm_name> <file_path> <auth_key>", argv[0]);
         return EXIT_FAILURE;
     }
 
-    // Get the fifo path and file path from the command line arguments
-    const char *fifo_path = argv[1];
+    // Get the shm name and file path from the command line arguments
+    const char *shm_name = argv[1];
     const char *file_path = argv[2];
 
-    int fifo_fd = open(fifo_path, O_RDONLY);
-    if (fifo_fd < 0)
+    int shm_fd = shm_open(shm_name, O_RDONLY, 0); // Open the shared memory
+    if (shm_fd < 0)
     {
-        g_critical("Failed to open the fifo: %s", fifo_path);
+        g_critical("[ERROR] Failed to open the shared memory: %s", shm_name);
         return EXIT_FAILURE;
     }
 
-    HelperData helper_data = {0};
-    ssize_t read_bytes = read(fifo_fd, &helper_data, HELPER_DATA_SIZE);
-    if (read_bytes != HELPER_DATA_SIZE)
+    HelperData *helper_data = mmap(NULL, HELPER_DATA_SIZE, PROT_READ, MAP_SHARED, shm_fd, 0); // Map the shared memory
+    if (helper_data == MAP_FAILED)
     {
-        g_critical("Data read incomplete: %zd of %lu bytes received!\n", 
-               read_bytes, HELPER_DATA_SIZE);
-        close(fifo_fd);
+        g_critical("[ERROR] Failed to map the shared memory: %s", shm_name);
+        close(shm_fd);
         return EXIT_FAILURE;
     }
     g_print("[INFO] HelperData received!\n");
 
+    // Verify the magic number of the shared memory
+    if (!verify_magic(helper_data->shm_magic))
+    {
+        g_critical("[ERROR] Invalid magic number of the shared memory: %s", shm_name);
+        goto error_clean_up;
+    }
+
     // Get authentication key from the command line argument
     const uint32_t auth_key = get_auth_key(argv[3]);
-    if (!verify_key(auth_key, helper_data.auth_key))
+    if (!verify_key(auth_key, helper_data->auth_key))
     {
-        g_critical("Authentication key mismatch, aborting...");
-        close(fifo_fd);
-        return EXIT_FAILURE;
+        g_critical("[ERROR] Authentication key mismatch, aborting...");
+        goto error_clean_up;
     }
 
     FileSecurityContext *context = file_security_context_new(file_path); // Create the file security context
@@ -161,10 +173,10 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     secure_open_and_verify(context, file_path); // Take snapshot of the file and directory
 
     // Check directory security status
-    if (!validate_by_stat(context, &helper_data.data.dir_stat, TRUE) ||
-        !validate_by_stat(context, &helper_data.data.file_stat, FALSE)) // Check the file security status
+    if (!validate_by_stat(context, &helper_data->data.dir_stat, TRUE) ||
+        !validate_by_stat(context, &helper_data->data.file_stat, FALSE)) // Check the file security status
     {
-        g_critical("The directory or file has been modified");
+        g_critical("[ERROR] The directory or file has been modified");
         goto error_clean_up;
     }
 
@@ -172,7 +184,7 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     if (unlinkat(context->dir_fd, 
                     context->base_name, 0) == -1)
     {
-        g_critical("Failed to unlink the file: %s", g_strerror(errno));
+        g_critical("[ERROR] Failed to unlink the file: %s", g_strerror(errno));
         goto error_clean_up;
     }
 
@@ -180,13 +192,15 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
 
     file_security_context_clear(context); // Free the file security context
     g_strfreev (argv); // Free the command line arguments
-    close(fifo_fd);
+    munmap(helper_data, HELPER_DATA_SIZE); // Unmap the shared memory
+    close(shm_fd);
     return EXIT_SUCCESS;
 
 error_clean_up:
     file_security_context_clear(context); // Free the file security context
     g_strfreev (argv); // Free the command line arguments
-    close(fifo_fd);
+    munmap(helper_data, HELPER_DATA_SIZE); // Unmap the shared memory
+    close(shm_fd);
     return EXIT_FAILURE;
 }
 

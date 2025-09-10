@@ -31,6 +31,9 @@
 #define STAT_DATA_SIZE (sizeof(StatData))
 #define HELPER_DATA_SIZE (sizeof(HelperData))
 
+#define DEFAULT_AUTH_KEY 0xCA12D4E5 // The default authentication key to verify the received data
+#define SHM_MAGIC 0x57554D49 // A magic number to verify the shared memory
+
 /* The original data to provide */
 typedef struct {
     struct stat dir_stat; // Original directory stat
@@ -40,5 +43,6 @@ typedef struct {
 /* The struct need to be passed to the helper program */
 typedef struct {
     uint32_t auth_key; // The authentication key to verify the FIFO
+    uint32_t shm_magic; // The magic number to verify the shared memory
     StatData data; // The data to provide
 } HelperData; // Data struct to pass to helper program

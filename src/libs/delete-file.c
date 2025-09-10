@@ -27,7 +27,7 @@
 #include <sys/wait.h>
 #include <sys/random.h>
 #include <fcntl.h>
-#include <poll.h>
+#include <sys/mman.h>
 
 #include "delete-file.h"
 #include "wuming-unlinkat-helper.h"
@@ -195,64 +195,10 @@ generate_auth_key(void)
     uint32_t key = 0;
     if (getrandom(&key, sizeof(key), 0) != sizeof(key))
     {
-        g_critical("Failed to generate secure key: %s", strerror(errno));
-        return 0;
+        g_warning("[WARNING] Failed to generate random key, using default key!");
+        return DEFAULT_AUTH_KEY;
     }
     return key;
-}
-
-/* Try to send the data through the FIFO and wait for the response */
-static gboolean
-try_send_data(const char *fifo_path, pid_t pid, HelperData *helper_data)
-{
-    int fifo_fd = -1;
-
-    struct pollfd fds = { .fd = fifo_fd, .events = POLLOUT };
-    int idle_counter = 0;
-    int dynamic_timeout = BASE_TIMEOUT_MS;
-
-    /* Try `O_NONBLOCK` to try connection and wait for the response */
-    while (fifo_fd == -1)
-    {
-        if (!is_subprocess_alive(pid))
-        {
-            g_critical("[ERROR] Helper process exit unexpectedly");
-            return FALSE;
-        }
-
-        fifo_fd = open(fifo_path, O_WRONLY | O_NONBLOCK); // Use `O_NONBLOCK` to try connection
-
-        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout, NULL);
-        int ready = poll(&fds, 1, timeout); // Use poll to wait for the response
-
-        if (ready > 0 && (fds.revents & POLLOUT))
-        {
-            fifo_fd = open(fifo_path, O_WRONLY); // Open the FIFO in Block mode immediately after suceessful connection
-            break;
-        }
-    }
-
-    if (fcntl(fifo_fd, F_GETFD) == -1) // Get the file descriptor flags to check if it's a pipe
-    {
-        g_critical("[ERROR] Failed to get file descriptor flags: %s", strerror(errno));
-        return FALSE;
-    }
-
-    ssize_t written = write(fifo_fd, helper_data, HELPER_DATA_SIZE);
-    if (written != HELPER_DATA_SIZE)
-    {
-        g_critical("[ERROR] FIFO write incomplete: %zd of %zu bytes written", written, HELPER_DATA_SIZE);
-
-        if (errno == EPIPE) g_critical("[ERROR] Broken pipe, helper process exit unexpectedly");
-        else g_critical("Filesystem error: %s", strerror(errno));
-
-        close(fifo_fd);
-        return FALSE;
-    }
-
-    close(fifo_fd);
-
-    return TRUE;
 }
 
 /* Delete threat files in elevated mode */
@@ -261,37 +207,16 @@ delete_threat_file_elevated(DeleteFileData *data)
 {
     g_return_if_fail(data && data->security_context);
 
-    // Generate a random name for the FIFO
-    char fifo_path[256];
-    snprintf(fifo_path, sizeof(fifo_path), "/tmp/wuming_fifo_%d_%d", getpid(), rand());
-
-    // Create and set permissions for the FIFO
-    if (mkfifo(fifo_path, 0600) == -1)
-    {
-        g_critical("[ERROR] mkfifo failed: %s", strerror(errno));
-        error_operation(data, NULL);
-        return;
-    }
-
     // Generate the auth key for authentication
     uint32_t gen_key = generate_auth_key();
 
     char key_str[16]; // Use for passing the key through the command line
     snprintf(key_str, sizeof(key_str), "%" PRIu32, gen_key);
-    
-    pid_t pid;
-
-    if (!spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
-                                    fifo_path, data->path, key_str, NULL))
-    {
-        g_critical("[ERROR] Failed to spawn helper process: %s", strerror(errno));
-        error_operation(data, NULL);
-        return;
-    }
 
     /* Prepare the data to send */
     HelperData helper_data = {
         .auth_key = gen_key,
+        .shm_magic = SHM_MAGIC,
 
         // StatData
         .data = {
@@ -300,8 +225,44 @@ delete_threat_file_elevated(DeleteFileData *data)
         }
     };
 
-    /* Send the data through the FIFO */
-    if (!try_send_data(fifo_path, pid, &helper_data)) goto skipped_elevated_mode;
+    // Create a shared memory for passing data between the helper process and the main process
+    unsigned short secure_rand;
+    getrandom(&secure_rand, sizeof(secure_rand), 0); // Create a random number for the shared memory name
+
+    char shm_name[256];
+    snprintf(shm_name, sizeof(shm_name), "/wuming_shm_%d_%d", getpid(), secure_rand);
+
+    // Configure the shared memory
+    int shm_fd = shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, 0600);
+    if (shm_fd == -1)
+    {
+        g_critical("[ERROR] Failed to create shared memory: %s", strerror(errno));
+        error_operation(data, NULL);
+        return;
+    }
+    ftruncate(shm_fd, HELPER_DATA_SIZE); // Set the size of the shared memory
+
+    HelperData *shm_data = mmap(NULL, HELPER_DATA_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); // Map the shared memory
+    if (shm_data == MAP_FAILED) // Check if the mapping is successful
+    {
+        g_critical("[ERROR] Failed to map shared memory: %s", strerror(errno));
+        error_operation(data, NULL);
+        shm_unlink(shm_name);
+        return;
+    }
+
+    *shm_data = helper_data; // Copy the helper data to the shared memory
+    munmap(shm_data, HELPER_DATA_SIZE); // Unmap the shared memory
+    close(shm_fd);
+
+    pid_t pid;
+
+    if (!spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
+                                    shm_name, data->path, key_str, NULL))
+    {
+        g_critical("[ERROR] Failed to spawn helper process: %s", strerror(errno));
+        goto error_clean_up;
+    }
 
     if (!wait_for_process(pid, FALSE))
     {
@@ -310,19 +271,14 @@ delete_threat_file_elevated(DeleteFileData *data)
     }
 
     // Clean up
-    unlink(fifo_path);
+    shm_unlink(shm_name);
     gtk_list_box_remove(GTK_LIST_BOX(data->list_box), data->action_row); // Remove the action row from the list view
     log_deletion_attempt(data->path);
     return;
 
 error_clean_up:
-    unlink(fifo_path);
+    shm_unlink(shm_name);
     error_operation(data, NULL);
-    return;
-
-skipped_elevated_mode:
-    g_warning("[WARNING] User cancelled the elevation request");
-    unlink(fifo_path);
     return;
 }
 
