@@ -551,9 +551,15 @@ cancel_scan_attempt(ScanContext *ctx)
 {
   gboolean is_completed = FALSE;
   get_completion_state(ctx, &is_completed, NULL);
+
+	/* Check whether the current page is the main page */
+	AdwNavigationPage *current_page = adw_navigation_view_get_visible_page(ADW_NAVIGATION_VIEW(ctx->navigation_view)); // Get the current page
+	const gboolean is_main_page = (current_page != ctx->cancel_navigation_page && current_page != ctx->threat_navigation_page);
+
   /* Only push the cancel page if the scan is not completed */
   if (!is_completed) adw_navigation_view_push(ADW_NAVIGATION_VIEW(ctx->navigation_view), ctx->cancel_navigation_page);
-  else clear_box_list_and_force_close(ctx);
+	/* Only close the dialog if the current page is the main page */
+  else if (is_main_page) clear_box_list_and_force_close(ctx); // If the current page is the main page, clear the list view and force close the dialog
 }
 
 /* Comfirm the cancelation of the scan */
