@@ -372,22 +372,24 @@ update_context_unref(void *ctx)
 
 /* thread-safe method to get/set states */
 static void
-set_completion_state(UpdateContext *ctx, gboolean completed, gboolean success)
+set_completion_state(void *ctx, gboolean completed, gboolean success)
 {
-  g_mutex_lock(&ctx->mutex);
-  ctx->completed = completed;
-  ctx->success = success;
-  g_mutex_unlock(&ctx->mutex);
+  UpdateContext *context = (UpdateContext*)ctx;
+  g_mutex_lock(&context->mutex);
+  context->completed = completed;
+  context->success = success;
+  g_mutex_unlock(&context->mutex);
 }
 
 static void
-get_completion_state(UpdateContext *ctx, gboolean *out_completed, gboolean *out_success)
+get_completion_state(void *ctx, gboolean *out_completed, gboolean *out_success)
 {
-  g_mutex_lock(&ctx->mutex);
+  UpdateContext *context = (UpdateContext*)ctx;
+  g_mutex_lock(&context->mutex);
   /* If one of the output pointers is NULL, only return the another one */
-  if (out_completed) *out_completed = ctx->completed;
-  if (out_success) *out_success = ctx->success;
-  g_mutex_unlock(&ctx->mutex);
+  if (out_completed) *out_completed = context->completed;
+  if (out_success) *out_success = context->success;
+  g_mutex_unlock(&context->mutex);
 }
 
 static void
@@ -458,39 +460,6 @@ update_complete_callback(gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
-static void 
-send_final_status(UpdateContext *ctx, gboolean success)
-{
-    set_completion_state(ctx, TRUE, success);
-
-    const char *status_text = success ? 
-        gettext("Update Complete") : gettext("Update Failed");
-    
-    /* Create final status message */
-    IdleData *complete_data = g_new0(IdleData, 1);
-    complete_data->context = update_context_ref(ctx);
-    complete_data->message = g_strdup(status_text);
-    
-    /* Send final status message to main thread */
-    if (G_LIKELY((ctx || g_atomic_int_get(&ctx->ref_count) > 0 )
-                      && ctx->update_status_page))
-    {
-        g_main_context_invoke_full(
-                       g_main_context_default(),
-                       G_PRIORITY_HIGH_IDLE,
-                       (GSourceFunc) update_complete_callback,
-                       complete_data,
-                       (GDestroyNotify)resource_clean_up);
-    }
-    else
-    {
-        g_warning("Attempted to send status to invalid context");
-        update_context_unref(complete_data->context);
-        g_free(complete_data->message);
-        g_free(complete_data);
-    }
-}
-
 static gpointer
 update_thread(gpointer data)
 {
@@ -533,7 +502,7 @@ update_thread(gpointer data)
         
         if (ready > 0)
         {        
-          process_output_lines(&io_ctx, update_ui_callback, update_context_ref, (void *)ctx, resource_clean_up);
+          process_output_lines(&io_ctx, update_context_ref, (void *)ctx, update_ui_callback, resource_clean_up);
 
           if (!handle_io_event(&io_ctx))
           {
@@ -544,7 +513,12 @@ update_thread(gpointer data)
 
     /*Clean up*/
     gboolean success = wait_for_process(pid, FALSE);
-    send_final_status(ctx, success);
+    set_completion_state(ctx, TRUE, success);
+
+    const char *status_text = success ?
+        gettext("Update Complete") : gettext("Update Failed");
+
+    send_final_message(update_context_ref, (void *)ctx, status_text, success, update_complete_callback, resource_clean_up);
     
     close(pipefd[0]);
     update_context_unref(ctx);

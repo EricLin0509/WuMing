@@ -407,51 +407,6 @@ scan_complete_callback(gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
-static void
-send_final_status(ScanContext *ctx, gboolean success)
-{
-    set_completion_state(ctx, TRUE, success);
-
-    const char *status_text = NULL;
-    if (get_cancel_scan(ctx)) // User cancelled the scan
-    {
-      status_text = gettext("Scan Canceled");
-    } 
-    else if (success) // Scan completed successfully
-    {
-        status_text = gettext("Scan Complete");
-    }
-    else // Scan failed
-    {
-        status_text = gettext("Scan Failed");
-    }
-
-    /* Create final status message */
-    IdleData *complete_data = g_new0(IdleData, 1);
-
-    complete_data->context = scan_context_ref(ctx);
-    complete_data->message = g_strdup(status_text);
-
-    /* Send final status message to main thread */
-    if (G_LIKELY((ctx || g_atomic_int_get(&ctx->ref_count) > 0 )
-                      && ctx->scan_status_page))
-    {
-        g_main_context_invoke_full(
-                       g_main_context_default(),
-                       G_PRIORITY_HIGH_IDLE,
-                       (GSourceFunc) scan_complete_callback,
-                       complete_data,
-                       (GDestroyNotify)resource_clean_up);
-    }
-    else
-    {
-        g_warning("Attempted to send status to invalid context");
-        scan_context_unref(complete_data->context);
-        g_free(complete_data->message);
-        g_free(complete_data);
-    }
-}
-
 static gpointer
 scan_thread(gpointer data)
 {
@@ -502,7 +457,7 @@ scan_thread(gpointer data)
 
         if (ready > 0)
         {
-          process_output_lines(&io_ctx, scan_ui_callback, scan_context_ref, (void *)ctx, resource_clean_up);
+          process_output_lines(&io_ctx, scan_context_ref, (void *)ctx, scan_ui_callback, resource_clean_up);
 
           if (!handle_io_event(&io_ctx))
           {
@@ -513,7 +468,23 @@ scan_thread(gpointer data)
 
     /*Clean up*/
     gboolean success = wait_for_process(pid, TRUE);
-    send_final_status(ctx, success);
+    set_completion_state(ctx, TRUE, success);
+
+    const char *status_text = NULL;
+    if (get_cancel_scan(ctx)) // User cancelled the scan
+    {
+      status_text = gettext("Scan Canceled");
+    }
+    else if (success) // Scan completed successfully
+    {
+        status_text = gettext("Scan Complete");
+    }
+    else // Scan failed
+    {
+        status_text = gettext("Scan Failed");
+    }
+
+    send_final_message(scan_context_ref, (void *)ctx, status_text, success, scan_complete_callback, resource_clean_up);
 
     close(pipefd[0]);
     return NULL;
