@@ -66,11 +66,6 @@ typedef struct {
   volatile gint ref_count;
 } ScanContext;
 
-typedef struct {
-  ScanContext *ctx;
-  char *message;
-} IdleData;
-
 static ScanContext*
 scan_context_new(void)
 {
@@ -87,33 +82,35 @@ scan_context_new(void)
   return ctx;
 }
 
-static ScanContext*
-scan_context_ref(ScanContext *ctx)
+static void*
+scan_context_ref(void *ctx)
 {
-  g_return_val_if_fail(ctx != NULL, NULL);
-  g_return_val_if_fail(g_atomic_int_get(&ctx->ref_count) > 0, NULL);
-  if (ctx) g_atomic_int_inc(&ctx->ref_count);
-  return ctx;
+  ScanContext *context = (ScanContext*)ctx;
+  g_return_val_if_fail(context != NULL, NULL);
+  g_return_val_if_fail(g_atomic_int_get(&context->ref_count) > 0, NULL);
+  if (context) g_atomic_int_inc(&context->ref_count);
+  return (void *)context;
 }
 
 static void
-scan_context_unref(ScanContext *ctx)
+scan_context_unref(void *ctx)
 {
-  if (ctx && g_atomic_int_dec_and_test(&ctx->ref_count))
+  ScanContext *context = (ScanContext*)ctx;
+  if (context && g_atomic_int_dec_and_test(&context->ref_count))
   {
-    if (ctx->cancellable) g_object_unref(ctx->cancellable);
+    if (context->cancellable) g_object_unref(context->cancellable);
 
-    g_mutex_clear(&ctx->mutex);
-    g_mutex_clear(&ctx->threats_mutex);
+    g_mutex_clear(&context->mutex);
+    g_mutex_clear(&context->threats_mutex);
 
-    g_clear_pointer(&ctx->path, g_free);
+    g_clear_pointer(&context->path, g_free);
 
-    g_clear_signal_handler (&ctx->scan_dialog_handler_id, G_OBJECT (ctx->scan_dialog));
-    g_clear_signal_handler (&ctx->close_button_handler_id, G_OBJECT (ctx->close_button));
-    g_clear_signal_handler (&ctx->cancel_button_handler_id, G_OBJECT (ctx->cancel_button));
+    g_clear_signal_handler (&context->scan_dialog_handler_id, G_OBJECT (context->scan_dialog));
+    g_clear_signal_handler (&context->close_button_handler_id, G_OBJECT (context->close_button));
+    g_clear_signal_handler (&context->cancel_button_handler_id, G_OBJECT (context->cancel_button));
 
-    g_atomic_int_set(&ctx->ref_count, INT_MIN);
-    g_free(ctx);
+    g_atomic_int_set(&context->ref_count, INT_MIN);
+    g_free(context);
   }
 }
 
@@ -295,47 +292,50 @@ clear_threat_paths(ScanContext *ctx)
 }
 
 static void
-resource_clean_up(IdleData *data)
+resource_clean_up(gpointer user_data)
 {
-  scan_context_unref (data->ctx);
+  IdleData *data = (IdleData *)user_data; // Cast the data to IdleData struct
+  scan_context_unref (data->context);
   g_free(data->message);
   g_free(data);
 }
 
+/* The ui callback function for `process_output_lines()` */
 static gboolean
 scan_ui_callback(gpointer user_data)
 {
   IdleData *data = (IdleData *)user_data;
+  ScanContext *ctx = data->context;
 
-  g_return_val_if_fail(data && data->ctx && g_atomic_int_get(&data->ctx->ref_count) > 0, 
+  g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
                       G_SOURCE_REMOVE);
 
   char *status_marker = NULL; // Check file is OK or FOUND
 
   if ((status_marker = strstr(data->message, "FOUND")) != NULL)
   {
-    inc_total_files(data->ctx);
-    inc_total_threats(data->ctx);
+    inc_total_files(ctx);
+    inc_total_threats(ctx);
 
     /* Add threat path to the list */
     char *colon = strchr(data->message, ':'); // Find the colon separator
     if (colon)
     {
       *colon = '\0'; // Replace the colon with null terminator
-      add_threat_path(data->ctx, data->message);
+      add_threat_path(ctx, data->message);
     }
   }
-  else if ((status_marker = strstr(data->message, "OK")) != NULL) inc_total_files(data->ctx);
+  else if ((status_marker = strstr(data->message, "OK")) != NULL) inc_total_files(ctx);
 
-  gint total_files = get_total_files(data->ctx);
-  gint total_threats = get_total_threats(data->ctx);
+  gint total_files = get_total_files(ctx);
+  gint total_threats = get_total_threats(ctx);
 
   char *status_text = g_strdup_printf(gettext("%d files scanned\n%d threats found"), total_files, total_threats);
   
-  if (data->ctx->scan_status_page && GTK_IS_WIDGET(data->ctx->scan_status_page))
+  if (ctx->scan_status_page && GTK_IS_WIDGET(ctx->scan_status_page))
   {
     adw_status_page_set_description(
-      ADW_STATUS_PAGE(data->ctx->scan_status_page), 
+      ADW_STATUS_PAGE(ctx->scan_status_page), 
       status_text
     );
   }
@@ -349,79 +349,62 @@ static gboolean
 scan_complete_callback(gpointer user_data)
 {
   IdleData *data = user_data;
+  ScanContext *ctx = data->context;
 
-  g_return_val_if_fail(data && data->ctx && g_atomic_int_get(&data->ctx->ref_count) > 0, 
+  g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
                       G_SOURCE_REMOVE);
 
   gboolean is_success = FALSE;
-  get_completion_state(data->ctx, NULL, &is_success); // Get the completion state for thread-safe access
+  get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
-  if (get_cancel_scan(data->ctx)) // Check if the scan has been cancelled
+  if (get_cancel_scan(ctx)) // Check if the scan has been cancelled
   {
     adw_status_page_set_description(
-      ADW_STATUS_PAGE(data->ctx->scan_status_page),
+      ADW_STATUS_PAGE(ctx->scan_status_page),
       gettext("User cancelled the scan")
     );
   }
 
-  if (data->ctx->cancel_navigation_page && GTK_IS_WIDGET(data->ctx->cancel_navigation_page) &&
-      data->ctx->navigation_view && GTK_IS_WIDGET(data->ctx->navigation_view) && 
-      adw_navigation_view_get_visible_page(ADW_NAVIGATION_VIEW(data->ctx->navigation_view)) == data->ctx->cancel_navigation_page) // If the current page is the cancel page, pop it
+  if (ctx->cancel_navigation_page && GTK_IS_WIDGET(ctx->cancel_navigation_page) &&
+      ctx->navigation_view && GTK_IS_WIDGET(ctx->navigation_view) && 
+      adw_navigation_view_get_visible_page(ADW_NAVIGATION_VIEW(ctx->navigation_view)) == ctx->cancel_navigation_page) // If the current page is the cancel page, pop it
   {
     g_print("[INFO] Scan process done, popping the cancel page\n");
-    adw_navigation_view_pop(ADW_NAVIGATION_VIEW(data->ctx->navigation_view));
+    adw_navigation_view_pop(ADW_NAVIGATION_VIEW(ctx->navigation_view));
   }
 
-  if (data->ctx->total_threats > 0) // If threats found, output the list view
+  if (ctx->total_threats > 0) // If threats found, output the list view
   {
-    output_threat_path(data->ctx);
+    output_threat_path(ctx);
     
-    if (data->ctx->threat_button && GTK_IS_WIDGET(data->ctx->threat_button))
+    if (ctx->threat_button && GTK_IS_WIDGET(ctx->threat_button)) // If the threat found button is visible, show it
     {
-      gtk_widget_set_sensitive(data->ctx->threat_button, TRUE);
-      gtk_widget_set_visible(data->ctx->threat_button, TRUE);
+      gtk_widget_set_sensitive(ctx->threat_button, TRUE);
+      gtk_widget_set_visible(ctx->threat_button, TRUE);
     }
 
-    if (data->ctx->threat_navigation_page && GTK_IS_WIDGET(data->ctx->threat_navigation_page) &&
-        data->ctx->navigation_view && GTK_IS_WIDGET(data->ctx->navigation_view))
+    if (ctx->threat_navigation_page && GTK_IS_WIDGET(ctx->threat_navigation_page) &&
+        ctx->navigation_view && GTK_IS_WIDGET(ctx->navigation_view))
     {
-      adw_navigation_view_push(ADW_NAVIGATION_VIEW(data->ctx->navigation_view), data->ctx->threat_navigation_page);
+      adw_navigation_view_push(ADW_NAVIGATION_VIEW(ctx->navigation_view), ctx->threat_navigation_page);
     }
   }
 
-  if (data->ctx->scan_status_page && GTK_IS_WIDGET(data->ctx->scan_status_page))
+  if (ctx->scan_status_page && GTK_IS_WIDGET(ctx->scan_status_page)) // Set the title of the status page
   {
     adw_status_page_set_title(
-      ADW_STATUS_PAGE(data->ctx->scan_status_page),
+      ADW_STATUS_PAGE(ctx->scan_status_page),
       data->message
     );
   }
 
-  if (data->ctx->close_button && GTK_IS_WIDGET(data->ctx->close_button))
+  if (ctx->close_button && GTK_IS_WIDGET(ctx->close_button)) // Show close button if scan is complete
   {
-    gtk_widget_set_visible(data->ctx->close_button, TRUE);
-    gtk_widget_set_sensitive(data->ctx->close_button, TRUE);
+    gtk_widget_set_visible(ctx->close_button, TRUE);
+    gtk_widget_set_sensitive(ctx->close_button, TRUE);
   }
 
   return G_SOURCE_REMOVE;
-}
-
-static void
-process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, ScanContext *ctx)
-{
-    char *line;
-    while (ring_buffer_read_line(ring_buf, acc, &line))
-    {
-        IdleData *data = g_new0(IdleData, 1);
-        data->message = g_strdup(line);
-        data->ctx = scan_context_ref(ctx);
-        g_main_context_invoke_full(
-                       g_main_context_default(),
-                       G_PRIORITY_HIGH_IDLE,
-                       (GSourceFunc) scan_ui_callback,
-                       data,
-                       (GDestroyNotify)resource_clean_up);
-    }
 }
 
 static void
@@ -445,12 +428,13 @@ send_final_status(ScanContext *ctx, gboolean success)
 
     /* Create final status message */
     IdleData *complete_data = g_new0(IdleData, 1);
-    complete_data->ctx = scan_context_ref(ctx);
+
+    complete_data->context = scan_context_ref(ctx);
     complete_data->message = g_strdup(status_text);
 
     /* Send final status message to main thread */
-    if (G_LIKELY((complete_data->ctx || g_atomic_int_get(&complete_data->ctx->ref_count) > 0 )
-                      && complete_data->ctx->scan_status_page))
+    if (G_LIKELY((ctx || g_atomic_int_get(&ctx->ref_count) > 0 )
+                      && ctx->scan_status_page))
     {
         g_main_context_invoke_full(
                        g_main_context_default(),
@@ -462,7 +446,7 @@ send_final_status(ScanContext *ctx, gboolean success)
     else
     {
         g_warning("Attempted to send status to invalid context");
-        scan_context_unref(complete_data->ctx);
+        scan_context_unref(complete_data->context);
         g_free(complete_data->message);
         g_free(complete_data);
     }
@@ -518,7 +502,7 @@ scan_thread(gpointer data)
 
         if (ready > 0)
         {
-          process_output_lines(&ring_buf, &acc, ctx);
+          process_output_lines(&io_ctx, scan_ui_callback, scan_context_ref, (void *)ctx, resource_clean_up);
 
           if (!handle_io_event(&io_ctx))
           {

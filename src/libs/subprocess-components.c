@@ -28,6 +28,7 @@
 #include <sys/prctl.h>
 
 #include "subprocess-components.h"
+#include "ring-buffer.h"
 
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
 /*
@@ -128,6 +129,32 @@ build_command_args(const char *command, va_list args)
     g_ptr_array_add(argv, NULL);
 
     return argv;
+}
+
+/* Process the subprocess stdout message */
+/*
+  * io_ctx: the IO context
+  * callback_function: the callback function to process the output line
+  * context: the context data for the callback function
+  * destroy_notify: the cleanup function for the context data
+*/
+void
+process_output_lines(IOContext *io_ctx, GSourceFunc callback_function, RefFunc ref_function, gpointer context, GDestroyNotify destroy_notify)
+{
+    char *line;
+    while (ring_buffer_read_line(io_ctx->ring_buf, io_ctx->acc, &line))
+    {
+        IdleData *data = g_new0(IdleData, 1);
+        gchar *escaped = g_markup_escape_text(line, -1); // Escape the line for HTML output
+        data->message = escaped;
+        data->context = ref_function(context); // Add a reference to the context data and store it in the IdleData
+        g_main_context_invoke_full( // Invoke the callback function in the main context
+                       g_main_context_default(),
+                       G_PRIORITY_HIGH_IDLE,
+                       (GSourceFunc) callback_function,
+                       data,
+                       (GDestroyNotify)destroy_notify);
+    }
 }
 
 /* Spawn a new process */

@@ -338,11 +338,6 @@ typedef struct {
   volatile gint ref_count;
 } UpdateContext;
 
-typedef struct {
-  UpdateContext *ctx;
-  char *message;
-} IdleData;
-
 static UpdateContext*
 update_context_new(void)
 {
@@ -352,23 +347,25 @@ update_context_new(void)
   return ctx;
 }
 
-static UpdateContext*
-update_context_ref(UpdateContext *ctx)
+static void*
+update_context_ref(void *ctx)
 {
-  g_return_val_if_fail(ctx != NULL, NULL);
-  g_return_val_if_fail(g_atomic_int_get(&ctx->ref_count) > 0, NULL);
-  if (ctx) g_atomic_int_inc(&ctx->ref_count);
-  return ctx;
+  UpdateContext *context = (UpdateContext*)ctx;
+  g_return_val_if_fail(context != NULL, NULL);
+  g_return_val_if_fail(g_atomic_int_get(&context->ref_count) > 0, NULL);
+  if (context) g_atomic_int_inc(&context->ref_count);
+  return (void *)context;
 }
 
 static void
-update_context_unref(UpdateContext *ctx)
+update_context_unref(void *ctx)
 {
-  if (ctx && g_atomic_int_dec_and_test(&ctx->ref_count))
+  UpdateContext *context = (UpdateContext*)ctx;
+  if (context && g_atomic_int_dec_and_test(&context->ref_count))
   {
-    g_mutex_clear(&ctx->mutex);
-    g_atomic_int_set(&ctx->ref_count, INT_MIN);
-    g_free(ctx);
+    g_mutex_clear(&context->mutex);
+    g_atomic_int_set(&context->ref_count, INT_MIN);
+    g_free(context);
   }
 }
 
@@ -394,9 +391,10 @@ get_completion_state(UpdateContext *ctx, gboolean *out_completed, gboolean *out_
 }
 
 static void
-resource_clean_up(IdleData *data)
+resource_clean_up(gpointer user_data)
 {
-  update_context_unref (data->ctx);
+  IdleData *data = (IdleData *)user_data; // Cast the data to IdleData struct
+  update_context_unref (data->context);
   g_free(data->message);
   g_free(data);
 }
@@ -405,13 +403,14 @@ static gboolean
 update_ui_callback(gpointer user_data)
 {
   IdleData *data = (IdleData *)user_data;
+  UpdateContext *ctx = data->context;
 
-  g_return_val_if_fail(data && data->ctx && g_atomic_int_get(&data->ctx->ref_count) > 0, 
+  g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
                       G_SOURCE_REMOVE);
 
-  if (data->ctx && data->ctx->update_status_page && GTK_IS_WIDGET(data->ctx->update_status_page))
+  if (ctx && ctx->update_status_page && GTK_IS_WIDGET(ctx->update_status_page))
     adw_status_page_set_description(
-      ADW_STATUS_PAGE(data->ctx->update_status_page),
+      ADW_STATUS_PAGE(ctx->update_status_page),
       data->message
     );
 
@@ -422,59 +421,41 @@ static gboolean
 update_complete_callback(gpointer user_data)
 {
   IdleData *data = user_data;
+  UpdateContext *ctx = data->context;
 
-  g_return_val_if_fail(data && data->ctx && g_atomic_int_get(&data->ctx->ref_count) > 0, 
+  g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
                       G_SOURCE_REMOVE);
 
   gboolean is_success = FALSE;
-  get_completion_state(data->ctx, NULL, &is_success); // Get the completion state for thread-safe access
+  get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
-  if (data->ctx->update_status_page && GTK_IS_WIDGET(data->ctx->update_status_page))
+  if (ctx->update_status_page && GTK_IS_WIDGET(ctx->update_status_page))
   {
     adw_status_page_set_title(
-      ADW_STATUS_PAGE(data->ctx->update_status_page),
+      ADW_STATUS_PAGE(ctx->update_status_page),
       data->message
     );
   }
 
-  if (data->ctx->close_button && GTK_IS_WIDGET(data->ctx->close_button))
+  if (ctx->close_button && GTK_IS_WIDGET(ctx->close_button))
   {
-    gtk_widget_set_visible(data->ctx->close_button, TRUE);
-    gtk_widget_set_sensitive(data->ctx->close_button, TRUE);
+    gtk_widget_set_visible(ctx->close_button, TRUE);
+    gtk_widget_set_sensitive(ctx->close_button, TRUE);
   }
 
-  if (data->ctx->main_page && GTK_IS_WIDGET(data->ctx->main_page) && is_success) // Re-scan the signature if update is successful
+  if (ctx->main_page && GTK_IS_WIDGET(ctx->main_page) && is_success) // Re-scan the signature if update is successful
   {
     /*Re-scan the signature*/
     scan_result *result = g_new0 (scan_result, 1);
     scan_signature_date (result);
     is_signature_uptodate (result);
 
-    update_signature_page_show_date (UPDATE_SIGNATURE_PAGE (data->ctx->main_page), *result);
-    update_signature_page_show_isuptodate(UPDATE_SIGNATURE_PAGE (data->ctx->main_page), result->is_uptodate);
+    update_signature_page_show_date (UPDATE_SIGNATURE_PAGE (ctx->main_page), *result);
+    update_signature_page_show_isuptodate(UPDATE_SIGNATURE_PAGE (ctx->main_page), result->is_uptodate);
     g_free (result);
   }
 
   return G_SOURCE_REMOVE;
-}
-
-static void
-process_output_lines(RingBuffer *ring_buf, LineAccumulator *acc, UpdateContext *ctx)
-{
-    char *line;
-    while (ring_buffer_read_line(ring_buf, acc, &line))
-    {
-        IdleData *data = g_new0(IdleData, 1);
-        gchar *escaped = g_markup_escape_text(line, -1);
-        data->message = escaped;
-        data->ctx = update_context_ref(ctx);
-        g_main_context_invoke_full(
-                       g_main_context_default(),
-                       G_PRIORITY_HIGH_IDLE,
-                       (GSourceFunc) update_ui_callback,
-                       data,
-                       (GDestroyNotify)resource_clean_up);
-    }
 }
 
 static void 
@@ -487,12 +468,12 @@ send_final_status(UpdateContext *ctx, gboolean success)
     
     /* Create final status message */
     IdleData *complete_data = g_new0(IdleData, 1);
-    complete_data->ctx = update_context_ref(ctx);
+    complete_data->context = update_context_ref(ctx);
     complete_data->message = g_strdup(status_text);
     
     /* Send final status message to main thread */
-    if (G_LIKELY((complete_data->ctx || g_atomic_int_get(&complete_data->ctx->ref_count) > 0 )
-                      && complete_data->ctx->update_status_page))
+    if (G_LIKELY((ctx || g_atomic_int_get(&ctx->ref_count) > 0 )
+                      && ctx->update_status_page))
     {
         g_main_context_invoke_full(
                        g_main_context_default(),
@@ -504,7 +485,7 @@ send_final_status(UpdateContext *ctx, gboolean success)
     else
     {
         g_warning("Attempted to send status to invalid context");
-        update_context_unref(complete_data->ctx);
+        update_context_unref(complete_data->context);
         g_free(complete_data->message);
         g_free(complete_data);
     }
@@ -552,7 +533,7 @@ update_thread(gpointer data)
         
         if (ready > 0)
         {        
-          process_output_lines(&ring_buf, &acc, ctx);
+          process_output_lines(&io_ctx, update_ui_callback, update_context_ref, (void *)ctx, resource_clean_up);
 
           if (!handle_io_event(&io_ctx))
           {

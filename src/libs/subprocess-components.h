@@ -31,11 +31,18 @@
 #define BASE_TIMEOUT_MS 50
 #define MAX_TIMEOUT_MS 1000
 
+typedef void * (*RefFunc)(void *context); // reference function for the context data
+
 typedef struct {
     int pipefd;
     RingBuffer *ring_buf;
     LineAccumulator *acc;
 } IOContext;
+
+typedef struct {
+    void *context; // context that store some GTKWidgets or other data (e.g. some GTKWidgets you want to control it)
+    char *message; // message to send to the subprocess
+} IdleData;
 
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
 /*
@@ -58,6 +65,17 @@ wait_for_process(pid_t pid, gboolean is_scan_process);
 /* Handle the input/output event */
 gboolean
 handle_io_event(IOContext *io_ctx);
+
+/* Process the subprocess stdout message */
+/*
+  * io_ctx: the IO context
+  * callback_function: the callback function to process the output lines
+  * context: the context data for the callback function
+  * ref_function: the reference function for the context data
+  * destroy_notify: the cleanup function for the context data
+*/
+void
+process_output_lines(IOContext *io_ctx, GSourceFunc callback_function, RefFunc ref_function, gpointer context, GDestroyNotify destroy_notify);
 
 /* Spawn a new process */
 // path & command: use for `execv()`
