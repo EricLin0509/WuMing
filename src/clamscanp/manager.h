@@ -30,10 +30,14 @@
 #include <stdbool.h>
 #include <semaphore.h>
 #include <clamav.h>
-#include <linux/limits.h>
+#include <stdatomic.h>
+
+
+#ifndef PATH_MAX // `PATH_MAX` only exists in Linux
+#define PATH_MAX 4096 // maximum length of path
+#endif
 
 #define MAX_PROCESSES 64 // maximum number of processes can be used for scanning
-#define SHM_KEY 0x12345678 // shared memory key
 #define MAX_TASKS 4096 // maximum number of tasks can be added to the task queue
 
 /* Task type to indicate what kind of task to perform */
@@ -63,6 +67,9 @@ typedef struct {
     ScanTask tasks[MAX_TASKS]; // The task queue
 } SharedData;
 
+/* Turn user input path into absolute path */
+char *get_absolute_path(const char *orignal_path);
+
 /* Check if the given path is a directory */
 bool is_directory(const char *path);
 
@@ -71,6 +78,38 @@ bool is_regular_file(const char *path);
 
 /* Initialize the ClamAV engine */
 struct cl_engine *init_engine(struct cl_scan_options *scanoptions);
+
+/* Due to macOS doesn't support `sem_timedwait()`, so use a alternative implementation of `sem_timedwait()` */
+/*
+  * max_timeout_ms: the maximum timeout in milliseconds for waiting the semaphore
+*/
+int sem_timewait(sem_t *restrict sem, const size_t max_timeout_ms);
+
+/* Spawn a new process */
+/*
+  * pid: a pointer or an array of pid_t to store the pid of the child process
+  * num_of_process: the number of processes to be spawned
+  * 
+  * mission_callback: the function to be executed in the child process
+  * mission_callback_args: [OPTIONAL] the arguments to be passed to the `mission_callback`
+  *
+  * error_callback: [OPTIONAL] the function to be executed if an error occurs when spawning a process
+  * error_callback_args: [OPTIONAL] the arguments to be passed to the `error_callback`
+*/
+void spawn_new_process(pid_t *pid, size_t num_of_process,
+                     void (*mission_callback)(void *args), void *mission_callback_args, 
+                     void (*error_callback)(void *args), void *error_callback_args);
+
+/* Wait for processes to finish */
+/*
+  * Tips: This function SHOULD be called by the parent process after all child processes have been spawned
+  
+  * pid: a pointer or an array of pid_t to store the pid of the child process
+  * num_of_process: the number of processes to be waited for
+  * exit_callback: [OPTIONAL] the function to signal the subprocess to exit (e.g. send exit task to all processes)
+  * exit_callback_args: [OPTIONAL] the arguments to be passed to the `exit_callback`
+*/
+int wait_for_processes(pid_t *pid, size_t num_of_process, void (*exit_callback)(void *args), void *exit_callback_args);
 
 /* Scan a file */
 void process_file(const char *path, struct cl_engine *engine, struct cl_scan_options *scanoptions);

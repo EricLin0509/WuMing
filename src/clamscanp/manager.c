@@ -26,17 +26,36 @@
 
 /* This is the implementation of the `clamscanp` program */
 
+#include <stdlib.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/prctl.h>
+#include <signal.h>
+#include <poll.h>
+#include <sys/wait.h>
 
 #include "manager.h"
+
+#define JITTER_RANGE 30 // Use a random jitter to minimize the contention of the semaphore
+#define BASE_TIMEOUT_MS 50 // Base timeout for waiting for the semaphore
+#define CALCULATE_WAIT_MS(current_timeout_ms) (current_timeout_ms + (rand() % JITTER_RANGE)) // Calculate the dynamic timeout for waiting for the semaphore
+
+/* Turn user input path into absolute path */
+char *get_absolute_path(const char *orignal_path) {
+    char *absolute_path = realpath(orignal_path, NULL);
+    if (absolute_path == NULL) {
+        fprintf(stderr, "[ERROR] get_absolute_path: Failed to get absolute path of %s: %s\n", orignal_path, strerror(errno));
+        return NULL;
+    }
+    return absolute_path;
+}
 
 /* Get file stat */
 static inline bool get_file_stat(const char *path, struct stat *statbuf) {
 	if (stat(path, statbuf) != 0) {
-		fprintf(stderr, "Failed to stat %s: %s\n", path, strerror(errno));
+		fprintf(stderr, "[ERROR] get_file_stat: Failed to stat %s: %s\n", path, strerror(errno));
 		return false;
 	}
 	return true;
@@ -45,24 +64,19 @@ static inline bool get_file_stat(const char *path, struct stat *statbuf) {
 /* Check if the given path is a directory */
 bool is_directory(const char *path) {
     struct stat status;
-    return stat(path, &status) == 0 && S_ISDIR(status.st_mode);
+    return get_file_stat(path, &status) && S_ISDIR(status.st_mode);
 }
 
 /* Check if the given path is a regular file */
 bool is_regular_file(const char *path) {
     struct stat status;
-    return stat(path, &status) == 0 && S_ISREG(status.st_mode);
+    return get_file_stat(path, &status) && S_ISREG(status.st_mode);
 }
 
 /* Set scan options */
 static void set_scan_options(struct cl_scan_options *scanoptions) {
 	scanoptions->heuristic |= CL_SCAN_GENERAL_HEURISTICS;
     scanoptions->general |= CL_SCAN_GENERAL_ALLMATCHES;
-}
-
-/* Check Initalization status */
-static inline bool is_initialized(cl_error_t status) {
-	return status == CL_SUCCESS;
 }
 
 /* Initialize the ClamAV engine */
@@ -75,30 +89,30 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions) {
 
 	// Initialize ClamAV engine
 	result = cl_init(CL_INIT_DEFAULT);
-	if (!is_initialized(result)) {
-		fprintf(stderr, "[ERROR] cl_init failed: %s\n", cl_strerror(result));
+	if (result != CL_SUCCESS) {
+		fprintf(stderr, "[ERROR] init_engine: cl_init failed: %s\n", cl_strerror(result));
 		return NULL;
 	}
 
     engine = cl_engine_new(); // Create a new ClamAV engine
     if (engine == NULL) {
-        fprintf(stderr, "[ERROR] cl_engine_new failed\n");
+        fprintf(stderr, "[ERROR] init_engine: cl_engine_new failed\n");
         return NULL;
     }
 
     // Load signatures from database directory
 	const char *db_dir = cl_retdbdir(); // Get the database directory
     result = cl_load(db_dir, engine, &signatures, CL_DB_STDOPT);
-    if (!is_initialized(result)) {
-		fprintf(stderr, "[ERROR] cl_load failed: %s\n", cl_strerror(result));
+    if (result != CL_SUCCESS) {
+		fprintf(stderr, "[ERROR] init_engine: cl_load failed: %s\n", cl_strerror(result));
         cl_engine_free(engine);
         return NULL;
 	}
 
     // Compile the signatures
     result = cl_engine_compile(engine);
-    if (!is_initialized(result)) {
-		fprintf(stderr, "[ERROR] cl_engine_compile failed: %s\n", cl_strerror(result));
+    if (result != CL_SUCCESS) {
+		fprintf(stderr, "[ERROR] init_engine: cl_engine_compile failed: %s\n", cl_strerror(result));
         cl_engine_free(engine);
         return NULL;
 	}
@@ -107,10 +121,112 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions) {
     return engine;
 }
 
+/* Due to macOS doesn't support `sem_timedwait()`, so use a alternative implementation of `sem_timedwait()` */
+/*
+  * max_timeout_ms: the maximum timeout in milliseconds for waiting the semaphore
+*/
+int sem_timewait(sem_t *restrict sem, const size_t max_timeout_ms) {
+    size_t current_timeout = BASE_TIMEOUT_MS; // Initialize the current timeout
+
+    while (current_timeout < max_timeout_ms) {
+        if (sem_trywait(sem) == 0) return 0; // The semaphore is available, return immediately
+        else if (errno != EAGAIN) return -1; // Failed to wait for the semaphore, return with error
+
+        usleep(current_timeout * 1000); // `usleep()` use microseconds as unit, so multiply by 1000 to convert it to milliseconds
+        
+        current_timeout = CALCULATE_WAIT_MS(current_timeout); // Calculate the next timeout
+    }
+
+    errno = ETIMEDOUT;
+    return -1; // Timeout exceeded, return with error
+}
+
+/* Check arguments for `spawn_new_process()` and `wait_for_processes()` */
+static inline bool check_arguments(pid_t *pid, size_t num_of_process) {
+    if (pid == NULL) return false;
+    if (num_of_process == 0 || num_of_process > MAX_PROCESSES) return false;
+    return true;
+}
+
+/* Spawn a new process */
+/*
+  * pid: a pointer or an array of pid_t to store the pid of the child process
+  * num_of_process: the number of processes to be spawned (Maximum is 64)
+  * 
+  * mission_callback: the function to be executed in the child process
+  * mission_callback_args: [OPTIONAL] the arguments to be passed to the `mission_callback`
+  *
+  * error_callback: [OPTIONAL] the function to be executed if an error occurs when spawning a process
+  * error_callback_args: [OPTIONAL] the arguments to be passed to the `error_callback`
+*/
+void spawn_new_process(pid_t *pid, size_t num_of_process,
+                     void (*mission_callback)(void *args), void *mission_callback_args, 
+                     void (*error_callback)(void *args), void *error_callback_args) {
+    /* Check arguments before spawning the processes */
+    if (!check_arguments(pid, num_of_process)) {
+        fprintf(stderr, "[ERROR] spawn_new_process: Invalid arguments\n");
+        goto error_callback_call;
+    }
+
+    if (mission_callback == NULL) {
+        fprintf(stderr, "[ERROR] spawn_new_process: mission_callback is NULL\n");
+        goto error_callback_call;
+    }
+
+    /* Spawn the processes */
+    for (size_t i = 0; i < num_of_process; i++) {
+        pid_t *current_pid_ptr = pid + i; // Get the current pid pointer
+        *current_pid_ptr = fork(); // Fork a new process
+        if (*current_pid_ptr == -1) { // Failed to fork
+            fprintf(stderr, "[ERROR] spawn_new_process: Failed to fork process: %s\n", strerror(errno));
+            goto error_callback_call;
+        }
+
+        if (*current_pid_ptr == 0) { // Child process (run the function)
+            mission_callback(mission_callback_args);
+            _exit(0); // Exit the child process
+        }
+    }
+
+    return;
+
+error_callback_call:
+    if (error_callback != NULL) error_callback(error_callback_args); // Execute the error function if an error occurs
+}
+
+/* Wait for processes to finish */
+/*
+  * Tips: This function SHOULD be called by the parent process after all child processes have been spawned
+  
+  * pid: a pointer or an array of pid_t to store the pid of the child process
+  * num_of_process: the number of processes to be waited for
+  * exit_callback: [OPTIONAL] the function to signal the subprocess to exit (e.g. send exit task to all processes)
+  * exit_callback_args: [OPTIONAL] the arguments to be passed to the `exit_callback`
+*/
+int wait_for_processes(pid_t *pid, size_t num_of_process, void (*exit_callback)(void *args), void *exit_callback_args) {
+    /* Check arguments before waiting for the processes */
+    if (!check_arguments(pid, num_of_process)) {
+        fprintf(stderr, "[ERROR] wait_for_processes: Invalid arguments\n");
+        return -1;
+    }
+
+    int status = -1; // The return value of the function
+
+    for (size_t i = 0; i < num_of_process; i++) {
+        pid_t *current_pid_ptr = pid + i; // Get the current pid pointer
+        if (*current_pid_ptr <= 0) continue; // Skip invalid pid
+
+        if (exit_callback != NULL) exit_callback(exit_callback_args); // Execute the exit callback function before waiting for the process (If provided)
+        waitpid(*current_pid_ptr, &status, 0); // Wait for the process to finish
+    }
+
+    return status;
+}
+
 /* Process scan result */
 static void process_scan_result(const char *path, cl_error_t result, const char *virname) {
 	switch (result) {
-		case CL_SUCCESS:
+		case CL_CLEAN:
 			printf("%s: OK\n", path);
 			break;
 		case CL_VIRUS:
@@ -127,7 +243,7 @@ void process_file(const char *path, struct cl_engine *engine, struct cl_scan_opt
 	cl_error_t result;
     int fd = open(path, O_RDONLY); // Open the file
     if (fd == -1) {
-        fprintf(stderr, "Failed to open %s: %s\n", path, strerror(errno));
+        fprintf(stderr, " [ERROR] process_file: Failed to open %s: %s\n", path, strerror(errno));
         return;
     }
     

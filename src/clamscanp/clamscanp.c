@@ -49,15 +49,13 @@ Subprocess 2 (Child Process)             Subprocess 3 (Child Process)
 
 /* Bottleneck: It only implments one process to submit tasks, which can block the scanning processes if the task queue is empty */
 
+#include <time.h>
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/shm.h>
 #include <signal.h>
-#include <stdatomic.h>
-#include <sys/wait.h>
 
 #include "manager.h"
-#include <linux/time.h>
 
 /* Use global variables making it easier to pass data between processes */
 static struct cl_scan_options options; // Options for scanning
@@ -69,10 +67,10 @@ static pid_t parent_pid; // Parent process id
 /* Signal handler for terminating the scan */
 void shutdown_handler(int sig) {
     if (getpid() != parent_pid) {
-        _exit(EXIT_SUCCESS);
+        _exit(EXIT_FAILURE);
     }
 
-    printf("\nReceived signal %d, terminating scan...\n", sig);
+    write(STDERR_FILENO, "[INFO] Received signal, shutting down...\n", 36);
     atomic_store(&shm->should_exit, 1);
     
     // Clean up shared memory and semaphores
@@ -89,13 +87,81 @@ void shutdown_handler(int sig) {
         engine = NULL;
     }
     
-    exit(EXIT_SUCCESS);
+    exit(EXIT_FAILURE);
+}
+
+/* Initialize the resources */
+static bool init_resources(void) {
+    /* Initialize the shared memory */
+    size_t shm_size = sizeof(SharedData);
+    shm_id = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | 0666);
+    if (shm_id == -1) {
+        fprintf(stderr, "[ERROR] init_shared_memory: Failed to create shared memory!\n");
+        cl_engine_free(engine);
+        return false;
+    }
+    
+    shm = shmat(shm_id, NULL, 0);
+    if (shm == (void*)-1) {
+        fprintf(stderr, "[ERROR] init_shared_memory: Failed to attach shared memory!\n");
+        cl_engine_free(engine);
+        return false;
+    }
+    memset(shm, 0, shm_size);
+
+    /* Initialize the semaphore */
+    if (sem_init(&shm->mutex, 1, 1) != 0 ||
+        sem_init(&shm->empty, 1, MAX_TASKS) != 0 ||
+        sem_init(&shm->full, 1, 0) != 0) {
+        fprintf(stderr, "[ERROR] init_shared_memory: Failed to initialize semaphore!\n");
+        shmdt(shm);
+        shmctl(shm_id, IPC_RMID, NULL);
+        cl_engine_free(engine);
+        return false;
+    }
+
+    return true;
+}
+
+/* Clean up the resources */
+static void resource_cleanup(void) {
+    // Clean up shared memory and semaphores
+    if (shm) {
+        sem_destroy(&shm->mutex);
+        sem_destroy(&shm->empty);
+        sem_destroy(&shm->full);
+        shmdt(shm);
+        shmctl(shm_id, IPC_RMID, NULL);
+    }
+
+    // Clean up the engine
+    if (engine) {
+        cl_engine_free(engine);
+        engine = NULL;
+    }
+}
+
+/* Error function when failed to create a producer process */
+static inline void create_producer_error(void *args) {
+    fprintf(stderr, "[ERROR] create_producer_error: Failed to spawn a producer process!\n");
+
+    resource_cleanup();
+    exit(EXIT_FAILURE);
+}
+
+/* Error function when failed to create worker processes */
+static inline void create_worker_error(void *args) {
+    fprintf(stderr, "[ERROR] create_worker_error: Failed to spawn worker processes!\n");
+    size_t num_workers = *(size_t*)args;
+    for (size_t i = 0; i < num_workers; i++) {
+        kill(getpid(), SIGTERM); // Terminate the parent process
+    }
+
+    resource_cleanup();
+    exit(EXIT_FAILURE);
 }
 
 /* Add a task to the task queue */
-/*
-  * WARNING: This function MUST be called by a producer process
-*/
 static void add_task(ScanTask *task) {
     if (task == NULL || (task->type != SCAN_FILE && task->type != EXIT_TASK)) return; // Check if the task is valid (also allow `EXIT_TASK`)
     if (task->type == SCAN_FILE && strlen(task->path) >= PATH_MAX) return; // Check if the path is too long
@@ -110,11 +176,18 @@ static void add_task(ScanTask *task) {
     sem_post(&shm->full); // Notify the consumer process that a new task is available
 }
 
+/* The callback function for `wait_for_processes()` */
+static inline void send_exit_task(void *args) {
+    ScanTask exit_task = {EXIT_TASK, {0} };
+    add_task(&exit_task);
+}
+
 /* Treverse the directory and add tasks to the task queue */
 /*
   * WARNING: This function MUST be called by a producer process
 */
-static void producer_main(const char *path) {
+static void producer_main(void *args) {
+    const char *path = (const char*)args; // Get the directory path from the argument
     DIR *dir = opendir(path); // Open the directory
     if (dir == NULL) {
         fprintf(stderr, "[ERROR] Failed to open %s: %s\n", path, strerror(errno));
@@ -142,19 +215,17 @@ static void producer_main(const char *path) {
 }
 
 /* Worker function for scanning files */
-static void worker_main() {
+/*
+  * WARNING: This function MUST be called by comsumer processes
+*/
+static void worker_main(void *args) {
     while (!atomic_load(&shm->should_exit)) {
-        // Wait for a task to be available with timeout
-        struct timespec ts;
-        clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_sec += 1; // 1 second timeout
         
-        if (sem_timedwait(&shm->full, &ts) != 0) {
-            // Timeout or error, check if we should exit
-            if (atomic_load(&shm->should_exit)) {
+        if (sem_timewait(&shm->full, 1000000) != 0) {
+            if (atomic_load(&shm->should_exit)) { // Check if the scan is terminated
                 break;
             }
-            continue;
+            continue; // Continue the process if the main process is not terminated
         }
 
         sem_wait(&shm->mutex); // Lock the task queue
@@ -177,6 +248,9 @@ int main(int argc, const char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    signal(SIGINT, shutdown_handler);
+    signal(SIGTERM, shutdown_handler);
+
     /* Prepare the `cl_engine` */
     printf("[INFO] Start preparing the engine...\n");
     engine = init_engine(&options);
@@ -186,116 +260,48 @@ int main(int argc, const char *argv[]) {
     }
     printf("[INFO] Engine prepared Successfully.\n");
 
-    const char *path = argv[1];
+    const char *path = get_absolute_path(argv[1]); // Get the absolute path of the directory to scan
     if (!is_directory(path)) { // If the path is not a directory, scan it directly
         printf("[INFO] User pass a file path, try scanning it directly...\n");
         if (!is_regular_file(path)) {
             fprintf(stderr, "[ERROR] This IS NOT a regular file, aborting...\n");
-            cl_engine_free(engine);
-            return 1;
+            resource_cleanup();
+            return EXIT_FAILURE;
         } 
         process_file(path, engine, &options);
-        cl_engine_free(engine); // Free the engine
+        resource_cleanup();
         return EXIT_SUCCESS;
     }
 
-    int num_workers = 0;
-    if (argc < 3) {
-        printf("[WARNING] User did not specify the number of worker processes, use default value 1...\n");
-        num_workers = 1;
-    }
-    else num_workers = atoi(argv[2]);
+    size_t num_workers = argc > 2 ? atoi(argv[2]) : 1; // Get the number of worker processes from the argument or default to 1
 
-    signal(SIGINT, shutdown_handler);
-    signal(SIGTERM, shutdown_handler);
-
-    /* Initialize the shared memory */
-    size_t shm_size = sizeof(SharedData);
-    shm_id = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | 0666);
-    if (shm_id == -1) {
-        fprintf(stderr, "[ERROR] Failed to create shared memory!\n");
-        cl_engine_free(engine);
+    if (!init_resources()) { // Initialize the shared resources
+        fprintf(stderr, "[ERROR] Failed to initialize shared resources, aborting...\n");
         return EXIT_FAILURE;
-    }
-    
-    shm = shmat(shm_id, NULL, 0);
-    if (shm == (void*)-1) {
-        fprintf(stderr, "[ERROR] Failed to attach shared memory!\n");
-        cl_engine_free(engine);
-        return 1;
-    }
-    memset(shm, 0, shm_size);
-
-    /* Initialize the semaphore */
-    if (sem_init(&shm->mutex, 1, 1) != 0 ||
-        sem_init(&shm->empty, 1, MAX_TASKS) != 0 ||
-        sem_init(&shm->full, 1, 0) != 0) {
-        fprintf(stderr, "[ERROR] Failed to initialize semaphore!\n");
-        shmdt(shm);
-        shmctl(shm_id, IPC_RMID, NULL);
-        cl_engine_free(engine);
-        return 1;
     }
 
     // Add initial tasks to the task queue
     printf("[INFO] Start adding initial tasks to the task queue...\n");
-    pid_t producer_pid = fork(); // Fork a producer process
-    if (producer_pid == 0) { // If the child process is the producer process
-        producer_main(path); // Scan the directory and add tasks to the task queue
-        exit(EXIT_SUCCESS);
-    }
-    else if (producer_pid < 0) { // If fork failed
-        fprintf(stderr, "[ERROR] Failed to fork a producer process!\n");
-        shmdt(shm);
-        shmctl(shm_id, IPC_RMID, NULL);
-        cl_engine_free(engine);
-        return EXIT_FAILURE;
-    }
+    pid_t producer_pid = 0; // Initialize the producer process id
+    spawn_new_process(&producer_pid, 1,
+                            producer_main, (void*)path,
+                            create_producer_error, NULL);
 
     // Create worker processes
     printf("[INFO] Start creating worker processes...\n");
     pid_t worker_pids[num_workers];
-    for (int i = 0; i < num_workers; i++) {
-        worker_pids[i] = fork(); // Fork a worker process
-        if (worker_pids[i] == 0) { // If the child process is a worker process
-            worker_main(); // Scan files from the task queue
-            exit(EXIT_SUCCESS);
-        } else if (worker_pids[i] < 0) {
-            fprintf(stderr, "[ERROR] Failed to fork a worker process!\n");
-            // If fork fails, terminate all previously created processes
-            atomic_store(&shm->should_exit, 1);
-            for (int j = 0; j < i; j++) {
-                kill(worker_pids[j], SIGTERM);
-            }
-            kill(producer_pid, SIGTERM);
-            break;
-        }
-    }
+    memset(worker_pids, 0, sizeof(worker_pids));
+    spawn_new_process(worker_pids, num_workers,
+                            worker_main, NULL,
+                            create_worker_error, (void*)&num_workers);
 
     // Wait for all child processes to exit
-    int status;
-    waitpid(producer_pid, &status, 0);
-
-    // Send exit tasks to the task queue
-    for (int i = 0; i < num_workers; i++) {
-        ScanTask exit_task = {EXIT_TASK, {0} };
-        add_task(&exit_task);
-    }
-    
-    // Wait for workers to finish
-    for (int i = 0; i < num_workers; i++) {
-        if (worker_pids[i] > 0) {
-            waitpid(worker_pids[i], &status, 0);
-        }
-    }
-
-    // Clean up
-    sem_destroy(&shm->mutex);
-    sem_destroy(&shm->empty);
-    sem_destroy(&shm->full);
-    shmdt(shm);
-    shmctl(shm_id, IPC_RMID, NULL);
-    cl_engine_free(engine); // Free the engine
+    wait_for_processes(&producer_pid, 1, NULL, NULL); // Producer process
+    wait_for_processes(worker_pids, num_workers, send_exit_task, NULL); // Worker processes
     
     printf("[INFO] Scan completed successfully.\n");
+
+    resource_cleanup();
+
+    return EXIT_SUCCESS;
 }
