@@ -212,11 +212,13 @@ int wait_for_processes(pid_t *pid, size_t num_of_process, void (*exit_callback)(
 
     int status = -1; // The return value of the function
 
+    for (size_t i = 0; i < num_of_process && exit_callback != NULL; i++) {
+        exit_callback(exit_callback_args); // Execute the exit callback function before waiting for the process (If provided)
+    }
+
     for (size_t i = 0; i < num_of_process; i++) {
         pid_t *current_pid_ptr = pid + i; // Get the current pid pointer
         if (*current_pid_ptr <= 0) continue; // Skip invalid pid
-
-        if (exit_callback != NULL) exit_callback(exit_callback_args); // Execute the exit callback function before waiting for the process (If provided)
         waitpid(*current_pid_ptr, &status, 0); // Wait for the process to finish
     }
 
