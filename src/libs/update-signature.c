@@ -372,24 +372,22 @@ update_context_unref(void *ctx)
 
 /* thread-safe method to get/set states */
 static void
-set_completion_state(void *ctx, gboolean completed, gboolean success)
+set_completion_state(UpdateContext *ctx, gboolean completed, gboolean success)
 {
-  UpdateContext *context = (UpdateContext*)ctx;
-  g_mutex_lock(&context->mutex);
-  context->completed = completed;
-  context->success = success;
-  g_mutex_unlock(&context->mutex);
+  g_mutex_lock(&ctx->mutex);
+  ctx->completed = completed;
+  ctx->success = success;
+  g_mutex_unlock(&ctx->mutex);
 }
 
 static void
-get_completion_state(void *ctx, gboolean *out_completed, gboolean *out_success)
+get_completion_state(UpdateContext *ctx, gboolean *out_completed, gboolean *out_success)
 {
-  UpdateContext *context = (UpdateContext*)ctx;
-  g_mutex_lock(&context->mutex);
+  g_mutex_lock(&ctx->mutex);
   /* If one of the output pointers is NULL, only return the another one */
-  if (out_completed) *out_completed = context->completed;
-  if (out_success) *out_success = context->success;
-  g_mutex_unlock(&context->mutex);
+  if (out_completed) *out_completed = ctx->completed;
+  if (out_success) *out_success = ctx->success;
+  g_mutex_unlock(&ctx->mutex);
 }
 
 static void
