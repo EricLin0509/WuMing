@@ -75,9 +75,7 @@ void shutdown_handler(int sig) {
     
     // Clean up shared memory and semaphores
     if (shm) {
-        sem_destroy(&shm->mutex);
-        sem_destroy(&shm->empty);
-        sem_destroy(&shm->full);
+        clear_task_queue(&shm->scan_tasks);
         shmdt(shm);
         shmctl(shm_id, IPC_RMID, NULL);
     }
@@ -94,7 +92,7 @@ void shutdown_handler(int sig) {
 static bool init_resources(void) {
     /* Initialize the shared memory */
     size_t shm_size = sizeof(SharedData);
-    shm_id = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | 0666);
+    shm_id = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | 0600);
     if (shm_id == -1) {
         fprintf(stderr, "[ERROR] init_shared_memory: Failed to create shared memory!\n");
         cl_engine_free(engine);
@@ -109,16 +107,8 @@ static bool init_resources(void) {
     }
     memset(shm, 0, shm_size);
 
-    /* Initialize the semaphore */
-    if (sem_init(&shm->mutex, 1, 1) != 0 ||
-        sem_init(&shm->empty, 1, MAX_TASKS) != 0 ||
-        sem_init(&shm->full, 1, 0) != 0) {
-        fprintf(stderr, "[ERROR] init_shared_memory: Failed to initialize semaphore!\n");
-        shmdt(shm);
-        shmctl(shm_id, IPC_RMID, NULL);
-        cl_engine_free(engine);
-        return false;
-    }
+    /* Initialize the task queue */
+    init_task_queue(&shm->scan_tasks);
 
     return true;
 }
@@ -127,9 +117,7 @@ static bool init_resources(void) {
 static void resource_cleanup(void) {
     // Clean up shared memory and semaphores
     if (shm) {
-        sem_destroy(&shm->mutex);
-        sem_destroy(&shm->empty);
-        sem_destroy(&shm->full);
+        clear_task_queue(&shm->scan_tasks);
         shmdt(shm);
         shmctl(shm_id, IPC_RMID, NULL);
     }
@@ -161,25 +149,10 @@ static inline void create_worker_error(void *args) {
     exit(EXIT_FAILURE);
 }
 
-/* Add a task to the task queue */
-static void add_task(ScanTask *task) {
-    if (task == NULL || (task->type != SCAN_FILE && task->type != EXIT_TASK)) return; // Check if the task is valid (also allow `EXIT_TASK`)
-    if (task->type == SCAN_FILE && strlen(task->path) >= PATH_MAX) return; // Check if the path is too long
-
-    sem_wait(&shm->empty); // Wait for a free slot in the task queue
-    sem_wait(&shm->mutex); // Lock the task queue
-
-    shm->tasks[shm->rear] = *task; // Add the task to the task queue
-    shm->rear = (shm->rear + 1) % MAX_TASKS; // Update the rear pointer
-
-    sem_post(&shm->mutex); // Unlock the task queue
-    sem_post(&shm->full); // Notify the consumer process that a new task is available
-}
-
 /* The callback function for `wait_for_processes()` */
 static inline void send_exit_task(void *args) {
-    ScanTask exit_task = {EXIT_TASK, {0} };
-    add_task(&exit_task);
+    Task exit_task = {EXIT_TASK, {0} };
+    add_task(&shm->scan_tasks, exit_task);
 }
 
 /* Treverse the directory and add tasks to the task queue */
@@ -203,13 +176,13 @@ static void producer_main(void *args) {
 
         if (is_directory(fullpath)) {
             producer_main(fullpath); // Recursively scan the directory if it is a directory
-        } else if (is_regular_file(fullpath)) {
-            ScanTask new_task = {SCAN_FILE, {0} }; // Initialize a new task
-            strncpy(new_task.path, fullpath, PATH_MAX); // Copy the full path to the task
-            add_task(&new_task); // Add the task to the task queue
-        } else {
-            continue; // Skip if the file is not a regular file or a directory
         }
+        else if (is_regular_file(fullpath)) {
+            Task new_task = {SCAN_FILE, {0} }; // Initialize a new task
+            strncpy(new_task.path, fullpath, PATH_MAX); // Copy the full path to the task
+            add_task(&shm->scan_tasks, new_task); // Add the task to the task queue
+        }
+        else continue; // Skip other types of files
     }
     closedir(dir); // Close the directory
 }
@@ -219,26 +192,17 @@ static void producer_main(void *args) {
   * WARNING: This function MUST be called by comsumer processes
 */
 static void worker_main(void *args) {
+    if (args == NULL) return; // Check if the argument is valid
+    TaskQueue *queue = (TaskQueue*)args; // Get the task queue from the argument
+
+    Task task; // Initialize a task to get from the task queue
     while (!atomic_load(&shm->should_exit)) {
         
-        if (sem_timewait(&shm->full, 1000000) != 0) {
-            if (atomic_load(&shm->should_exit)) { // Check if the scan is terminated
-                break;
-            }
-            continue; // Continue the process if the main process is not terminated
-        }
+        if (!get_task(&task, queue)) continue; // Get a task from the task queue
 
-        sem_wait(&shm->mutex); // Lock the task queue
+        if (task.type != SCAN_FILE) return; // Check if the task is valid
 
-        ScanTask get_task = shm->tasks[shm->front]; // Get the task from the task queue
-        shm->front = (shm->front + 1) % MAX_TASKS;
-
-        sem_post(&shm->mutex); // Unlock the task queue
-        sem_post(&shm->empty); // Notify the producer process that a task is processed
-
-        if (get_task.type != SCAN_FILE) return; // Check if the task is valid
-
-        process_file(get_task.path, engine, &options); // Scan the file
+        process_file(task.path, engine, &options); // Scan the file
     }
 }
 
@@ -260,7 +224,7 @@ int main(int argc, const char *argv[]) {
     }
     printf("[INFO] Engine prepared Successfully.\n");
 
-    const char *path = get_absolute_path(argv[1]); // Get the absolute path of the directory to scan
+    char *path = get_absolute_path(argv[1]); // Get the absolute path of the directory to scan
     if (!is_directory(path)) { // If the path is not a directory, scan it directly
         printf("[INFO] User pass a file path, try scanning it directly...\n");
         if (!is_regular_file(path)) {
@@ -292,7 +256,7 @@ int main(int argc, const char *argv[]) {
     pid_t worker_pids[num_workers];
     memset(worker_pids, 0, sizeof(worker_pids));
     spawn_new_process(worker_pids, num_workers,
-                            worker_main, NULL,
+                            worker_main, (void*)&shm->scan_tasks,
                             create_worker_error, (void*)&num_workers);
 
     // Wait for all child processes to exit
@@ -301,6 +265,7 @@ int main(int argc, const char *argv[]) {
     
     printf("[INFO] Scan completed successfully.\n");
 
+    free(path); // Free the memory of the absolute path
     resource_cleanup();
 
     return EXIT_SUCCESS;

@@ -32,13 +32,11 @@
 #include <clamav.h>
 #include <stdatomic.h>
 
-
-#ifndef PATH_MAX // `PATH_MAX` only exists in Linux
 #define PATH_MAX 4096 // maximum length of path
-#endif
-
 #define MAX_PROCESSES 64 // maximum number of processes can be used for scanning
 #define MAX_TASKS 4096 // maximum number of tasks can be added to the task queue
+
+_Static_assert((MAX_TASKS & (MAX_TASKS - 1)) == 0, "MAX_TASKS must be a power of two"); // MAX_TASKS must be a power of two
 
 /* Task type to indicate what kind of task to perform */
 typedef enum {
@@ -47,25 +45,52 @@ typedef enum {
     EXIT_TASK
 } TaskType; 
 
-/* The task to be performed */
+/* A task to be performed */
 typedef struct {
     TaskType type;
     char path[PATH_MAX];
-} ScanTask;
+} Task;
+
+/* Task queue */
+typedef struct {
+	/* Semaphores to control access to the task queue */
+	sem_t mutex; // Controls access to the task queue
+
+	sem_t empty; // Consumer waits when queue is empty
+	sem_t full; // Producer waits when queue is full
+
+	/* Data fields */
+	int front; // Queue front index
+	int rear; // Queue rear index
+	Task tasks[MAX_TASKS]; // The task queue
+} TaskQueue;
 
 /* The shared data */
 typedef struct {
-    sem_t mutex; // Controls process access to shared data
-
-    /* The task queue */
-    sem_t empty; // Comsumer waits when queue is empty
-    sem_t full; // Producer waits when queue is full
-    int front; // Queue front index
-    int rear; // Queue rear index
-    size_t capacity; // Maximum number of tasks can be added to the queue
     _Atomic int should_exit; // Flag to indicate if all processes should exit
-    ScanTask tasks[MAX_TASKS]; // The task queue
+    TaskQueue scan_tasks; // Task queue for scanning files
 } SharedData;
+
+/* Initialize the task queue */
+void init_task_queue(TaskQueue *queue);
+
+/* Clear the task queue */
+void clear_task_queue(TaskQueue *queue);
+
+/* Add a task to the task queue */
+/*
+  * dest: the task queue to be added
+  * source: the task to be added
+*/
+void add_task(TaskQueue *dest, Task source);
+
+/* Get a task from the task queue */
+/*
+  * dest: a pointer to the task to be retrieved
+  * source: the task queue to be retrieved from
+  * return value: true if a task is retrieved, false if is timeout or error occurred
+*/
+bool get_task(Task *dest, TaskQueue *source);
 
 /* Turn user input path into absolute path */
 char *get_absolute_path(const char *orignal_path);
@@ -78,12 +103,6 @@ bool is_regular_file(const char *path);
 
 /* Initialize the ClamAV engine */
 struct cl_engine *init_engine(struct cl_scan_options *scanoptions);
-
-/* Due to macOS doesn't support `sem_timedwait()`, so use a alternative implementation of `sem_timedwait()` */
-/*
-  * max_timeout_ms: the maximum timeout in milliseconds for waiting the semaphore
-*/
-int sem_timewait(sem_t *restrict sem, const size_t max_timeout_ms);
 
 /* Spawn a new process */
 /*

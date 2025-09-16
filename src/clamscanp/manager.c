@@ -42,6 +42,93 @@
 #define BASE_TIMEOUT_MS 50 // Base timeout for waiting for the semaphore
 #define CALCULATE_WAIT_MS(current_timeout_ms) (current_timeout_ms + (rand() % JITTER_RANGE)) // Calculate the dynamic timeout for waiting for the semaphore
 
+/* Due to macOS doesn't support `sem_timedwait()`, so add a alternative implementation of `sem_timedwait()` */
+/*
+  * max_timeout_ms: the maximum timeout in milliseconds for waiting the semaphore
+*/
+static int sem_timewait(sem_t *restrict sem, const size_t max_timeout_ms) {
+    size_t current_timeout = BASE_TIMEOUT_MS; // Initialize the current timeout
+
+    while (current_timeout < max_timeout_ms) {
+        if (sem_trywait(sem) == 0) return 0; // The semaphore is available, return immediately
+        else if (errno != EAGAIN) return -1; // Failed to wait for the semaphore, return with error
+
+        usleep(current_timeout * 1000); // `usleep()` use microseconds as unit, so multiply by 1000 to convert it to milliseconds
+        
+        current_timeout = CALCULATE_WAIT_MS(current_timeout); // Calculate the next timeout
+    }
+
+    errno = ETIMEDOUT;
+    return -1; // Timeout exceeded, return with error
+}
+
+/* Initialize the task queue */
+void init_task_queue(TaskQueue *queue) {
+    /* Initialize the semaphore */
+    sem_init(&queue->mutex, 1, 1);
+    sem_init(&queue->empty, 1, MAX_TASKS);
+    sem_init(&queue->full, 1, 0);
+
+    /* Initialize the data fields of the task queue */
+    queue->front = 0;
+    queue->rear = 0;
+    memset(queue->tasks, 0, sizeof(Task) * MAX_TASKS);
+}
+
+/* Clear the task queue */
+void clear_task_queue(TaskQueue *queue) {
+    // Because the data fields of the task queue are store in stack, we don't need to clear them
+
+    // Clear the semaphore
+    sem_destroy(&queue->mutex);
+    sem_destroy(&queue->empty);
+    sem_destroy(&queue->full);
+}
+
+/* Add a task to the task queue */
+/*
+  * dest: the task queue to be added
+  * source: the task to be added
+*/
+void add_task(TaskQueue *dest, Task source) {
+    if (dest == NULL) return;
+
+    sem_wait(&dest->empty); // Wait for the empty semaphore
+    sem_wait(&dest->mutex); // Lock the queue
+
+    dest->tasks[dest->rear] = source; // Add the task to the queue
+
+    int mask = MAX_TASKS - 1; // for and operation
+    dest->rear = (dest->rear + 1) & mask; // Update the rear pointer
+
+    sem_post(&dest->mutex); // Unlock the queue
+    sem_post(&dest->full); // Signal the full semaphore
+}
+
+/* Get a task from the task queue */
+/*
+  * dest: a pointer to the task to be retrieved
+  * source: the task queue to be retrieved from
+  * return value: true if a task is retrieved, false if is timeout or error occurred
+*/
+bool get_task(Task *dest, TaskQueue *source) {
+    if (source == NULL || dest == NULL) return false;
+
+    if (sem_timewait(&source->full, 1000000) != 0) return false; // Timeout or error occurred, return
+
+    sem_wait(&source->mutex); // Lock the queue
+
+    *dest = source->tasks[source->front]; // Get the task from the queue
+
+    int mask = MAX_TASKS - 1; // for and operation
+    source->front = (source->front + 1) & mask; // Update the front pointer
+
+    sem_post(&source->mutex); // Unlock the queue
+    sem_post(&source->empty); // Signal the empty semaphore
+
+    return true;
+}
+
 /* Turn user input path into absolute path */
 char *get_absolute_path(const char *orignal_path) {
     char *absolute_path = realpath(orignal_path, NULL);
@@ -119,26 +206,6 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions) {
 
     printf("[INFO] ClamAV engine initialized with %u signatures\n", signatures);
     return engine;
-}
-
-/* Due to macOS doesn't support `sem_timedwait()`, so use a alternative implementation of `sem_timedwait()` */
-/*
-  * max_timeout_ms: the maximum timeout in milliseconds for waiting the semaphore
-*/
-int sem_timewait(sem_t *restrict sem, const size_t max_timeout_ms) {
-    size_t current_timeout = BASE_TIMEOUT_MS; // Initialize the current timeout
-
-    while (current_timeout < max_timeout_ms) {
-        if (sem_trywait(sem) == 0) return 0; // The semaphore is available, return immediately
-        else if (errno != EAGAIN) return -1; // Failed to wait for the semaphore, return with error
-
-        usleep(current_timeout * 1000); // `usleep()` use microseconds as unit, so multiply by 1000 to convert it to milliseconds
-        
-        current_timeout = CALCULATE_WAIT_MS(current_timeout); // Calculate the next timeout
-    }
-
-    errno = ETIMEDOUT;
-    return -1; // Timeout exceeded, return with error
 }
 
 /* Check arguments for `spawn_new_process()` and `wait_for_processes()` */
