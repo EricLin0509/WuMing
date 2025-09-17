@@ -38,6 +38,8 @@
 
 #include "manager.h"
 
+#define FILE_OPEN_FLAGS (O_RDONLY | O_NOFOLLOW | O_CLOEXEC) // Secure file open flags
+
 #define JITTER_RANGE 30 // Use a random jitter to minimize the contention of the semaphore
 #define BASE_TIMEOUT_MS 50 // Base timeout for waiting for the semaphore
 #define CALCULATE_WAIT_MS(current_timeout_ms) (current_timeout_ms + (rand() % JITTER_RANGE)) // Calculate the dynamic timeout for waiting for the semaphore
@@ -117,12 +119,15 @@ void add_task(TaskQueue *dest, Task source) {
 /*
   * dest: a pointer to the task to be retrieved
   * source: the task queue to be retrieved from
+  * should_exit: a atomic integer pointer to indicate if the program should exit
   * return value: true if a task is retrieved, false if is timeout or error occurred
 */
-bool get_task(Task *dest, TaskQueue *source) {
-    if (source == NULL || dest == NULL) return false;
+bool get_task(Task *dest, TaskQueue *source, _Atomic int *should_exit) {
+    if (source == NULL || dest == NULL || should_exit == NULL) return false;
 
-    if (sem_timewait(&source->full, 1000000) != 0) return false; // Timeout or error occurred, return
+    while (sem_timewait(&source->full, 1000) != 0) {
+        if (atomic_load(should_exit)) return false; // The program should exit, return with error
+    }
 
     sem_wait(&source->mutex); // Lock the queue
 
@@ -149,8 +154,8 @@ char *get_absolute_path(const char *orignal_path) {
 
 /* Get file stat */
 static inline bool get_file_stat(const char *path, struct stat *statbuf) {
-	if (stat(path, statbuf) != 0) {
-		fprintf(stderr, "[ERROR] get_file_stat: Failed to stat %s: %s\n", path, strerror(errno));
+	if (lstat(path, statbuf) != 0) {
+		fprintf(stderr, "[ERROR] get_file_stat: Failed to lstat %s: %s\n", path, strerror(errno));
 		return false;
 	}
 	return true;
@@ -318,7 +323,7 @@ static void process_scan_result(const char *path, cl_error_t result, const char 
 /* Scan a file */
 void process_file(const char *path, struct cl_engine *engine, struct cl_scan_options *scanoptions) {
 	cl_error_t result;
-    int fd = open(path, O_RDONLY); // Open the file
+    int fd = open(path, FILE_OPEN_FLAGS); // Open the file
     if (fd == -1) {
         fprintf(stderr, " [ERROR] process_file: Failed to open %s: %s\n", path, strerror(errno));
         return;

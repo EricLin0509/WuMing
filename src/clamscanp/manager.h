@@ -91,9 +91,10 @@ void add_task(TaskQueue *dest, Task source);
 /*
   * dest: a pointer to the task to be retrieved
   * source: the task queue to be retrieved from
+  * should_exit: a atomic integer pointer to indicate if the program should exit
   * return value: true if a task is retrieved, false if is timeout or error occurred
 */
-bool get_task(Task *dest, TaskQueue *source);
+bool get_task(Task *dest, TaskQueue *source, _Atomic int *should_exit);
 
 /* Turn user input path into absolute path */
 char *get_absolute_path(const char *orignal_path);

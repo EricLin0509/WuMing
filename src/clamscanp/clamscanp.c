@@ -70,7 +70,7 @@ void shutdown_handler(int sig) {
         _exit(EXIT_FAILURE);
     }
 
-    write(STDERR_FILENO, "[INFO] Received signal, shutting down...\n", 36);
+    write(STDERR_FILENO, "\n[INFO] Terminating the scan, shutting down...\n", 48);
     atomic_store(&shm->should_exit, 1);
     
     // Clean up shared memory and semaphores
@@ -90,6 +90,8 @@ void shutdown_handler(int sig) {
 
 /* Initialize the resources */
 static bool init_resources(void) {
+    parent_pid = getpid(); // Get the parent process id
+
     /* Initialize the shared memory */
     size_t shm_size = sizeof(SharedData);
     shm_id = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | 0600);
@@ -195,9 +197,7 @@ static void worker_main(void *args) {
     TaskQueue *queue = (TaskQueue*)args; // Get the task queue from the argument
 
     Task task; // Initialize a task to get from the task queue
-    while (!atomic_load(&shm->should_exit)) {
-        
-        if (!get_task(&task, queue)) continue; // Get a task from the task queue
+    while (get_task(&task, queue, &shm->should_exit)) {
 
         if (task.type != SCAN_FILE) return; // Check if the task is valid
 
