@@ -151,7 +151,7 @@ static inline void create_worker_error(void *args) {
 
 /* The callback function for `wait_for_processes()` */
 static inline void send_exit_task(void *args) {
-    Task exit_task = {EXIT_TASK, {0} };
+    Task exit_task = build_task(EXIT_TASK, NULL); // Build an exit task
     add_task(&shm->scan_tasks, exit_task);
 }
 
@@ -178,8 +178,7 @@ static void producer_main(void *args) {
             producer_main(fullpath); // Recursively scan the directory if it is a directory
         }
         else if (is_regular_file(fullpath)) {
-            Task new_task = {SCAN_FILE, {0} }; // Initialize a new task
-            strncpy(new_task.path, fullpath, PATH_MAX); // Copy the full path to the task
+            Task new_task = build_task(SCAN_FILE, fullpath); // Build a new task for scanning the file
             add_task(&shm->scan_tasks, new_task); // Add the task to the task queue
         }
         else continue; // Skip other types of files

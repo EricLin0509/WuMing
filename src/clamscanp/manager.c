@@ -62,6 +62,14 @@ static int sem_timewait(sem_t *restrict sem, const size_t max_timeout_ms) {
     return -1; // Timeout exceeded, return with error
 }
 
+/* Build task from path */
+Task build_task(TaskType type, char *path) {
+    Task task;
+    task.type = type;
+    if (path) strncpy(task.path, path, PATH_MAX);
+    return task;
+}
+
 /* Initialize the task queue */
 void init_task_queue(TaskQueue *queue) {
     /* Initialize the semaphore */

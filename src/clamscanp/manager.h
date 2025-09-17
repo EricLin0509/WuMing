@@ -71,6 +71,9 @@ typedef struct {
     TaskQueue scan_tasks; // Task queue for scanning files
 } SharedData;
 
+/* Build task from path */
+Task build_task(TaskType type, char *path);
+
 /* Initialize the task queue */
 void init_task_queue(TaskQueue *queue);
 
