@@ -52,7 +52,7 @@ Subprocess 2 (Child Process)             Subprocess 3 (Child Process)
 #include <time.h>
 #include <dirent.h>
 #include <unistd.h>
-#include <sys/shm.h>
+#include <sys/mman.h>
 #include <signal.h>
 
 #include "manager.h"
@@ -61,32 +61,7 @@ Subprocess 2 (Child Process)             Subprocess 3 (Child Process)
 static struct cl_scan_options options; // Options for scanning
 static struct cl_engine *engine; // ClamAV engine
 static SharedData *shm; // Shared memory for engine
-static int shm_id; // Shared memory id
 static pid_t parent_pid; // Parent process id
-
-/* Signal handler for terminating the scan */
-void shutdown_handler(int sig) {
-    if (getpid() != parent_pid) {
-        _exit(EXIT_FAILURE);
-    }
-
-    write(STDERR_FILENO, "\n[INFO] Terminating the scan, shutting down...\n", 48);
-    atomic_store(&shm->should_exit, 1);
-    
-    // Clean up shared memory and semaphores
-    if (shm) {
-        clear_task_queue(&shm->scan_tasks);
-        shmdt(shm);
-        shmctl(shm_id, IPC_RMID, NULL);
-    }
-    
-    if (engine) {
-        cl_engine_free(engine);
-        engine = NULL;
-    }
-    
-    exit(EXIT_FAILURE);
-}
 
 /* Initialize the resources */
 static bool init_resources(void) {
@@ -94,17 +69,9 @@ static bool init_resources(void) {
 
     /* Initialize the shared memory */
     size_t shm_size = sizeof(SharedData);
-    shm_id = shmget(IPC_PRIVATE, shm_size, IPC_CREAT | 0600);
-    if (shm_id == -1) {
-        fprintf(stderr, "[ERROR] init_shared_memory: Failed to create shared memory!\n");
-        cl_engine_free(engine);
-        return false;
-    }
-    
-    shm = shmat(shm_id, NULL, 0);
-    if (shm == (void*)-1) {
-        fprintf(stderr, "[ERROR] init_shared_memory: Failed to attach shared memory!\n");
-        cl_engine_free(engine);
+    shm = mmap (NULL, shm_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, -1, 0);
+    if (shm == MAP_FAILED) {
+        fprintf(stderr, "[ERROR] init_resources: mmap failed: %s\n", strerror(errno));
         return false;
     }
     memset(shm, 0, shm_size);
@@ -120,8 +87,8 @@ static void resource_cleanup(void) {
     // Clean up shared memory and semaphores
     if (shm) {
         clear_task_queue(&shm->scan_tasks);
-        shmdt(shm);
-        shmctl(shm_id, IPC_RMID, NULL);
+        munmap(shm, sizeof(SharedData));
+        shm = NULL;
     }
 
     // Clean up the engine
@@ -129,6 +96,21 @@ static void resource_cleanup(void) {
         cl_engine_free(engine);
         engine = NULL;
     }
+}
+
+/* Signal handler for terminating the scan */
+void shutdown_handler(int sig) {
+    if (getpid() != parent_pid) {
+        _exit(EXIT_FAILURE);
+    }
+
+    write(STDERR_FILENO, "\n[INFO] Terminating the scan, shutting down...\n", 48);
+    atomic_store(&shm->should_exit, 1);
+
+    // Clean up shared memory and semaphores
+    resource_cleanup();
+
+    exit(EXIT_FAILURE);
 }
 
 /* Error function when failed to create a producer process */
