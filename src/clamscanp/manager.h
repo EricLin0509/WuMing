@@ -41,8 +41,7 @@ _Static_assert((MAX_TASKS & (MAX_TASKS - 1)) == 0, "MAX_TASKS must be a power of
 /* Task type to indicate what kind of task to perform */
 typedef enum {
     SCAN_DIR,
-    SCAN_FILE,
-    EXIT_TASK
+    SCAN_FILE
 } TaskType; 
 
 /* A task to be performed */
@@ -67,7 +66,8 @@ typedef struct {
 
 /* The shared data */
 typedef struct {
-    _Atomic int should_exit; // Flag to indicate if all processes should exit
+    _Atomic bool should_exit; // Flag to indicate if all processes should exit
+    _Atomic bool is_producer_done; // Flag to indicate if the producer has finished adding tasks
     TaskQueue scan_tasks; // Task queue for scanning files
 } SharedData;
 

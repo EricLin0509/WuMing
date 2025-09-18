@@ -105,7 +105,7 @@ void shutdown_handler(int sig) {
     }
 
     write(STDERR_FILENO, "\n[INFO] Terminating the scan, shutting down...\n", 48);
-    atomic_store(&shm->should_exit, 1);
+    atomic_store(&shm->should_exit, true);
 
     // Clean up shared memory and semaphores
     resource_cleanup();
@@ -133,12 +133,16 @@ static inline void create_worker_error(void *args) {
     exit(EXIT_FAILURE);
 }
 
-/* The callback function for `wait_for_processes()` */
-static inline void send_exit_task(size_t num_of_process) {
-    Task exit_task = build_task(EXIT_TASK, NULL); // Build an exit task
-    for (size_t i = 0; i < num_of_process; i++) {
-        add_task(&shm->scan_tasks, exit_task);
+/* Check whether has remaining tasks in the task queue for worker processes */
+static inline bool has_remaining_tasks(TaskQueue *queue, _Atomic bool *is_producer_done) {
+    if (atomic_load(is_producer_done)) {
+        if (sem_trywait(&queue->mutex) == 0) { // If get the lock failed, assume the queue is not empty
+            bool has_tasks = queue->front != queue->rear;
+            sem_post(&queue->mutex); // Release the lock
+            return has_tasks;
+        }
     }
+    return true;
 }
 
 /* Treverse the directory and add tasks to the task queue */
@@ -182,11 +186,14 @@ static void worker_main(void *args) {
 
     Task task; // Initialize a task to get from the task queue
     while (!atomic_load(&shm->should_exit)) {
-        if (!get_task(&task, queue)) continue; // Get a task from the task queue
+        if (!has_remaining_tasks(queue, &shm->is_producer_done)) return; // Exit if there are no remaining tasks and the producer has finished adding tasks
 
-        if (task.type != SCAN_FILE) return; // Check if the task is valid
+        if (get_task(&task, queue)) {
+            if (task.type != SCAN_FILE) continue; // Skip other types of tasks
 
-        process_file(task.path, engine, &options); // Scan the file
+            // Scan the file
+            process_file(task.path, engine, &options);
+        }
     }
 }
 
@@ -245,7 +252,7 @@ int main(int argc, const char *argv[]) {
 
     // Wait for all child processes to exit
     wait_for_processes(&producer_pid, 1); // Producer process
-    send_exit_task(num_workers); // Send exit tasks to the task queue
+    atomic_store(&shm->is_producer_done, true); // Indicate worker processes the producer has finished adding tasks
     wait_for_processes(worker_pids, num_workers); // Worker processes
     
     printf("[INFO] Scan completed successfully.\n");
