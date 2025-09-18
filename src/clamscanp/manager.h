@@ -66,8 +66,9 @@ typedef struct {
 
 /* The shared data */
 typedef struct {
-    _Atomic bool should_exit; // Flag to indicate if all processes should exit
+    _Atomic bool force_quit; // Flag to indicate if the program to be terminated forcelly
     _Atomic bool is_producer_done; // Flag to indicate if the producer has finished adding tasks
+    _Atomic bool all_tasks_done; // Flag to indicate if all tasks have been processed
     TaskQueue scan_tasks; // Task queue for scanning files
 } SharedData;
 
@@ -80,6 +81,9 @@ void init_task_queue(TaskQueue *queue);
 /* Clear the task queue */
 void clear_task_queue(TaskQueue *queue);
 
+/* Check whether the task queue is empty, assume the queue is not empty if failed to get the lock */
+bool is_task_queue_empty_assumption(TaskQueue *queue);
+
 /* Add a task to the task queue */
 /*
   * dest: the task queue to be added
@@ -89,11 +93,19 @@ void add_task(TaskQueue *dest, Task source);
 
 /* Get a task from the task queue */
 /*
-  * dest: a pointer to the task to be retrieved
-  * source: the task queue to be retrieved from
-  * return value: true if a task is retrieved, false if is timeout or error occurred
+  * @param dest
+  * a pointer to the task to be retrieved
+  * @param source
+  * the task queue to be retrieved from
+  * @param exit_flag
+  * a pointer to the exit flag, if it is set to `true`, the function will return `false` immediately
+  * 
+  * @return
+  * `true`: if a task is retrieved successfully
+  * 
+  * `false`: if the exit flag is set to `true` or the task queue is empty
 */
-bool get_task(Task *dest, TaskQueue *source);
+bool get_task(Task *dest, TaskQueue *source, _Atomic bool *exit_flag);
 
 /* Turn user input path into absolute path */
 char *get_absolute_path(const char *orignal_path);

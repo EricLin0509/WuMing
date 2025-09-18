@@ -46,12 +46,23 @@
 
 /* Due to macOS doesn't support `sem_timedwait()`, so add a alternative implementation of `sem_timedwait()` */
 /*
-  * max_timeout_ms: the maximum timeout in milliseconds for waiting the semaphore
+  * @param sem
+  * the semaphore to be waited
+  * @param max_timeout_ms
+  * the maximum timeout in milliseconds
+  * @param exit_flag
+  * a pointer to the exit flag, if it is set to `true`, the function will return `false` immediately
+  * 
+  * @return
+  * `0`: if the semaphore is available
+  * 
+  * `-1`: if the semaphore is not available or failed to wait for the semaphore
+  * 
 */
-static int sem_timewait(sem_t *restrict sem, const size_t max_timeout_ms) {
+static int sem_timewait(sem_t *restrict sem, const size_t max_timeout_ms, _Atomic bool *exit_flag) {
     size_t current_timeout = BASE_TIMEOUT_MS; // Initialize the current timeout
 
-    while (current_timeout < max_timeout_ms) {
+    while (current_timeout < max_timeout_ms && !atomic_load(exit_flag)) {
         if (sem_trywait(sem) == 0) return 0; // The semaphore is available, return immediately
         else if (errno != EAGAIN) return -1; // Failed to wait for the semaphore, return with error
 
@@ -70,6 +81,18 @@ Task build_task(TaskType type, char *path) {
     task.type = type;
     if (path) strncpy(task.path, path, PATH_MAX);
     return task;
+}
+
+/* Check whether the task queue is empty, assume the queue is not empty if failed to get the lock */
+bool is_task_queue_empty_assumption(TaskQueue *queue) {
+    if (queue == NULL) return true;
+
+    if (sem_trywait(&queue->empty) == 0) {
+        bool is_empty = (queue->front == queue->rear);
+        sem_post(&queue->empty);
+        return is_empty;
+    }
+    return false; // Failed to get the lock, assume the queue is not empty
 }
 
 /* Initialize the task queue */
@@ -117,14 +140,22 @@ void add_task(TaskQueue *dest, Task source) {
 
 /* Get a task from the task queue */
 /*
-  * dest: a pointer to the task to be retrieved
-  * source: the task queue to be retrieved from
-  * return value: true if a task is retrieved, false if is timeout or error occurred
+  * @param dest
+  * a pointer to the task to be retrieved
+  * @param source
+  * the task queue to be retrieved from
+  * @param exit_flag
+  * a pointer to the exit flag, if it is set to `true`, the function will return `false` immediately
+  * 
+  * @return
+  * `true`: if a task is retrieved successfully
+  * 
+  * `false`: if the exit flag is set to `true` or the task queue is empty
 */
-bool get_task(Task *dest, TaskQueue *source) {
+bool get_task(Task *dest, TaskQueue *source, _Atomic bool *exit_flag) {
     if (source == NULL || dest == NULL) return false;
 
-    if (sem_timewait(&source->full, 1000) != 0) return false; // Timeout exceeded, return with error
+    if (sem_timewait(&source->full, 1000, exit_flag) != 0) return false; // Timeout exceeded, return with error
 
     sem_wait(&source->mutex); // Lock the queue
 

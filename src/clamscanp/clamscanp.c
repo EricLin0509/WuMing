@@ -105,7 +105,7 @@ void shutdown_handler(int sig) {
     }
 
     write(STDERR_FILENO, "\n[INFO] Terminating the scan, shutting down...\n", 48);
-    atomic_store(&shm->should_exit, true);
+    atomic_store(&shm->force_quit, true);
 
     // Clean up shared memory and semaphores
     resource_cleanup();
@@ -134,13 +134,11 @@ static inline void create_worker_error(void *args) {
 }
 
 /* Check whether has remaining tasks in the task queue for worker processes */
-static inline bool has_remaining_tasks(TaskQueue *queue, _Atomic bool *is_producer_done) {
+static inline bool has_remaining_tasks(TaskQueue *queue, _Atomic bool *is_producer_done, _Atomic bool *all_tasks_done) {
     if (atomic_load(is_producer_done)) {
-        if (sem_trywait(&queue->mutex) == 0) { // If get the lock failed, assume the queue is not empty
-            bool has_tasks = queue->front != queue->rear;
-            sem_post(&queue->mutex); // Release the lock
-            return has_tasks;
-        }
+        bool is_empty = is_task_queue_empty_assumption(queue); // Check if the task queue is empty
+        if (is_empty) atomic_store(all_tasks_done, true); // Indicate all tasks have been done
+        return !is_empty;
     }
     return true;
 }
@@ -185,10 +183,10 @@ static void worker_main(void *args) {
     TaskQueue *queue = (TaskQueue*)args; // Get the task queue from the argument
 
     Task task; // Initialize a task to get from the task queue
-    while (!atomic_load(&shm->should_exit)) {
-        if (!has_remaining_tasks(queue, &shm->is_producer_done)) return; // Exit if there are no remaining tasks and the producer has finished adding tasks
+    while (!atomic_load(&shm->force_quit)) {
+        if (!has_remaining_tasks(queue, &shm->is_producer_done, &shm->all_tasks_done)) return; // Exit if there are no remaining tasks and the producer has finished adding tasks
 
-        if (get_task(&task, queue)) {
+        if (get_task(&task, queue, &shm->all_tasks_done)) {
             if (task.type != SCAN_FILE) continue; // Skip other types of tasks
 
             // Scan the file
