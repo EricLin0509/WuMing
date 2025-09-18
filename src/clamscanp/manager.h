@@ -91,10 +91,9 @@ void add_task(TaskQueue *dest, Task source);
 /*
   * dest: a pointer to the task to be retrieved
   * source: the task queue to be retrieved from
-  * should_exit: a atomic integer pointer to indicate if the program should exit
   * return value: true if a task is retrieved, false if is timeout or error occurred
 */
-bool get_task(Task *dest, TaskQueue *source, _Atomic int *should_exit);
+bool get_task(Task *dest, TaskQueue *source);
 
 /* Turn user input path into absolute path */
 char *get_absolute_path(const char *orignal_path);
@@ -129,10 +128,8 @@ void spawn_new_process(pid_t *pid, size_t num_of_process,
   
   * pid: a pointer or an array of pid_t to store the pid of the child process
   * num_of_process: the number of processes to be waited for
-  * exit_callback: [OPTIONAL] the function to signal the subprocess to exit (e.g. send exit task to all processes)
-  * exit_callback_args: [OPTIONAL] the arguments to be passed to the `exit_callback`
 */
-int wait_for_processes(pid_t *pid, size_t num_of_process, void (*exit_callback)(void *args), void *exit_callback_args);
+int wait_for_processes(pid_t *pid, size_t num_of_process);
 
 /* Scan a file */
 void process_file(const char *path, struct cl_engine *engine, struct cl_scan_options *scanoptions);

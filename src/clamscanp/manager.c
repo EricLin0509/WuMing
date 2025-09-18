@@ -119,15 +119,12 @@ void add_task(TaskQueue *dest, Task source) {
 /*
   * dest: a pointer to the task to be retrieved
   * source: the task queue to be retrieved from
-  * should_exit: a atomic integer pointer to indicate if the program should exit
   * return value: true if a task is retrieved, false if is timeout or error occurred
 */
-bool get_task(Task *dest, TaskQueue *source, _Atomic int *should_exit) {
-    if (source == NULL || dest == NULL || should_exit == NULL) return false;
+bool get_task(Task *dest, TaskQueue *source) {
+    if (source == NULL || dest == NULL) return false;
 
-    while (sem_timewait(&source->full, 1000) != 0) {
-        if (atomic_load(should_exit)) return false; // The program should exit, return with error
-    }
+    if (sem_timewait(&source->full, 1000) != 0) return false; // Timeout exceeded, return with error
 
     sem_wait(&source->mutex); // Lock the queue
 
@@ -280,10 +277,8 @@ error_callback_call:
   
   * pid: a pointer or an array of pid_t to store the pid of the child process
   * num_of_process: the number of processes to be waited for
-  * exit_callback: [OPTIONAL] the function to signal the subprocess to exit (e.g. send exit task to all processes)
-  * exit_callback_args: [OPTIONAL] the arguments to be passed to the `exit_callback`
 */
-int wait_for_processes(pid_t *pid, size_t num_of_process, void (*exit_callback)(void *args), void *exit_callback_args) {
+int wait_for_processes(pid_t *pid, size_t num_of_process) {
     /* Check arguments before waiting for the processes */
     if (!check_arguments(pid, num_of_process)) {
         fprintf(stderr, "[ERROR] wait_for_processes: Invalid arguments\n");
@@ -291,10 +286,6 @@ int wait_for_processes(pid_t *pid, size_t num_of_process, void (*exit_callback)(
     }
 
     int status = -1; // The return value of the function
-
-    for (size_t i = 0; i < num_of_process && exit_callback != NULL; i++) {
-        exit_callback(exit_callback_args); // Execute the exit callback function before waiting for the process (If provided)
-    }
 
     for (size_t i = 0; i < num_of_process; i++) {
         pid_t *current_pid_ptr = pid + i; // Get the current pid pointer

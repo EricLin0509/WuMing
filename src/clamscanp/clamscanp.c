@@ -134,9 +134,11 @@ static inline void create_worker_error(void *args) {
 }
 
 /* The callback function for `wait_for_processes()` */
-static inline void send_exit_task(void *args) {
+static inline void send_exit_task(size_t num_of_process) {
     Task exit_task = build_task(EXIT_TASK, NULL); // Build an exit task
-    add_task(&shm->scan_tasks, exit_task);
+    for (size_t i = 0; i < num_of_process; i++) {
+        add_task(&shm->scan_tasks, exit_task);
+    }
 }
 
 /* Treverse the directory and add tasks to the task queue */
@@ -179,7 +181,8 @@ static void worker_main(void *args) {
     TaskQueue *queue = (TaskQueue*)args; // Get the task queue from the argument
 
     Task task; // Initialize a task to get from the task queue
-    while (get_task(&task, queue, &shm->should_exit)) {
+    while (!atomic_load(&shm->should_exit)) {
+        if (!get_task(&task, queue)) continue; // Get a task from the task queue
 
         if (task.type != SCAN_FILE) return; // Check if the task is valid
 
@@ -241,8 +244,9 @@ int main(int argc, const char *argv[]) {
                             create_worker_error, (void*)&num_workers);
 
     // Wait for all child processes to exit
-    wait_for_processes(&producer_pid, 1, NULL, NULL); // Producer process
-    wait_for_processes(worker_pids, num_workers, send_exit_task, NULL); // Worker processes
+    wait_for_processes(&producer_pid, 1); // Producer process
+    send_exit_task(num_workers); // Send exit tasks to the task queue
+    wait_for_processes(worker_pids, num_workers); // Worker processes
     
     printf("[INFO] Scan completed successfully.\n");
 
