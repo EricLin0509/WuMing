@@ -32,6 +32,8 @@
 #include <clamav.h>
 #include <stdatomic.h>
 
+#include "watchdog.h"
+
 #define PATH_MAX 4096 // maximum length of path
 #define MAX_PROCESSES 64 // maximum number of processes can be used for scanning
 #define MAX_TASKS 4096 // maximum number of tasks can be added to the task queue
@@ -41,8 +43,7 @@ _Static_assert((MAX_TASKS & (MAX_TASKS - 1)) == 0, "MAX_TASKS must be a power of
 /* Task type to indicate what kind of task to perform */
 typedef enum {
     SCAN_DIR,
-    SCAN_FILE,
-    EXIT_TASK
+    SCAN_FILE
 } TaskType; 
 
 /* A task to be performed */
@@ -62,12 +63,16 @@ typedef struct {
 	/* Data fields */
 	int front; // Queue front index
 	int rear; // Queue rear index
+  _Atomic size_t in_progress; // Number of tasks in progress
 	Task tasks[MAX_TASKS]; // The task queue
 } TaskQueue;
 
 /* The shared data */
 typedef struct {
-    _Atomic int should_exit; // Flag to indicate if all processes should exit
+    _Atomic CurrentStatus current_status; // Current status of the scanning process
+
+    Observer producer_observer; // Observer for producer process
+    Observer worker_observer; // Observer for worker processes
     TaskQueue scan_tasks; // Task queue for scanning files
 } SharedData;
 
@@ -79,6 +84,9 @@ void init_task_queue(TaskQueue *queue);
 
 /* Clear the task queue */
 void clear_task_queue(TaskQueue *queue);
+
+/* Check whether the task queue is empty, assume the queue is not empty if failed to get the lock */
+bool is_task_queue_empty_assumption(TaskQueue *queue);
 
 /* Add a task to the task queue */
 /*
@@ -109,8 +117,7 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions);
 
 /* Spawn a new process */
 /*
-  * pid: a pointer or an array of pid_t to store the pid of the child process
-  * num_of_process: the number of processes to be spawned
+  * observer: the observer to be used for the child process
   * 
   * mission_callback: the function to be executed in the child process
   * mission_callback_args: [OPTIONAL] the arguments to be passed to the `mission_callback`
@@ -118,7 +125,7 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions);
   * error_callback: [OPTIONAL] the function to be executed if an error occurs when spawning a process
   * error_callback_args: [OPTIONAL] the arguments to be passed to the `error_callback`
 */
-void spawn_new_process(pid_t *pid, size_t num_of_process,
+void spawn_new_process(Observer *observer,
                      void (*mission_callback)(void *args), void *mission_callback_args, 
                      void (*error_callback)(void *args), void *error_callback_args);
 

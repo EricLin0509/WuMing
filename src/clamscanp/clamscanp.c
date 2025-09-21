@@ -76,6 +76,9 @@ static bool init_resources(void) {
     }
     memset(shm, 0, shm_size);
 
+    /* Initialize the `CurrentStatus` */
+    init_status(&shm->current_status);
+
     /* Initialize the task queue */
     init_task_queue(&shm->scan_tasks);
 
@@ -87,6 +90,8 @@ static void resource_cleanup(void) {
     // Clean up shared memory and semaphores
     if (shm) {
         clear_task_queue(&shm->scan_tasks);
+        destroy_observer(&shm->producer_observer);
+        destroy_observer(&shm->worker_observer);
         munmap(shm, sizeof(SharedData));
         shm = NULL;
     }
@@ -105,7 +110,7 @@ void shutdown_handler(int sig) {
     }
 
     write(STDERR_FILENO, "\n[INFO] Terminating the scan, shutting down...\n", 48);
-    atomic_store(&shm->should_exit, 1);
+    set_status(&shm->current_status, STATUS_FORCE_QUIT);
 
     // Clean up shared memory and semaphores
     resource_cleanup();
@@ -114,7 +119,7 @@ void shutdown_handler(int sig) {
 }
 
 /* Error function when failed to create a producer process */
-static inline void create_producer_error(void *args) {
+static void create_producer_error(void *args) {
     fprintf(stderr, "[ERROR] create_producer_error: Failed to spawn a producer process!\n");
 
     resource_cleanup();
@@ -122,7 +127,7 @@ static inline void create_producer_error(void *args) {
 }
 
 /* Error function when failed to create worker processes */
-static inline void create_worker_error(void *args) {
+static void create_worker_error(void *args) {
     fprintf(stderr, "[ERROR] create_worker_error: Failed to spawn worker processes!\n");
     size_t num_workers = *(size_t*)args;
     for (size_t i = 0; i < num_workers; i++) {
@@ -133,12 +138,9 @@ static inline void create_worker_error(void *args) {
     exit(EXIT_FAILURE);
 }
 
-/* The callback function for `wait_for_processes()` */
-static inline void send_exit_task(size_t num_of_process) {
-    Task exit_task = build_task(EXIT_TASK, NULL); // Build an exit task
-    for (size_t i = 0; i < num_of_process; i++) {
-        add_task(&shm->scan_tasks, exit_task);
-    }
+/* The exit signal handler */
+static void exit_signal(int sig) {
+    _exit(EXIT_SUCCESS);
 }
 
 /* Treverse the directory and add tasks to the task queue */
@@ -169,7 +171,17 @@ static void producer_main(void *args) {
         }
         else continue; // Skip other types of files
     }
+    set_status(&shm->current_status, STATUS_PRODUCER_DONE); // Set the status to producer done
     closedir(dir); // Close the directory
+}
+
+/* The exit condition for worker processes */
+static inline void is_all_task_done(TaskQueue *queue) {
+    if (get_status(&shm->current_status) == STATUS_PRODUCER_DONE) { // First check if the producer is done
+        if (is_task_queue_empty_assumption(queue)) { // Then check if the task queue is empty and all tasks are done
+            set_status(&shm->current_status, STATUS_ALL_TASKS_DONE); // Set the status to all tasks done
+        }
+    }
 }
 
 /* Worker function for scanning files */
@@ -181,12 +193,18 @@ static void worker_main(void *args) {
     TaskQueue *queue = (TaskQueue*)args; // Get the task queue from the argument
 
     Task task; // Initialize a task to get from the task queue
-    while (!atomic_load(&shm->should_exit)) {
-        if (!get_task(&task, queue)) continue; // Get a task from the task queue
+    while (get_status(&shm->current_status) != STATUS_FORCE_QUIT) {
+        is_all_task_done(queue); // Check if all tasks are done
 
-        if (task.type != SCAN_FILE) return; // Check if the task is valid
+        if (get_task(&task, queue)) { // Get a task from the task queue
+            if (task.type != SCAN_FILE) continue; // Skip invalid tasks type
 
-        process_file(task.path, engine, &options); // Scan the file
+            atomic_fetch_add(&queue->in_progress, 1); // Increment the number of tasks in progress
+
+            process_file(task.path, engine, &options); // Scan the file
+
+            atomic_fetch_sub(&queue->in_progress, 1); // Decrement the number of tasks in progress
+        }
     }
 }
 
@@ -230,23 +248,21 @@ int main(int argc, const char *argv[]) {
 
     // Add initial tasks to the task queue
     printf("[INFO] Start adding initial tasks to the task queue...\n");
-    pid_t producer_pid = 0; // Initialize the producer process id
-    spawn_new_process(&producer_pid, 1,
+    init_observer(&shm->producer_observer, 1, 0, NULL);
+    spawn_new_process(&shm->producer_observer,
                             producer_main, (void*)path,
                             create_producer_error, NULL);
 
     // Create worker processes
     printf("[INFO] Start creating worker processes...\n");
-    pid_t worker_pids[num_workers];
-    memset(worker_pids, 0, sizeof(worker_pids));
-    spawn_new_process(worker_pids, num_workers,
+    init_observer(&shm->worker_observer, num_workers, SIGUSR1, exit_signal);
+    spawn_new_process(&shm->worker_observer,
                             worker_main, (void*)&shm->scan_tasks,
                             create_worker_error, (void*)&num_workers);
 
     // Wait for all child processes to exit
-    wait_for_processes(&producer_pid, 1); // Producer process
-    send_exit_task(num_workers); // Send exit tasks to the task queue
-    wait_for_processes(worker_pids, num_workers); // Worker processes
+    watchdog_main(&shm->producer_observer, &shm->current_status, STATUS_PRODUCER_DONE);
+    watchdog_main(&shm->worker_observer, &shm->current_status, STATUS_ALL_TASKS_DONE);
     
     printf("[INFO] Scan completed successfully.\n");
 

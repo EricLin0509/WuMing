@@ -82,6 +82,7 @@ void init_task_queue(TaskQueue *queue) {
     /* Initialize the data fields of the task queue */
     queue->front = 0;
     queue->rear = 0;
+    atomic_init(&queue->in_progress, 0);
     memset(queue->tasks, 0, sizeof(Task) * MAX_TASKS);
 }
 
@@ -93,6 +94,18 @@ void clear_task_queue(TaskQueue *queue) {
     sem_destroy(&queue->mutex);
     sem_destroy(&queue->empty);
     sem_destroy(&queue->full);
+}
+
+/* Check whether the task queue is empty, assume the queue is not empty if failed to get the lock */
+bool is_task_queue_empty_assumption(TaskQueue *queue) {
+    if (queue == NULL) return true;
+
+    if (sem_trywait(&queue->empty) == 0) {
+        bool is_empty = (queue->front == queue->rear);
+        sem_post(&queue->empty);
+        return is_empty && atomic_load(&queue->in_progress) == 0; // Also check if all tasks are finished
+    }
+    return false; // Failed to get the lock, assume the queue is not empty
 }
 
 /* Add a task to the task queue */
@@ -227,8 +240,7 @@ static inline bool check_arguments(pid_t *pid, size_t num_of_process) {
 
 /* Spawn a new process */
 /*
-  * pid: a pointer or an array of pid_t to store the pid of the child process
-  * num_of_process: the number of processes to be spawned (Maximum is 64)
+  * observer: the observer to be used for the child process
   * 
   * mission_callback: the function to be executed in the child process
   * mission_callback_args: [OPTIONAL] the arguments to be passed to the `mission_callback`
@@ -236,23 +248,17 @@ static inline bool check_arguments(pid_t *pid, size_t num_of_process) {
   * error_callback: [OPTIONAL] the function to be executed if an error occurs when spawning a process
   * error_callback_args: [OPTIONAL] the arguments to be passed to the `error_callback`
 */
-void spawn_new_process(pid_t *pid, size_t num_of_process,
+void spawn_new_process(Observer *observer,
                      void (*mission_callback)(void *args), void *mission_callback_args, 
                      void (*error_callback)(void *args), void *error_callback_args) {
-    /* Check arguments before spawning the processes */
-    if (!check_arguments(pid, num_of_process)) {
-        fprintf(stderr, "[ERROR] spawn_new_process: Invalid arguments\n");
-        goto error_callback_call;
-    }
-
     if (mission_callback == NULL) {
         fprintf(stderr, "[ERROR] spawn_new_process: mission_callback is NULL\n");
         goto error_callback_call;
     }
 
     /* Spawn the processes */
-    for (size_t i = 0; i < num_of_process; i++) {
-        pid_t *current_pid_ptr = pid + i; // Get the current pid pointer
+    for (size_t i = 0; i < observer->num_of_processes; i++) {
+        pid_t *current_pid_ptr = observer->pids + i; // Get the current pid pointer
         *current_pid_ptr = fork(); // Fork a new process
         if (*current_pid_ptr == -1) { // Failed to fork
             fprintf(stderr, "[ERROR] spawn_new_process: Failed to fork process: %s\n", strerror(errno));
