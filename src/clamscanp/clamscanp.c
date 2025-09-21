@@ -47,8 +47,6 @@ Subprocess 2 (Child Process)             Subprocess 3 (Child Process)
   * Disadvantages: Only support Unix-like system, no Windows support (due to `fork()` and `wait()`)
 */
 
-/* Bottleneck: It only implments one process to submit tasks, which can block the scanning processes if the task queue is empty */
-
 #include <time.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -64,7 +62,7 @@ static SharedData *shm; // Shared memory for engine
 static pid_t parent_pid; // Parent process id
 
 /* Initialize the resources */
-static bool init_resources(void) {
+static bool init_resources(char *path) {
     parent_pid = getpid(); // Get the parent process id
 
     /* Initialize the shared memory */
@@ -80,7 +78,13 @@ static bool init_resources(void) {
     init_status(&shm->current_status);
 
     /* Initialize the task queue */
-    init_task_queue(&shm->scan_tasks);
+    init_task_queue(&shm->dir_tasks);
+    init_task_queue(&shm->file_tasks);
+
+    /* Send initial task to the task queue */
+    Task initial_task = build_task(SCAN_DIR, path);
+    add_task(&shm->dir_tasks, initial_task);
+    free(path); // Free the memory of the path
 
     return true;
 }
@@ -89,7 +93,8 @@ static bool init_resources(void) {
 static void resource_cleanup(void) {
     // Clean up shared memory and semaphores
     if (shm) {
-        clear_task_queue(&shm->scan_tasks);
+        clear_task_queue(&shm->dir_tasks);
+        clear_task_queue(&shm->file_tasks);
         destroy_observer(&shm->producer_observer);
         destroy_observer(&shm->worker_observer);
         munmap(shm, sizeof(SharedData));
@@ -118,20 +123,12 @@ void shutdown_handler(int sig) {
     exit(EXIT_FAILURE);
 }
 
-/* Error function when failed to create a producer process */
-static void create_producer_error(void *args) {
-    fprintf(stderr, "[ERROR] create_producer_error: Failed to spawn a producer process!\n");
-
-    resource_cleanup();
-    exit(EXIT_FAILURE);
-}
-
-/* Error function when failed to create worker processes */
-static void create_worker_error(void *args) {
-    fprintf(stderr, "[ERROR] create_worker_error: Failed to spawn worker processes!\n");
-    size_t num_workers = *(size_t*)args;
-    for (size_t i = 0; i < num_workers; i++) {
-        kill(getpid(), SIGTERM); // Terminate the parent process
+/* Error callback function when failed to create processes */
+static void create_process_error(void *args) {
+    fprintf(stderr, "[ERROR] create_process_error: Failed to spawn process!\n");
+    Observer *observer = (Observer*)args;
+    for (size_t i = 0; i < observer->num_of_processes; i++) {
+        kill(observer->pids[i], SIGTERM); // Terminate the rest of the processes
     }
 
     resource_cleanup();
@@ -143,12 +140,15 @@ static void exit_signal(int sig) {
     _exit(EXIT_SUCCESS);
 }
 
-/* Treverse the directory and add tasks to the task queue */
-/*
-  * WARNING: This function MUST be called by a producer process
-*/
-static void producer_main(void *args) {
-    const char *path = (const char*)args; // Get the directory path from the argument
+/* The exit condition for the producer process */
+static inline void is_producer_done(TaskQueue *dir_tasks) {
+    if (is_task_queue_empty_assumption(dir_tasks)) {
+        set_status(&shm->current_status, STATUS_PRODUCER_DONE); // Set the status to producer done
+    }
+}
+
+/* Sort the paths in the directory and add tasks to the task queue */
+static void trverse_directory(char *path, TaskQueue *dir_tasks, TaskQueue *file_tasks) {
     DIR *dir = opendir(path); // Open the directory
     if (dir == NULL) {
         fprintf(stderr, "[ERROR] Failed to open %s: %s\n", path, strerror(errno));
@@ -163,22 +163,48 @@ static void producer_main(void *args) {
         snprintf(fullpath, PATH_MAX, "%s/%s", path, entry->d_name); // Build the full path
 
         if (is_directory(fullpath)) {
-            producer_main(fullpath); // Recursively scan the directory if it is a directory
+            Task new_dir_task = build_task(SCAN_DIR, fullpath); // Build a new task for traversing the directory
+            add_task(dir_tasks, new_dir_task); // Add the task to the task queue
         }
         else if (is_regular_file(fullpath)) {
-            Task new_task = build_task(SCAN_FILE, fullpath); // Build a new task for scanning the file
-            add_task(&shm->scan_tasks, new_task); // Add the task to the task queue
+            Task new_file_task = build_task(SCAN_FILE, fullpath); // Build a new task for scanning the file
+            add_task(file_tasks, new_file_task); // Add the task to the task queue
         }
         else continue; // Skip other types of files
     }
-    set_status(&shm->current_status, STATUS_PRODUCER_DONE); // Set the status to producer done
     closedir(dir); // Close the directory
 }
 
+/* Treverse the directory and add tasks to the task queue */
+/*
+  * WARNING: This function MUST be called by a producer process
+*/
+static void producer_main(void *args) {
+    if (args == NULL) return; // Check if the argument is valid
+    TaskQueue *queue = (TaskQueue*)args; // Get the task queue from the argument
+
+    Task task; // Initialize a task to get from the task queue
+    while (get_status(&shm->current_status) != STATUS_FORCE_QUIT) {
+        is_producer_done(queue); // Check if the producer is done
+
+        if (get_task(&task, queue)) { // Get a task from the task queue
+            if (task.type != SCAN_DIR) continue; // Skip invalid tasks type
+
+            atomic_fetch_add(&queue->in_progress, 1); // Increment the number of tasks in progress
+
+            // Traverse the directory and add tasks to the task queue
+            trverse_directory(task.path, queue, &shm->file_tasks);
+
+            atomic_fetch_sub(&queue->in_progress, 1); // Decrement the number of tasks in progress
+        }
+    }
+
+}
+
 /* The exit condition for worker processes */
-static inline void is_all_task_done(TaskQueue *queue) {
+static inline void is_all_task_done(TaskQueue *file_tasks) {
     if (get_status(&shm->current_status) == STATUS_PRODUCER_DONE) { // First check if the producer is done
-        if (is_task_queue_empty_assumption(queue)) { // Then check if the task queue is empty and all tasks are done
+        if (is_task_queue_empty_assumption(file_tasks)) { // Then check if the task queue is empty and all tasks are done
             set_status(&shm->current_status, STATUS_ALL_TASKS_DONE); // Set the status to all tasks done
         }
     }
@@ -226,39 +252,40 @@ int main(int argc, const char *argv[]) {
     }
     printf("[INFO] Engine prepared Successfully.\n");
 
-    char *path = get_absolute_path(argv[1]); // Get the absolute path of the directory to scan
-    if (!is_directory(path)) { // If the path is not a directory, scan it directly
+    char *real_path = get_absolute_path(argv[1]); // Get the absolute path of the directory to scan
+    if (!is_directory(real_path)) { // If the path is not a directory, scan it directly
         printf("[INFO] User pass a file path, try scanning it directly...\n");
-        if (!is_regular_file(path)) {
+        if (!is_regular_file(real_path)) {
             fprintf(stderr, "[ERROR] This IS NOT a regular file, aborting...\n");
             resource_cleanup();
             return EXIT_FAILURE;
         } 
-        process_file(path, engine, &options);
+        process_file(real_path, engine, &options);
         resource_cleanup();
         return EXIT_SUCCESS;
     }
 
     size_t num_workers = argc > 2 ? atoi(argv[2]) : 1; // Get the number of worker processes from the argument or default to 1
+    size_t num_producers = num_workers >= 8 ? 4 : 2; // Set the number of producers to 4 if the number of worker processes is greater or equal to 8, otherwise set it to 2
 
-    if (!init_resources()) { // Initialize the shared resources
+    if (!init_resources(real_path)) { // Initialize the shared resources
         fprintf(stderr, "[ERROR] Failed to initialize shared resources, aborting...\n");
         return EXIT_FAILURE;
     }
 
     // Add initial tasks to the task queue
     printf("[INFO] Start adding initial tasks to the task queue...\n");
-    init_observer(&shm->producer_observer, 1, 0, NULL);
+    init_observer(&shm->producer_observer, num_producers, SIGUSR1, exit_signal);
     spawn_new_process(&shm->producer_observer,
-                            producer_main, (void*)path,
-                            create_producer_error, NULL);
+                            producer_main, (void*)&shm->dir_tasks,
+                            create_process_error, (void*)&shm->producer_observer);
 
     // Create worker processes
     printf("[INFO] Start creating worker processes...\n");
-    init_observer(&shm->worker_observer, num_workers, SIGUSR1, exit_signal);
+    init_observer(&shm->worker_observer, num_workers, SIGUSR2, exit_signal);
     spawn_new_process(&shm->worker_observer,
-                            worker_main, (void*)&shm->scan_tasks,
-                            create_worker_error, (void*)&num_workers);
+                            worker_main, (void*)&shm->file_tasks,
+                            create_process_error, (void*)&shm->worker_observer);
 
     // Wait for all child processes to exit
     watchdog_main(&shm->producer_observer, &shm->current_status, STATUS_PRODUCER_DONE);
@@ -266,7 +293,6 @@ int main(int argc, const char *argv[]) {
     
     printf("[INFO] Scan completed successfully.\n");
 
-    free(path); // Free the memory of the absolute path
     resource_cleanup();
 
     return EXIT_SUCCESS;

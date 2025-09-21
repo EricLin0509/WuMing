@@ -63,17 +63,19 @@ typedef struct {
 	/* Data fields */
 	int front; // Queue front index
 	int rear; // Queue rear index
-  _Atomic size_t in_progress; // Number of tasks in progress
+	_Atomic size_t in_progress; // Number of tasks in progress
 	Task tasks[MAX_TASKS]; // The task queue
 } TaskQueue;
 
 /* The shared data */
 typedef struct {
-    _Atomic CurrentStatus current_status; // Current status of the scanning process
+	_Atomic CurrentStatus current_status; // Current status of the scanning process
 
-    Observer producer_observer; // Observer for producer process
-    Observer worker_observer; // Observer for worker processes
-    TaskQueue scan_tasks; // Task queue for scanning files
+	Observer producer_observer; // Observer for producer process
+	TaskQueue dir_tasks; // Task queue for traversing directories
+
+	Observer worker_observer; // Observer for worker processes
+	TaskQueue file_tasks; // Task queue for scanning files
 } SharedData;
 
 /* Build task from path */

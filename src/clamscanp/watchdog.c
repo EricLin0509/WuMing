@@ -110,7 +110,7 @@ static void send_signal_to_all_processes(Observer *observer) {
   * @param current_status
   * The current status of the scanning process
   * @param target_status
-  * The target status to exit the main loop if greater or equal to this value
+  * The target status to exit the main loop if `current_status` is greater or equal to this value
 */
 void watchdog_main(Observer *observer, _Atomic CurrentStatus *current_status, CurrentStatus target_status) {
 	if (observer == NULL || current_status == NULL) return; // Skip invalid parameters
