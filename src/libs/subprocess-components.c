@@ -60,14 +60,8 @@ calculate_dynamic_timeout(int *idle_counter, int *current_timeout, int *ready_st
 }
 
 /* Wait for the process to finish and return the exit status */
-/*
- * is_scan_process: if true, the process is a scan process, and it should have three exit status:
- * 0: no threat found
- * 1: threats found
- * else: error occurred
-*/
-gboolean
-wait_for_process(pid_t pid, gboolean is_scan_process)
+gint
+wait_for_process(pid_t pid)
 {
     int status;
     if (waitpid(pid, &status, 0) == -1)
@@ -75,22 +69,20 @@ wait_for_process(pid_t pid, gboolean is_scan_process)
         if (errno != EINTR) // Handle signal interruptions
         {
             g_warning("Process wait error: %s", g_strerror(errno));
-            return FALSE;
+            return status; // Return the status if wait fails
         }
     }
 
     if (WIFSIGNALED(status)) // Get termination signal
     {
         g_warning("Process terminated by signal %d", WTERMSIG(status));
-        return FALSE;
+        return status; // Return the status if the process is terminated by signal
     }
 
     const gint exit_status = WEXITSTATUS(status);
     g_debug("Process exited with status %d", exit_status);
     
-    if (!is_scan_process) return exit_status == 0; // If the process is not a scan process (update process), return the exit status directly
-
-    return exit_status == 0 || exit_status == 1; // If the process is a scan process, return true if no threat found or threats found
+    return exit_status;
 }
 
 /* Handle the input/output event */

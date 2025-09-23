@@ -121,18 +121,6 @@ set_file_properties(DeleteFileData *data)
     return TRUE;
 }
 
-/* Disable the action row and set the title to "Failed to delete file" */
-/*
-  * 'error' can be NULL
-*/
-static void
-error_operation(DeleteFileData *data, GError *error)
-{
-    gtk_widget_set_sensitive(data->action_row, FALSE);
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Delete failed!"));
-    if (error) g_error_free(error);
-}
-
 /* Policy forbid the operation to delete the file */
 // Use if `validate_path_safety()` returns `FALSE`
 static void
@@ -142,9 +130,9 @@ policy_forbid_operation(DeleteFileData *data)
     adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Blocked by policy, try removing it manually!"));
 }
 
-/* file validation fail operation */
+/* error operation */
 static void
-file_validation_fail_operation(DeleteFileData *data, FileSecurityStatus status)
+error_operation(DeleteFileData *data, FileSecurityStatus status)
 {
     gtk_widget_set_sensitive(data->action_row, FALSE);
     switch (status)
@@ -230,7 +218,7 @@ delete_threat_file_elevated(DeleteFileData *data)
     if (shm_fd == -1)
     {
         g_critical("[ERROR] Failed to create shared memory: %s", strerror(errno));
-        error_operation(data, NULL);
+        error_operation(data, FILE_SECURITY_UNKNOWN_ERROR);
         return;
     }
     ftruncate(shm_fd, HELPER_DATA_SIZE); // Set the size of the shared memory
@@ -239,7 +227,7 @@ delete_threat_file_elevated(DeleteFileData *data)
     if (shm_data == MAP_FAILED) // Check if the mapping is successful
     {
         g_critical("[ERROR] Failed to map shared memory: %s", strerror(errno));
-        error_operation(data, NULL);
+        error_operation(data, FILE_SECURITY_UNKNOWN_ERROR);
         shm_unlink(shm_name);
         return;
     }
@@ -257,9 +245,10 @@ delete_threat_file_elevated(DeleteFileData *data)
         goto error_clean_up;
     }
 
-    if (!wait_for_process(pid, FALSE))
+    int exit_status = wait_for_process(pid);
+    if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK)
     {
-        g_critical("[ERROR] Helper process exit with error");
+        g_critical("[ERROR] Helper process returned error: %d", exit_status);
         goto error_clean_up;
     }
 
@@ -271,7 +260,7 @@ delete_threat_file_elevated(DeleteFileData *data)
 
 error_clean_up:
     shm_unlink(shm_name);
-    error_operation(data, NULL);
+    error_operation(data, (FileSecurityStatus)exit_status);
     return;
 }
 
@@ -306,7 +295,7 @@ delete_threat_file(DeleteFileData *data)
                 delete_threat_file_elevated(data);
                 break;
             default:
-                file_validation_fail_operation(data, result);
+                error_operation(data, result);
         }
     }
     else // If the file is deleted successfully, show the success message and add audit log

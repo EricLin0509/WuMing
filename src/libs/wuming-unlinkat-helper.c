@@ -131,10 +131,10 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     }
 
     /* Delete file */
-    if ((delete_file_securely(&helper_data->security_context, file_path)) != FILE_SECURITY_OK)
+    status = delete_file_securely(&helper_data->security_context, file_path);
+    if (status != FILE_SECURITY_OK)
     {
         g_critical("[ERROR] Failed to unlink the file: %s", file_path);
-        status = FILE_SECURITY_UNKNOWN_ERROR;
         goto clean_up;
     }
 

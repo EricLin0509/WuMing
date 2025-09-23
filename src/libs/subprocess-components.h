@@ -54,14 +54,8 @@ int
 calculate_dynamic_timeout(int *idle_counter, int *current_timeout, int *ready_status);
 
 /* Wait for the process to finish and return the exit status */
-/*
- * is_scan_process: if true, the process is a scan process, and it should have three exit status:
- * 0: no threat found
- * 1: threats found
- * else: error occurred
-*/
-gboolean
-wait_for_process(pid_t pid, gboolean is_scan_process);
+gint
+wait_for_process(pid_t pid);
 
 /* Handle the input/output event */
 gboolean
