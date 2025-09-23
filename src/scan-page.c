@@ -139,8 +139,13 @@ start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
 /*Callbacks*/
 
 static void
-file_chooser (GtkButton* file_button, gpointer user_data)
+file_chooser (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
 {
+  ScanPage *self = user_data;
+  GtkButton *file_button = GTK_BUTTON(self->scan_a_file_button);
+
   gtk_widget_set_sensitive (GTK_WIDGET (file_button), FALSE);
   g_print("[INFO] Choose a file\n");
 
@@ -155,8 +160,13 @@ file_chooser (GtkButton* file_button, gpointer user_data)
 }
 
 static void
-folder_chooser (GtkButton* folder_button, gpointer user_data)
+folder_chooser (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
 {
+  ScanPage *self = user_data;
+  GtkButton *folder_button = GTK_BUTTON(self->scan_a_folder_button);
+
   gtk_widget_set_sensitive (GTK_WIDGET (folder_button), FALSE);
   g_print("[INFO] Choose a folder\n");
 
@@ -300,6 +310,11 @@ scan_page_new(void)
   return g_object_new (SCAN_TYPE_PAGE, NULL);
 }
 
+static const GActionEntry scan_actions[] = {
+    { "scan-file", file_chooser },
+    { "scan-folder", folder_chooser },
+};
+
 static void
 scan_page_init (ScanPage *self)
 {
@@ -308,6 +323,10 @@ scan_page_init (ScanPage *self)
   /*Build ScanDialog*/
   build_scan_dialog (self);
 
-  g_signal_connect (self->scan_a_file_button, "clicked", G_CALLBACK (file_chooser), self);
-  g_signal_connect (self->scan_a_folder_button, "clicked", G_CALLBACK (folder_chooser), self);
+  /* Map scan actions */
+  GApplication *app = g_application_get_default();
+	g_action_map_add_action_entries (G_ACTION_MAP (app),
+	                                 scan_actions,
+	                                 G_N_ELEMENTS (scan_actions),
+	                                 self);
 }

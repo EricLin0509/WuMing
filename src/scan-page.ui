@@ -14,6 +14,7 @@
             <property name="homogeneous">true</property>
             <child>
               <object class="GtkButton" id="scan_a_file_button">
+                <property name="action-name">app.scan-file</property>
                 <property name="height-request">60</property>
                 <property name="child">
                   <object class="AdwButtonContent">
@@ -30,6 +31,7 @@
             </child>
             <child>
               <object class="GtkButton" id="scan_a_folder_button">
+                <property name="action-name">app.scan-folder</property>
                 <property name="height-request">60</property>
                 <property name="child">
                   <object class="AdwButtonContent">

@@ -3,7 +3,7 @@
   <object class="AdwShortcutsDialog" id="shortcuts_dialog">
     <child>
       <object class="AdwShortcutsSection">
-        <property name="title" translatable="yes">Shortcuts</property>
+        <property name="title" translatable="yes">General</property>
         <child>
           <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Show Shortcuts</property>
@@ -14,6 +14,34 @@
           <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Quit</property>
             <property name="action-name">app.quit</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="AdwShortcutsSection">
+        <property name="title" translatable="yes">Scan</property>
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Scan file</property>
+            <property name="action-name">app.scan-file</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Scan folder</property>
+            <property name="action-name">app.scan-folder</property>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="AdwShortcutsSection">
+        <property name="title" translatable="yes">Update Signature</property>
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Update Signature</property>
+            <property name="action-name">app.update</property>
           </object>
         </child>
       </object>

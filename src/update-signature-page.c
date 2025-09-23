@@ -101,12 +101,15 @@ reset_update_dialog_and_start_update(UpdateSignaturePage *self)
 }
 
 static void
-update_signature_cb(GtkButton *update_button, gpointer page)
+update_signature_cb (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
 {
+  UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE(user_data);
+  GtkButton *update_button = GTK_BUTTON(self->update_button);
+
   gtk_widget_set_sensitive (GTK_WIDGET (update_button), FALSE);
   g_print("[INFO] Update Signature\n");
-
-  UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE(page);
 
   /*Reset Widget and start update*/
   reset_update_dialog_and_start_update(self);
@@ -142,6 +145,9 @@ build_update_dialog(UpdateSignaturePage *self)
   gtk_widget_set_halign (self->close_button, GTK_ALIGN_CENTER);
   gtk_button_set_label (GTK_BUTTON (self->close_button), gettext("Close"));
   adw_status_page_set_child (ADW_STATUS_PAGE (self->update_status), self->close_button);
+
+  // Connect close button signal
+  g_signal_connect_swapped(GTK_BUTTON(self->close_button), "clicked", G_CALLBACK(adw_dialog_force_close), ADW_DIALOG (self->dialog));
 }
 
 /*GObject Essential Functions */
@@ -190,6 +196,10 @@ update_signature_page_new (void)
   return g_object_new (UPDATE_SIGNATURE_TYPE_PAGE, NULL);
 }
 
+static const GActionEntry update_actions[] = {
+  { "update", update_signature_cb }
+};
+
 static void
 update_signature_page_init (UpdateSignaturePage *self)
 {
@@ -198,6 +208,10 @@ update_signature_page_init (UpdateSignaturePage *self)
   /*Build UpdateDialog*/
   build_update_dialog(self);
 
-  g_signal_connect (self->update_button, "clicked", G_CALLBACK (update_signature_cb), self);
-  g_signal_connect_swapped(GTK_BUTTON(self->close_button), "clicked", G_CALLBACK(adw_dialog_force_close), ADW_DIALOG (self->dialog));
+  /* Map update action */
+  GApplication *app = g_application_get_default();
+	g_action_map_add_action_entries (G_ACTION_MAP (app),
+	                                 update_actions,
+	                                 G_N_ELEMENTS (update_actions),
+	                                 self);
 }
