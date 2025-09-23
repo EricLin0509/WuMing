@@ -24,9 +24,6 @@
 #include <glib.h>
 
 typedef struct {
-    int dir_fd; // Directory file descriptor
-    int file_fd; // Use for checking whether the file is modified
-    char *base_name; // Base name of the file used by `unlinkat()`
     struct stat dir_stat; // Directory stat, used for checking whether the directory has been modified
     struct stat file_stat; // File stat, used for checking whether the file has been modified
 } FileSecurityContext; // File security context
@@ -41,24 +38,44 @@ typedef enum {
     FILE_SECURITY_INVALID_CONTEXT, // Invalid file security context
     FILE_SECURITY_PERMISSION_DENIED, // Permission denied
     FILE_SECURITY_UNKNOWN_ERROR // Unknown error
-} FileSecurityStatus; // File security status
+} FileSecurityStatus; // File security status code
 
 /* Initialize the file security context */
+/*
+  * @param path
+  * The path of the file or directory to be checked
+  * @return
+  * The newly allocated file security context, or `NULL` if an error occurred
+*/
 FileSecurityContext *
 file_security_context_new(const gchar *path);
 
-/* Only keep the `stat` struct in `FileSecurityContext` */
-void
-file_security_context_keep_stat_only(FileSecurityContext *context);
-
 /* Free the file security context */
+/*
+  * @param context
+  * The file security context to be freed
+*/
 void
 file_security_context_clear(FileSecurityContext *context);
 
 /* Validate the path safety */
+/*
+  * @param path
+  * The path to be validated
+  * @return
+  * `TRUE` if the path is safe, `FALSE` otherwise
+*/
 gboolean
 validate_path_safety(char *path);
 
-/* Check file integrity by comparing the original file stat with the current file stat */
+/* Delete file securely */
+/*
+  * @param orig_context
+  * The `FileSecurityContext` you store before deleting the file
+  * @param path
+  * The path of the file to be deleted
+  * @return
+  * the security status code
+*/
 FileSecurityStatus
-validate_file_integrity(FileSecurityContext *orig_context, FileSecurityContext *new_context);
+delete_file_securely(FileSecurityContext *orig_context, const gchar *path);

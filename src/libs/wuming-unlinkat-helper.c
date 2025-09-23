@@ -118,7 +118,7 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     {
         g_critical("[ERROR] Invalid magic number of the shared memory: %s", shm_name);
         status = FILE_SECURITY_INVALID_CONTEXT;
-        goto error_clean_up;
+        goto clean_up;
     }
 
     // Get authentication key from the command line argument
@@ -127,40 +127,20 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     {
         g_critical("[ERROR] Authentication key mismatch, aborting...");
         status = FILE_SECURITY_INVALID_CONTEXT;
-        goto error_clean_up;
+        goto clean_up;
     }
 
-    FileSecurityContext orig_context = helper_data->security_context; // Get the original file security context
-    FileSecurityContext *new_context = file_security_context_new(file_path); // Create a new file security context
-
-    // Check file integrity
-    status = validate_file_integrity(&orig_context, new_context);
-    if (status != FILE_SECURITY_OK)
+    /* Delete file */
+    if ((delete_file_securely(&helper_data->security_context, file_path)) != FILE_SECURITY_OK)
     {
-        g_critical("[ERROR] Failed to validate file integrity: %s", file_path);
-        status = FILE_SECURITY_FILE_MODIFIED;
-        goto error_clean_up;
-    }
-
-    // Unlink the file
-    if (unlinkat(new_context->dir_fd, 
-                    new_context->base_name, 0) == -1)
-    {
-        g_critical("[ERROR] Failed to unlink the file: %s", g_strerror(errno));
-        status = FILE_SECURITY_PERMISSION_DENIED;
-        goto error_clean_up;
+        g_critical("[ERROR] Failed to unlink the file: %s", file_path);
+        status = FILE_SECURITY_UNKNOWN_ERROR;
+        goto clean_up;
     }
 
     g_print("[INFO] The file has been unlinked successfully with elevated privileges.\n");
 
-    file_security_context_clear(new_context); // Free the new file security context
-    g_strfreev (argv); // Free the command line arguments
-    munmap(helper_data, HELPER_DATA_SIZE); // Unmap the shared memory
-    close(shm_fd);
-    return FILE_SECURITY_OK;
-
-error_clean_up:
-    file_security_context_clear(new_context);
+clean_up:
     g_strfreev (argv);
     munmap(helper_data, HELPER_DATA_SIZE);
     close(shm_fd);

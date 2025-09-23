@@ -164,6 +164,9 @@ file_validation_fail_operation(DeleteFileData *data, FileSecurityStatus status)
         case FILE_SECURITY_INVALID_PATH:
             adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Invalid path!"));
             break;
+        case FILE_SECURITY_PERMISSION_DENIED:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Permission denied!"));
+            break;
         default:
             adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Unknown error!"));
             break;
@@ -200,8 +203,6 @@ static void
 delete_threat_file_elevated(DeleteFileData *data)
 {
     g_return_if_fail(data && data->security_context);
-
-    file_security_context_keep_stat_only(data->security_context); // Due to pkexec, we only need to keep the stat of the file
 
     // Generate the auth key for authentication
     uint32_t gen_key = generate_auth_key();
@@ -294,44 +295,18 @@ delete_threat_file(DeleteFileData *data)
         return;
     }
 
-    /* Check file integrity using unclosed file descriptor */
-    FileSecurityStatus status = FILE_SECURITY_OK;
-    FileSecurityContext *new_context = file_security_context_new(data->path);
-    status = validate_file_integrity(data->security_context, new_context);
-    file_security_context_clear(new_context);
-
-    if (status != FILE_SECURITY_OK)
-    {
-        g_critical("[SECURITY] File integrity check failed!");
-        file_validation_fail_operation(data, status);
-        return;
-    }
-
-    /* Delete the file */
-    if (unlinkat(data->security_context->dir_fd, 
-                    data->security_context->base_name, 0) == -1)
+    /* Delete file */
+    FileSecurityStatus result = delete_file_securely(data->security_context, data->path);
+    if (result != FILE_SECURITY_OK)
     {
         switch (errno)
         {
-        case EACCES:
-            g_warning("[WARNING] Permission denied, use elevated mode to delete the file");
-            delete_threat_file_elevated(data);
-            break;
-        case EISDIR:
-            g_critical("[ERROR] Is a directory!");
-            error_operation(data, NULL);
-            break;
-        case EROFS:
-            g_critical("[ERROR] Read-only file system!");
-            error_operation(data, NULL);
-            break;
-        case ENOENT:
-            g_critical("[ERROR] File not found!");
-            error_operation(data, NULL);
-        default:
-            g_critical("[ERROR] Unknown error!");
-            error_operation(data, NULL);
-            break;
+            case EACCES:
+                g_warning("[WARNING] Permission denied, use elevated mode to delete the file");
+                delete_threat_file_elevated(data);
+                break;
+            default:
+                file_validation_fail_operation(data, result);
         }
     }
     else // If the file is deleted successfully, show the success message and add audit log

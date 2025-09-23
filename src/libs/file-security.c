@@ -35,131 +35,97 @@
 #define DIRECTORY_OPEN_FLAGS (O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
 #define FILE_OPEN_FLAGS (O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
 
-/* Open the file securely and KEEP discriptor open */
-// Warning: The file descriptor will remain open until the function `file_security_context_clear` is called
+/* Open the file securely store the stat information */
 static gboolean
-secure_open_and_verify(FileSecurityContext *context, const gchar *path)
+secure_open_and_store_stat(FileSecurityContext *context, const gchar *path)
 {
+    gboolean result = FALSE;
+
     // Check if the path is valid
-    if (!context || !path || !*path || context->dir_fd != -1)
+    if (!context || !path || !*path)
     {
        g_critical("[SECURITY] Invalid params: ctx:%p path:%s", context, path ? path : "(null)");
-       return FALSE;
+       return result;
     }
 
+    // Initialize the common fields
     g_autofree gchar *dir_path = NULL;
+    g_autofree gchar *base_name = NULL;
+    int dir_fd = -1;
+    int file_fd = -1;
 
     dir_path = g_path_get_dirname(path); // Get the directory path
-    context->base_name = g_path_get_basename(path); // Get the base name of the file
+    base_name = g_path_get_basename(path); // Get the base name of the file
 
-    // Open the parent directory
-    context->dir_fd = open(dir_path, DIRECTORY_OPEN_FLAGS); // use `O_NOFOLLOW` to avoid following symlinks
-    if (context->dir_fd == -1)
+    // Open parent directory
+    dir_fd = open(dir_path, DIRECTORY_OPEN_FLAGS);
+    if (dir_fd == -1)
     {
-        g_critical("[ERROR] Failed to open directory: %s", dir_path);
-        g_critical("[SECURITY] open(%s) failed: %s", dir_path, strerror(errno));
-        return FALSE;
+        g_critical("[SECURITY] Failed to open directory: %s", dir_path);
+        goto clean_up;
     }
 
-    // Get the original file stat
-    if (fstat(context->dir_fd, &context->dir_stat) == -1) // Get the directory stat
+    // Get directory stat
+    if (fstat(dir_fd, &context->dir_stat) == -1)
     {
-        g_critical("[SECURITY] fstat(%d) failed: %s", context->dir_fd, strerror(errno));
-        goto error_clean_up;
+        g_critical("[SECURITY] Failed to get directory stat: %s", dir_path);
+        goto clean_up;
     }
 
     // Check again whether the file is symlink
     struct stat symlink_check_stat;
-    if (fstatat(context->dir_fd, context->base_name, &symlink_check_stat, AT_SYMLINK_NOFOLLOW) == -1)
+    if (fstatat(dir_fd, base_name, &symlink_check_stat, AT_SYMLINK_NOFOLLOW) == -1)
     {
-        g_critical("[SECURITY] fstatat(%d, %s) failed: %s", context->dir_fd, context->base_name, strerror(errno));
-        goto error_clean_up;
-        
-        if (S_ISLNK(symlink_check_stat.st_mode)) // Check if the file is a symlink
-        {
-            g_critical("[SECURITY] Symlink detected after open");
-            goto error_clean_up;
-        }
+        g_critical("[SECURITY] Symlink detected: %s", path);
+        goto clean_up;
     }
 
-    // Open the file
-    context->file_fd = openat(context->dir_fd, context->base_name, FILE_OPEN_FLAGS);
-    if (context->file_fd == -1)
+    // Open file
+    file_fd = openat(dir_fd, base_name, FILE_OPEN_FLAGS);
+    if (file_fd == -1)
     {
-        g_critical("[ERROR] Failed to open file: %s", path);
-        goto error_clean_up;
+        g_critical("[SECURITY] Failed to open file: %s", path);
+        goto clean_up;
     }
 
-    // Save the original file stat
-    if (fstat(context->file_fd, &context->file_stat) == -1) // Get the file stat
+    // Get file stat
+    if (fstat(file_fd, &context->file_stat) == -1)
     {
-        g_critical("[ERROR] Failed to get file stat");
-        goto error_clean_up;
+        g_critical("[SECURITY] Failed to get file stat: %s", path);
+        goto clean_up;
     }
 
-    return TRUE;
+    result = TRUE;
 
-error_clean_up:
-    if (context->dir_fd != -1)
-    {
-        close(context->dir_fd);
-        context->dir_fd = -1;
-    }
-    if (context->file_fd != -1)
-    {
-        close(context->file_fd);
-        context->file_fd = -1;
-    }
-    g_clear_pointer(&context->base_name, g_free);
-    return FALSE;
+clean_up:
+    if (dir_fd != -1) close(dir_fd);
+    if (file_fd != -1) close(file_fd);
+
+    return result;
 }
 
 /* Initialize the file security context */
+/*
+  * @param path
+  * The path of the file or directory to be checked
+  * @return
+  * The initialized file security context or NULL if failed to initialize.
+*/
 FileSecurityContext *
 file_security_context_new(const gchar *path)
 {
+    g_return_val_if_fail(path, NULL);
 
-    if (!path || !*path)
+    FileSecurityContext *new_context = g_new0(FileSecurityContext, 1);
+
+    if (!secure_open_and_store_stat(new_context, path))
     {
-        g_critical("[ERROR] Invalid path provided");
+        g_critical("[SECURITY] Failed to initialize file security context");
+        file_security_context_clear(new_context);
         return NULL;
     }
-
-    FileSecurityContext *context = g_new0(FileSecurityContext, 1);
-    context->dir_fd = -1;
-    context->file_fd = -1;
-    context->base_name = NULL;
-    context->dir_stat = (struct stat){0};
-    context->file_stat = (struct stat){0};
-
-    if (!secure_open_and_verify(context, path))
-    {
-        g_critical("[SECURITY] Failed to open file: %s", path);
-        file_security_context_clear(context);
-        return NULL;
-    }
-
-    return context;
-}
-
-/* Only keep the `stat` struct in `FileSecurityContext` */
-void
-file_security_context_keep_stat_only(FileSecurityContext *context)
-{
-    g_return_if_fail(context);
-
-    if (context->dir_fd != -1)
-    {
-        close(context->dir_fd);
-        context->dir_fd = -1;
-    }
-    if (context->file_fd != -1)
-    {
-        close(context->file_fd);
-        context->file_fd = -1;
-    }
-
-    g_clear_pointer(&context->base_name, g_free);
+    
+    return new_context;
 }
 
 /* Free the file security context */
@@ -167,8 +133,6 @@ void
 file_security_context_clear(FileSecurityContext *context)
 {
     g_return_if_fail(context);
-
-    file_security_context_keep_stat_only(context);
 
     g_clear_pointer(&context, g_free);
 }
@@ -193,7 +157,13 @@ calculate_path_depth(const gchar *path)
     return depth;
 }
 
-/* Validate the path safety before deleting the file */
+/* Validate the path safety */
+/*
+  * @param path
+  * The path to be validated
+  * @return
+  * `TRUE` if the path is safe, `FALSE` otherwise
+*/
 /*
   * These paths should be blocked:
   * Default policies:
@@ -308,17 +278,21 @@ context_compare(const struct stat *original_stat, const struct stat *current_sta
 }
 
 /* Check file integrity by comparing the original file stat with the current file stat */
-FileSecurityStatus
-validate_file_integrity(FileSecurityContext *orig_context, FileSecurityContext *new_context)
+static FileSecurityStatus
+validate_file_integrity(FileSecurityContext *orig_context, const gchar *path)
 {
+    // Create a new context for the file
+    FileSecurityContext *new_context = file_security_context_new(path);
+    if (!new_context) return FILE_SECURITY_INVALID_PATH;
+
     // Check if the context is valid
-    g_return_val_if_fail(orig_context && new_context, FILE_SECURITY_INVALID_PATH);
+    g_return_val_if_fail(orig_context && new_context, FILE_SECURITY_UNKNOWN_ERROR);
 
     // Compare the original directory stat with the current directory stat
     const gboolean dir_match = context_compare(&orig_context->dir_stat, &new_context->dir_stat, TRUE);
     if (!dir_match)
     {
-        g_critical("[SECURITY] Directory has been modified: %s", orig_context->base_name);
+        g_critical("[SECURITY] Directory has been modified");
         return FILE_SECURITY_DIR_MODIFIED;
     }
 
@@ -326,9 +300,44 @@ validate_file_integrity(FileSecurityContext *orig_context, FileSecurityContext *
     const gboolean file_match = context_compare(&orig_context->file_stat, &new_context->file_stat, FALSE);
     if (!file_match)
     {
-        g_critical("[SECURITY] File has been modified: %s", orig_context->base_name);
+        g_critical("[SECURITY] File has been modified");
         return FILE_SECURITY_FILE_MODIFIED;
     }
 
     return FILE_SECURITY_OK;
+}
+
+/* Delete file securely */
+/*
+  * @param orig_context
+  * The `FileSecurityContext` you store before deleting the file
+  * @param path
+  * The path of the file to be deleted
+  * @return
+  * the security status code
+*/
+FileSecurityStatus
+delete_file_securely(FileSecurityContext *orig_context, const gchar *path)
+{
+    FileSecurityStatus status = FILE_SECURITY_OK;
+
+    g_return_val_if_fail(orig_context && path, FILE_SECURITY_INVALID_CONTEXT);
+
+    /* Check if the file has been modified since the last time it was opened */
+    status = validate_file_integrity(orig_context, path);
+    if (status != FILE_SECURITY_OK)
+    {
+        g_critical("[SECURITY] Validation failed: %s", path);
+        return status;
+    }
+
+    /* Delete the file */
+    if (unlink(path) == -1)
+    {
+        g_critical("[SECURITY] Failed to delete file: %s", path);
+        status = FILE_SECURITY_UNKNOWN_ERROR;
+        return status;
+    }
+
+    return status;
 }
