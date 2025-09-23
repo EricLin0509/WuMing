@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-06 02:34+0800\n"
+"POT-Creation-Date: 2025-09-23 18:08+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -47,19 +47,43 @@ msgstr ""
 msgid "A caption"
 msgstr ""
 
-#: src/gtk/help-overlay.ui:11
-msgctxt "shortcut window"
+#: src/shortcuts-dialog.ui:6
 msgid "General"
 msgstr ""
 
-#: src/gtk/help-overlay.ui:14
+#: src/shortcuts-dialog.ui:9
 msgctxt "shortcut window"
 msgid "Show Shortcuts"
 msgstr ""
 
-#: src/gtk/help-overlay.ui:20
+#: src/shortcuts-dialog.ui:15
 msgctxt "shortcut window"
 msgid "Quit"
+msgstr ""
+
+#: src/shortcuts-dialog.ui:23 src/wuming-window.ui:60 src/wuming-window.ui:61
+#: src/wuming-window.ui:65 src/scan-page.c:225
+msgid "Scan"
+msgstr ""
+
+#: src/shortcuts-dialog.ui:26
+msgctxt "shortcut window"
+msgid "Scan file"
+msgstr ""
+
+#: src/shortcuts-dialog.ui:32
+msgctxt "shortcut window"
+msgid "Scan folder"
+msgstr ""
+
+#: src/shortcuts-dialog.ui:40 src/wuming-window.ui:76 src/wuming-window.ui:77
+#: src/wuming-window.ui:81 src/update-signature-page.c:132
+msgid "Update Signature"
+msgstr ""
+
+#: src/shortcuts-dialog.ui:43
+msgctxt "shortcut window"
+msgid "Update Signature"
 msgstr ""
 
 #: src/wuming-window.ui:30
@@ -72,16 +96,6 @@ msgstr ""
 
 #: src/wuming-window.ui:52 src/wuming-window.ui:97
 msgid "Coming Soon..."
-msgstr ""
-
-#: src/wuming-window.ui:60 src/wuming-window.ui:61 src/wuming-window.ui:65
-#: src/scan-page.c:215
-msgid "Scan"
-msgstr ""
-
-#: src/wuming-window.ui:76 src/wuming-window.ui:77 src/wuming-window.ui:81
-#: src/update-signature-page.c:129
-msgid "Update Signature"
 msgstr ""
 
 #: src/wuming-window.ui:92 src/wuming-window.ui:93
@@ -108,43 +122,43 @@ msgstr ""
 msgid "Preparing..."
 msgstr ""
 
-#: src/scan-page.c:206
+#: src/scan-page.c:216
 msgid "Show threats"
 msgstr ""
 
-#: src/scan-page.c:210 src/update-signature-page.c:143
+#: src/scan-page.c:220 src/update-signature-page.c:146
 msgid "Close"
 msgstr ""
 
-#: src/scan-page.c:226
+#: src/scan-page.c:236
 msgid "Found Threats"
 msgstr ""
 
-#: src/scan-page.c:230
+#: src/scan-page.c:240
 msgid "Threats"
 msgstr ""
 
-#: src/scan-page.c:241
+#: src/scan-page.c:251
 msgid "Cancel Scan Process?"
 msgstr ""
 
-#: src/scan-page.c:242
+#: src/scan-page.c:252
 msgid "This will stop the current scan process. Are you sure?"
 msgstr ""
 
-#: src/scan-page.c:244
+#: src/scan-page.c:254
 msgid "Cancel"
 msgstr ""
 
-#: src/scan-page.c:252
+#: src/scan-page.c:262
 msgid "Cancel Scan Process"
 msgstr ""
 
-#: src/scan-page.ui:21
+#: src/scan-page.ui:22
 msgid "Scan file"
 msgstr ""
 
-#: src/scan-page.ui:37
+#: src/scan-page.ui:39
 msgid "Scan folder"
 msgstr ""
 
@@ -194,89 +208,89 @@ msgstr ""
 msgid "Current Signature Status"
 msgstr ""
 
-#: src/update-signature-page.ui:30
+#: src/update-signature-page.ui:31
 msgid "Update"
 msgstr ""
 
-#: src/update-signature-page.ui:43
+#: src/update-signature-page.ui:44
 msgid "Freshclam service status"
 msgstr ""
 
-#: src/libs/delete-file.c:120
+#: src/libs/delete-file.c:115
 msgid "Maybe a system file, delete it with caution!"
 msgstr ""
 
-#: src/libs/delete-file.c:121
+#: src/libs/delete-file.c:116
 msgid "Normal file"
 msgstr ""
 
-#: src/libs/delete-file.c:137
-msgid "Delete failed!"
-msgstr ""
-
-#: src/libs/delete-file.c:147
+#: src/libs/delete-file.c:130
 msgid "Blocked by policy, try removing it manually!"
 msgstr ""
 
-#: src/libs/delete-file.c:158
+#: src/libs/delete-file.c:141
 msgid "Directory modified, try removing it manually!"
 msgstr ""
 
-#: src/libs/delete-file.c:161
+#: src/libs/delete-file.c:144
 msgid "File may compromised, try removing it manually!"
 msgstr ""
 
-#: src/libs/delete-file.c:164
+#: src/libs/delete-file.c:147
 msgid "Directory not found!"
 msgstr ""
 
-#: src/libs/delete-file.c:167
+#: src/libs/delete-file.c:150
 msgid "File not found!"
 msgstr ""
 
-#: src/libs/delete-file.c:170
+#: src/libs/delete-file.c:153
 msgid "Invalid path!"
 msgstr ""
 
-#: src/libs/delete-file.c:173
+#: src/libs/delete-file.c:156
+msgid "Permission denied!"
+msgstr ""
+
+#: src/libs/delete-file.c:159
 msgid "Unknown error!"
 msgstr ""
 
-#: src/libs/scan.c:200
+#: src/libs/scan.c:197
 msgid "Delete"
 msgstr ""
 
-#: src/libs/scan.c:230
+#: src/libs/scan.c:227
 msgid "Failed to set file properties"
 msgstr ""
 
-#: src/libs/scan.c:323
+#: src/libs/scan.c:333
 #, c-format
 msgid ""
 "%d files scanned\n"
 "%d threats found"
 msgstr ""
 
-#: src/libs/scan.c:353
+#: src/libs/scan.c:364
 msgid "User cancelled the scan"
 msgstr ""
 
-#: src/libs/scan.c:425
+#: src/libs/scan.c:477
 msgid "Scan Canceled"
 msgstr ""
 
-#: src/libs/scan.c:429
+#: src/libs/scan.c:481
 msgid "Scan Complete"
 msgstr ""
 
-#: src/libs/scan.c:433
+#: src/libs/scan.c:485
 msgid "Scan Failed"
 msgstr ""
 
-#: src/libs/update-signature.c:486
+#: src/libs/update-signature.c:518
 msgid "Update Complete"
 msgstr ""
 
-#: src/libs/update-signature.c:486
+#: src/libs/update-signature.c:518
 msgid "Update Failed"
 msgstr ""
