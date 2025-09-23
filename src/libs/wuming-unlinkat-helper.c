@@ -29,7 +29,6 @@
 #include <sys/mman.h>
 
 #include "wuming-unlinkat-helper.h"
-#include "file-security.h"
 
 /* Verify the authentication key */
 static inline gboolean
@@ -63,48 +62,7 @@ void
 breakpoint_handler(int signal)
 {
     g_critical("[ERROR] Breakpoint detected, aborting...");
-    exit(EXIT_FAILURE);
-}
-
-/* Similiar to `validate_by_fd` in `file-security.c`, but this function use struct `stat` to validate the file security status. */
-static gboolean
-validate_by_stat(FileSecurityContext *context, const struct stat *stat_data, const gboolean is_check_directory)
-{
-    if (!context || !stat_data)
-    {
-        g_critical("Invalid arguments.");
-        return FALSE;
-    }
-
-    /* If check directory, only check the directory device */
-    if (is_check_directory)
-    {
-        return (stat_data->st_dev == context->dir_stat.st_dev);
-    }
-
-    /* Otherwise, compare all the metadata, content, create time, modification time */
-
-    // Metadata comparison
-    const gboolean descriptor_match = 
-        (stat_data->st_dev == context->file_stat.st_dev &&
-         stat_data->st_ino == context->file_stat.st_ino);
-
-    // Content comparison
-    const gboolean content_match = 
-        (stat_data->st_nlink == context->file_stat.st_nlink &&
-         stat_data->st_size == context->file_stat.st_size);
-    
-    // Create time comparison
-    const gboolean create_time_match = 
-        (stat_data->st_ctime == context->file_stat.st_ctime &&
-        stat_data->st_ctim.tv_nsec == context->file_stat.st_ctim.tv_nsec);
-
-    // Modification time comparison
-    const gboolean modification_time_match = 
-        (stat_data->st_mtime == context->file_stat.st_mtime &&
-        stat_data->st_mtim.tv_nsec == context->file_stat.st_mtim.tv_nsec);
-
-    return descriptor_match && content_match && create_time_match && modification_time_match;
+    exit(FILE_SECURITY_UNKNOWN_ERROR);
 }
 
 gint
@@ -114,11 +72,13 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     signal(SIGTRAP, breakpoint_handler);
     signal(SIGILL, breakpoint_handler);
     
+    FileSecurityStatus status = FILE_SECURITY_OK;
+
     // Check if the program is running as root
     if (getuid() != 0)
     {
         g_critical("This program must be run as root");
-        return EXIT_FAILURE;
+        return FILE_SECURITY_PERMISSION_DENIED;
     }
 
     // Get the command line arguments
@@ -130,7 +90,7 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     {
         g_critical("[ERROR] Invalid arguments");
         g_critical("Usage: %s <shm_name> <file_path> <auth_key>", argv[0]);
-        return EXIT_FAILURE;
+        return FILE_SECURITY_INVALID_PATH;
     }
 
     // Get the shm name and file path from the command line arguments
@@ -141,7 +101,7 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     if (shm_fd < 0)
     {
         g_critical("[ERROR] Failed to open the shared memory: %s", shm_name);
-        return EXIT_FAILURE;
+        return FILE_SECURITY_INVALID_PATH;
     }
 
     HelperData *helper_data = mmap(NULL, HELPER_DATA_SIZE, PROT_READ, MAP_SHARED, shm_fd, 0); // Map the shared memory
@@ -149,7 +109,7 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     {
         g_critical("[ERROR] Failed to map the shared memory: %s", shm_name);
         close(shm_fd);
-        return EXIT_FAILURE;
+        return FILE_SECURITY_INVALID_PATH;
     }
     g_print("[INFO] HelperData received!\n");
 
@@ -157,6 +117,7 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     if (!verify_magic(helper_data->shm_magic))
     {
         g_critical("[ERROR] Invalid magic number of the shared memory: %s", shm_name);
+        status = FILE_SECURITY_INVALID_CONTEXT;
         goto error_clean_up;
     }
 
@@ -165,43 +126,45 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     if (!verify_key(auth_key, helper_data->auth_key))
     {
         g_critical("[ERROR] Authentication key mismatch, aborting...");
+        status = FILE_SECURITY_INVALID_CONTEXT;
         goto error_clean_up;
     }
 
-    FileSecurityContext *context = file_security_context_new(file_path); // Create the file security context
+    FileSecurityContext orig_context = helper_data->security_context; // Get the original file security context
+    FileSecurityContext *new_context = file_security_context_new(file_path); // Create a new file security context
 
-    secure_open_and_verify(context, file_path); // Take snapshot of the file and directory
-
-    // Check directory security status
-    if (!validate_by_stat(context, &helper_data->data.dir_stat, TRUE) ||
-        !validate_by_stat(context, &helper_data->data.file_stat, FALSE)) // Check the file security status
+    // Check file integrity
+    status = validate_file_integrity(&orig_context, new_context);
+    if (status != FILE_SECURITY_OK)
     {
-        g_critical("[ERROR] The directory or file has been modified");
+        g_critical("[ERROR] Failed to validate file integrity: %s", file_path);
+        status = FILE_SECURITY_FILE_MODIFIED;
         goto error_clean_up;
     }
 
     // Unlink the file
-    if (unlinkat(context->dir_fd, 
-                    context->base_name, 0) == -1)
+    if (unlinkat(new_context->dir_fd, 
+                    new_context->base_name, 0) == -1)
     {
         g_critical("[ERROR] Failed to unlink the file: %s", g_strerror(errno));
+        status = FILE_SECURITY_PERMISSION_DENIED;
         goto error_clean_up;
     }
 
     g_print("[INFO] The file has been unlinked successfully with elevated privileges.\n");
 
-    file_security_context_clear(context); // Free the file security context
+    file_security_context_clear(new_context); // Free the new file security context
     g_strfreev (argv); // Free the command line arguments
     munmap(helper_data, HELPER_DATA_SIZE); // Unmap the shared memory
     close(shm_fd);
-    return EXIT_SUCCESS;
+    return FILE_SECURITY_OK;
 
 error_clean_up:
-    file_security_context_clear(context); // Free the file security context
-    g_strfreev (argv); // Free the command line arguments
-    munmap(helper_data, HELPER_DATA_SIZE); // Unmap the shared memory
+    file_security_context_clear(new_context);
+    g_strfreev (argv);
+    munmap(helper_data, HELPER_DATA_SIZE);
     close(shm_fd);
-    return EXIT_FAILURE;
+    return status;
 }
 
 int main(int argc, char *argv[]) {

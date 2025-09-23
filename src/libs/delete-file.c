@@ -87,12 +87,6 @@ set_file_properties(DeleteFileData *data)
     g_return_val_if_fail(data != NULL, FALSE);
     g_return_val_if_fail(data->security_context != NULL, FALSE);
 
-    if (!secure_open_and_verify(data->security_context, data->path)) // Initialize the file security context
-    {
-        g_critical("[ERROR] Failed to initialize file security context");
-        return FALSE;
-    }
-
     if (!data->action_row || !GTK_IS_WIDGET(data->action_row)) return FALSE; // Check if the action row is valid
 
     char *path = data->path;
@@ -207,6 +201,8 @@ delete_threat_file_elevated(DeleteFileData *data)
 {
     g_return_if_fail(data && data->security_context);
 
+    file_security_context_keep_stat_only(data->security_context); // Due to pkexec, we only need to keep the stat of the file
+
     // Generate the auth key for authentication
     uint32_t gen_key = generate_auth_key();
 
@@ -218,11 +214,7 @@ delete_threat_file_elevated(DeleteFileData *data)
         .auth_key = gen_key,
         .shm_magic = SHM_MAGIC,
 
-        // StatData
-        .data = {
-            .dir_stat = data->security_context->dir_stat,
-            .file_stat = data->security_context->file_stat,
-        }
+        .security_context = *(data->security_context),
     };
 
     // Create a shared memory for passing data between the helper process and the main process
@@ -304,7 +296,11 @@ delete_threat_file(DeleteFileData *data)
 
     /* Check file integrity using unclosed file descriptor */
     FileSecurityStatus status = FILE_SECURITY_OK;
-    if ((status = validate_by_fd(data->security_context)) != FILE_SECURITY_OK)
+    FileSecurityContext *new_context = file_security_context_new(data->path);
+    status = validate_file_integrity(data->security_context, new_context);
+    file_security_context_clear(new_context);
+
+    if (status != FILE_SECURITY_OK)
     {
         g_critical("[SECURITY] File integrity check failed!");
         file_validation_fail_operation(data, status);

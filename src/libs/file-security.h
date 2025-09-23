@@ -38,11 +38,18 @@ typedef enum {
     FILE_SECURITY_DIR_NOT_FOUND, // Directory not found
     FILE_SECURITY_FILE_NOT_FOUND, // File not found
     FILE_SECURITY_INVALID_PATH, // Invalid path
+    FILE_SECURITY_INVALID_CONTEXT, // Invalid file security context
+    FILE_SECURITY_PERMISSION_DENIED, // Permission denied
+    FILE_SECURITY_UNKNOWN_ERROR // Unknown error
 } FileSecurityStatus; // File security status
 
 /* Initialize the file security context */
 FileSecurityContext *
 file_security_context_new(const gchar *path);
+
+/* Only keep the `stat` struct in `FileSecurityContext` */
+void
+file_security_context_keep_stat_only(FileSecurityContext *context);
 
 /* Free the file security context */
 void
@@ -52,10 +59,6 @@ file_security_context_clear(FileSecurityContext *context);
 gboolean
 validate_path_safety(char *path);
 
-/* Open the file securely and KEEP discriptor open */
-gboolean
-secure_open_and_verify(FileSecurityContext *context, const gchar *path);
-
-/* Check file integrity using unclosed file descriptor */
+/* Check file integrity by comparing the original file stat with the current file stat */
 FileSecurityStatus
-validate_by_fd(FileSecurityContext *context);
+validate_file_integrity(FileSecurityContext *orig_context, FileSecurityContext *new_context);
