@@ -100,9 +100,9 @@ void clear_task_queue(TaskQueue *queue) {
 bool is_task_queue_empty_assumption(TaskQueue *queue) {
     if (queue == NULL) return true;
 
-    if (sem_trywait(&queue->empty) == 0) {
+    if (sem_trywait(&queue->mutex) == 0) {
         bool is_empty = (queue->front == queue->rear);
-        sem_post(&queue->empty);
+        sem_post(&queue->mutex);
         return is_empty && atomic_load(&queue->in_progress) == 0; // Also check if all tasks are finished
     }
     return false; // Failed to get the lock, assume the queue is not empty
