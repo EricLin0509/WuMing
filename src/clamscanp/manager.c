@@ -101,7 +101,7 @@ bool is_task_queue_empty_assumption(TaskQueue *queue) {
     if (queue == NULL) return true;
 
     if (sem_trywait(&queue->empty) == 0) {
-        bool is_empty = (queue->rear + 1) % MAX_TASKS == queue->front; // The current task is the last one in the queue
+        bool is_empty = (queue->front == queue->rear);
         sem_post(&queue->empty);
         return is_empty && atomic_load(&queue->in_progress) == 0; // Also check if all tasks are finished
     }
