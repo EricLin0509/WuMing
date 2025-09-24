@@ -18,11 +18,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/* This program is similar to `clamscan` from ClamAV, but with some performance improvements */
-/*
-  * This use process pool to implement parallel scanning, which can significantly improve the scanning speed.
-  * Use shared memory to share the engine between processes, which can reduce the memory usage.
-*/
+/* This is the watchdog implementation for clamscanp */
 
 #ifndef WATCHDOG_H
 #define WATCHDOG_H
@@ -31,14 +27,14 @@
 #include <sys/types.h>
 #include <stdatomic.h>
 
-/* This is the watchdog implementation for this program */
+typedef void (*signal_handler)(int signal); // The signal handler callback function type
+
+/* Current status */
 /*
   * `STATUS_UNFINISHED` means the scanning process is still running
-  * `STATUS_FORCE_QUIT` means the scanning process should be terminated immediately
   * `STATUS_PRODUCER_DONE` means the producer process has finished producing tasks
-  * `STATUS_ALL_TASKS_DONE` means all tasks have been processed by the consumer processes
-  * `STATUS_FINISHED` means the scanning process has finished
-  * `STATUS_ERROR` means an error has occurred
+  * `STATUS_ALL_TASKS_DONE` means all tasks have been processed by the consumer processes\
+  * `STATUS_FORCE_QUIT` means the scanning process should be terminated immediately
 */
 typedef enum {
     STATUS_UNFINISHED = 0,
@@ -58,7 +54,7 @@ typedef struct {
     size_t num_of_processes;
     pid_t *pids;
     int exit_condition_signal;
-    __sighandler_t condition_signal_handler;
+    signal_handler condition_signal_handler;
 } Observer;
 
 /* Initialize the current status of the scanning process */
@@ -81,16 +77,19 @@ void set_status(_Atomic CurrentStatus *status, CurrentStatus new_status);
   * @param condition_signal_handler
   * The signal handler for the exit condition signal [OPTIONAL]
 */
-void init_observer(Observer *dest, size_t num_of_processes, int exit_condition_signal, __sighandler_t condition_signal_handler);
+void init_observer(Observer *dest, size_t num_of_processes, int exit_condition_signal, signal_handler condition_signal_handler);
 
 /* Destroy the observer object */
 void destroy_observer(Observer *observer);
 
 /* Register the signal handler for the exit condition signal */
 /*
-  * @warning This function should be called in the child processes (worker processes)
+  * @param signal
+  * The signal to be registered
+  * @param handler
+  * The signal handler for the signal
 */
-void register_signal_handler(Observer *observer);
+void register_signal_handler(int signal, signal_handler handler);
 
 /* The main function for watchdog */
 /*

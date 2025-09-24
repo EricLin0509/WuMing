@@ -18,11 +18,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/* This program is similar to `clamscan` from ClamAV, but with some performance improvements */
-/*
-  * This use process pool to implement parallel scanning, which can significantly improve the scanning speed.
-  * Use shared memory to share the engine between processes, which can reduce the memory usage.
-*/
+/* This is the watchdog implementation for clamscanp */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +26,8 @@
 #include <sys/wait.h>
 
 #include "watchdog.h"
+
+#define SIGACTION_FLAGS (SA_RESTART | SA_NOCLDSTOP) // restart interrupted system calls
 
 /* Initialize the current status of the scanning process */
 void init_status(_Atomic CurrentStatus *status) {
@@ -57,7 +55,7 @@ void set_status(_Atomic CurrentStatus *status, CurrentStatus new_status) {
   * @param condition_signal_handler
   * The signal handler for the exit condition signal [OPTIONAL]
 */
-void init_observer(Observer *dest, size_t num_of_processes, int exit_condition_signal, __sighandler_t condition_signal_handler) {
+void init_observer(Observer *dest, size_t num_of_processes, int exit_condition_signal, signal_handler condition_signal_handler) {
 	dest->pids = calloc(num_of_processes, sizeof(pid_t));
 	dest->num_of_processes = num_of_processes;
 	
@@ -83,11 +81,23 @@ void destroy_observer(Observer *observer) {
 
 /* Register the signal handler for the exit condition signal */
 /*
-  * @warning This function should be called in the child processes (worker processes)
+  * @param signal
+  * The signal to be registered
+  * @param handler
+  * The signal handler for the signal
 */
-void register_signal_handler(Observer *observer) {
-	if (observer->exit_condition_signal > 0 && observer->condition_signal_handler != NULL) {
-		signal(observer->exit_condition_signal, observer->condition_signal_handler); // register the signal handler
+void register_signal_handler(int signal, signal_handler handler) {
+	if (signal <= 0 || handler == NULL) return; // Skip invalid parameters
+
+	/* Set up the sigaction structure */
+	struct sigaction action;
+	action.sa_handler = handler;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = SIGACTION_FLAGS; // restart interrupted system calls
+
+	/* Register the signal handler */
+	if (sigaction(signal, &action, NULL) < 0) {
+		fprintf(stderr, "[ERROR] register_signal_handler: Failed to register the signal handler for signal %d\n", signal);
 	}
 }
 
@@ -121,7 +131,7 @@ void watchdog_main(Observer *observer, _Atomic CurrentStatus *current_status, Cu
 			if (waitpid(observer->pids[i], NULL, WNOHANG) < 0) {
 				fprintf(stderr, "[ERROR] watchdog_main: Failed to wait for the child process %d, aborting...\n", observer->pids[i]);
 				set_status(current_status, STATUS_FORCE_QUIT); // failed to wait for the child process, force quit
-				return; // exit the main loop
+				break; // exit the main loop to force quit the program
 			}
 		}
 

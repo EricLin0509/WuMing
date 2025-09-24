@@ -51,7 +51,6 @@ Subprocess 2 (Child Process)             Subprocess 3 (Child Process)
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/mman.h>
-#include <signal.h>
 
 #include "manager.h"
 
@@ -108,21 +107,6 @@ static void resource_cleanup(void) {
     }
 }
 
-/* Signal handler for terminating the scan */
-void shutdown_handler(int sig) {
-    if (getpid() != parent_pid) {
-        _exit(EXIT_FAILURE);
-    }
-
-    write(STDERR_FILENO, "\n[INFO] Terminating the scan, shutting down...\n", 48);
-    set_status(&shm->current_status, STATUS_FORCE_QUIT);
-
-    // Clean up shared memory and semaphores
-    resource_cleanup();
-
-    exit(EXIT_FAILURE);
-}
-
 /* Error callback function when failed to create processes */
 static void create_process_error(void *args) {
     fprintf(stderr, "[ERROR] create_process_error: Failed to spawn process!\n");
@@ -133,6 +117,14 @@ static void create_process_error(void *args) {
 
     resource_cleanup();
     exit(EXIT_FAILURE);
+}
+
+/* Signal handler for terminating the scan */
+void shutdown_handler(int sig) {
+    if (getpid() != parent_pid) return; // Only the parent process can handle the signal
+
+    write(STDERR_FILENO, "\n[INFO] Terminating the scan, shutting down...\n", 48);
+    set_status(&shm->current_status, STATUS_FORCE_QUIT);
 }
 
 /* The exit signal handler */
@@ -240,9 +232,6 @@ int main(int argc, const char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    signal(SIGINT, shutdown_handler);
-    signal(SIGTERM, shutdown_handler);
-
     /* Prepare the `cl_engine` */
     printf("[INFO] Start preparing the engine...\n");
     engine = init_engine(&options);
@@ -272,6 +261,10 @@ int main(int argc, const char *argv[]) {
         fprintf(stderr, "[ERROR] Failed to initialize shared resources, aborting...\n");
         return EXIT_FAILURE;
     }
+
+    // Register the signal handler for terminating the scan
+    register_signal_handler(SIGINT, shutdown_handler);
+    register_signal_handler(SIGTERM, shutdown_handler);
 
     // Add initial tasks to the task queue
     printf("[INFO] Start adding initial tasks to the task queue...\n");

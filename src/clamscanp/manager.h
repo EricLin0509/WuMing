@@ -119,13 +119,21 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions);
 
 /* Spawn a new process */
 /*
-  * observer: the observer to be used for the child process
+  * @param observer
+  * the observer to be used for spawning the processes
   * 
-  * mission_callback: the function to be executed in the child process
-  * mission_callback_args: [OPTIONAL] the arguments to be passed to the `mission_callback`
+  * @param mission_callback
+  * the function to be executed in the child process
+  * @param mission_callback_args
+  * the arguments to be passed to the `mission_callback` [OPTIONAL]]
   *
-  * error_callback: [OPTIONAL] the function to be executed if an error occurs when spawning a process
-  * error_callback_args: [OPTIONAL] the arguments to be passed to the `error_callback`
+  * @param error_callback
+  * the function to be executed if an error occurs when spawning a process [OPTIONAL]
+  * @param error_callback_args
+  * the arguments to be passed to the `error_callback` [OPTIONAL]
+  * 
+  * @warning
+  * This function will also try to register the signal handler which store in the `observer` structure
 */
 void spawn_new_process(Observer *observer,
                      void (*mission_callback)(void *args), void *mission_callback_args, 
