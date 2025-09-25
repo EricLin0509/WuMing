@@ -23,7 +23,6 @@
 
 /* the buffer size MUST be a power of 2 */
 #define RING_BUFFER_SIZE 8192
-#define LINE_ACCUMULATOR_SIZE 16384 // Double buffer for atomicity
 
 typedef struct {
     char data[RING_BUFFER_SIZE];
@@ -32,27 +31,35 @@ typedef struct {
     size_t count; // current data length
 } RingBuffer;
 
-typedef struct {
-    char buffer[LINE_ACCUMULATOR_SIZE];
-    size_t write_pos;
-    size_t read_pos;
-    size_t current_line_length; // current line length
-} LineAccumulator;
 
+/* Initialize the ring buffer */
+/*
+  * @param ring
+  * the ring buffer to be initialized
+*/
 void
 ring_buffer_init(RingBuffer *ring);
 
-void
-line_accumulator_init(LineAccumulator *acc);
-
+/* Get the number of bytes available for reading */
 size_t
 ring_buffer_available(const RingBuffer *ring);
 
+/* Write data to the ring buffer */
 size_t
 ring_buffer_write(RingBuffer *ring, const char *src, size_t len);
 
+/* Read data from the ring buffer */
 size_t
 ring_buffer_read(RingBuffer *ring, char *dest, size_t len);
 
-gboolean
-ring_buffer_read_line(RingBuffer *rb, LineAccumulator *acc, char **output);
+/* Find a new line in the ring buffer */
+/*
+  * @param ring
+  * the ring buffer to search
+  * @return
+  * a allocated string containing the new line, or NULL if no new line is found
+  * @warning
+  * The returned string is allocated on the heap and must be freed by the caller
+*/
+char *
+ring_buffer_find_new_line(RingBuffer *ring);

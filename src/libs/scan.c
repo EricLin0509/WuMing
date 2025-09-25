@@ -414,11 +414,9 @@ scan_thread(gpointer data)
     int pipefd[2];
     pid_t pid;
 
-    /*Initialize ring buffer and line accumulator*/
+    /* Initialize ring buffer */
     RingBuffer ring_buf;
     ring_buffer_init(&ring_buf);
-    LineAccumulator acc;
-    line_accumulator_init(&acc);
 
     /*Spawn scan process*/
     if (!spawn_new_process(pipefd, &pid, 
@@ -432,7 +430,6 @@ scan_thread(gpointer data)
     IOContext io_ctx = {
         .pipefd = pipefd[0],
         .ring_buf = &ring_buf,
-        .acc = &acc,
     };
 
     /*Start scan thread*/

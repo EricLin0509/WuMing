@@ -468,8 +468,6 @@ update_thread(gpointer data)
     /*Initialize ring buffer and line accumulator*/
     RingBuffer ring_buf;
     ring_buffer_init(&ring_buf);
-    LineAccumulator acc;
-    line_accumulator_init(&acc);
     
     /*Spawn update process*/
     if (!spawn_new_process(pipefd, &pid,
@@ -483,7 +481,6 @@ update_thread(gpointer data)
     IOContext io_ctx = {
         .pipefd = pipefd[0],
         .ring_buf = &ring_buf,
-        .acc = &acc,
     };
 
     /*Start update thread*/

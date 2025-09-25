@@ -37,7 +37,6 @@ typedef void (*SetStatusFunc) (gpointer context, gboolean completed, gboolean su
 typedef struct {
     int pipefd;
     RingBuffer *ring_buf;
-    LineAccumulator *acc;
 } IOContext;
 
 typedef struct {

@@ -121,11 +121,10 @@ process_output_lines(IOContext *io_ctx, RefFunc ref_function, gpointer context,
     g_return_if_fail(ref_function != NULL && context != NULL);
 
     char *line;
-    while (ring_buffer_read_line(io_ctx->ring_buf, io_ctx->acc, &line))
+    while ((line = ring_buffer_find_new_line(io_ctx->ring_buf)) != NULL)
     {
         IdleData *data = g_new0(IdleData, 1);
-        gchar *escaped = g_markup_escape_text(line, -1); // Escape the line for HTML output
-        data->message = escaped;
+        data->message = line;
         data->context = ref_function(context); // Add a reference to the context data and store it in the IdleData
 
         /* Send the message to the main process */
