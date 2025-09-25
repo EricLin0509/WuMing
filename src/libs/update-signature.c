@@ -399,6 +399,19 @@ resource_clean_up(gpointer user_data)
   g_free(data);
 }
 
+typedef struct {
+    const char *pattern;
+    const char *status;
+} Pattern;
+
+static const Pattern patterns[] = {
+  {"Error executing command as another user: Request dismissed", N_("User dismissed the request")},
+  {"ClamAV update process started", N_("Update started")},
+  {"Downloading.*database", N_("Downloading signature database")},
+  {"Testing.*database", N_("Testing signature database")},
+  {"updated.*version", N_("Signature database updated")},
+};
+
 static gboolean
 update_ui_callback(gpointer user_data)
 {
@@ -408,11 +421,16 @@ update_ui_callback(gpointer user_data)
   g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
                       G_SOURCE_REMOVE);
 
-  if (ctx && ctx->update_status_page && GTK_IS_WIDGET(ctx->update_status_page))
-    adw_status_page_set_description(
-      ADW_STATUS_PAGE(ctx->update_status_page),
-      data->message
-    );
+  for (size_t i = 0; i < G_N_ELEMENTS(patterns); i++)
+  {
+    if (g_regex_match_simple(patterns[i].pattern, data->message, G_REGEX_CASELESS, 0))
+    {
+      adw_status_page_set_description(
+                ADW_STATUS_PAGE(ctx->update_status_page),
+                gettext(patterns[i].status));
+            break;
+    }
+  }
 
   return G_SOURCE_REMOVE;
 }
