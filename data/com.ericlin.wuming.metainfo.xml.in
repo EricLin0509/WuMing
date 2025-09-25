@@ -58,6 +58,19 @@
   </screenshots>
 
   <releases>
+    <release version="0.2.beta3" date="2025-9-26">
+      <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.2.beta3</url>
+      <description translate="no">
+        <p>Reliability update</p>
+        <ul>
+          <li>Add clamscanp for concurrent scanning (Still in testing)</li>
+          <li>Simplify the freshclam output messages</li>
+          <li>Use AdwShortcutsDialog</li>
+          <li>A bunch of fixes and optimizations</li>
+          <li></li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.beta2" date="2025-9-6">
       <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.2.beta2</url>
       <description translate="no">
