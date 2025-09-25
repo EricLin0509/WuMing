@@ -82,18 +82,18 @@ scan_context_new(void)
   return ctx;
 }
 
-static void*
-scan_context_ref(void *ctx)
+static gpointer
+scan_context_ref(gpointer ctx)
 {
   ScanContext *context = (ScanContext*)ctx;
   g_return_val_if_fail(context != NULL, NULL);
   g_return_val_if_fail(g_atomic_int_get(&context->ref_count) > 0, NULL);
   if (context) g_atomic_int_inc(&context->ref_count);
-  return (void *)context;
+  return context;
 }
 
 static void
-scan_context_unref(void *ctx)
+scan_context_unref(gpointer ctx)
 {
   ScanContext *context = (ScanContext*)ctx;
   if (context && g_atomic_int_dec_and_test(&context->ref_count))
@@ -457,7 +457,7 @@ scan_thread(gpointer data)
 
         if (ready > 0)
         {
-          process_output_lines(&io_ctx, scan_context_ref, (void *)ctx, scan_ui_callback, resource_clean_up);
+          process_output_lines(&io_ctx, scan_context_ref, ctx, scan_ui_callback, resource_clean_up);
 
           if (!handle_io_event(&io_ctx))
           {

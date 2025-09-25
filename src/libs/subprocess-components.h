@@ -31,8 +31,8 @@
 #define BASE_TIMEOUT_MS 50
 #define MAX_TIMEOUT_MS 1000
 
-typedef void * (*RefFunc)(void *context); // reference function for the context data
-typedef void (*SetStatusFunc) (void *context, gboolean completed, gboolean success); // set the status of the context data
+typedef gpointer (*RefFunc)(gpointer context); // reference function for the context data
+typedef void (*SetStatusFunc) (gpointer context, gboolean completed, gboolean success); // set the status of the context data
 
 typedef struct {
     int pipefd;
@@ -41,7 +41,7 @@ typedef struct {
 } IOContext;
 
 typedef struct {
-    void *context; // context that store some GTKWidgets or other data (e.g. some GTKWidgets you want to control it)
+    gpointer context; // context that store some GTKWidgets or other data (e.g. some GTKWidgets you want to control it)
     char *message; // message to send to the subprocess
 } IdleData;
 
