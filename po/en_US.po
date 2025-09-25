@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-23 18:08+0800\n"
+"POT-Creation-Date: 2025-09-25 23:47+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -254,7 +254,7 @@ msgstr "Invalid path!"
 
 #: src/libs/delete-file.c:156
 msgid "Permission denied!"
-msgstr ""
+msgstr "Permission denied!"
 
 #: src/libs/delete-file.c:159
 msgid "Unknown error!"
@@ -281,22 +281,44 @@ msgstr ""
 msgid "User cancelled the scan"
 msgstr "User cancelled the scan"
 
-#: src/libs/scan.c:477
+#: src/libs/scan.c:474
 msgid "Scan Canceled"
 msgstr "Scan Canceled"
 
-#: src/libs/scan.c:481
+#: src/libs/scan.c:478
 msgid "Scan Complete"
-msgstr "Update Complete"
+msgstr "Scan Complete"
 
-#: src/libs/scan.c:485
+#: src/libs/scan.c:482
 msgid "Scan Failed"
 msgstr "Scan Failed"
 
-#: src/libs/update-signature.c:518
+#: src/libs/update-signature.c:417
+msgid "User dismissed the request"
+msgstr "User dismissed the request"
+
+#: src/libs/update-signature.c:418
+#, fuzzy
+msgid "Update started"
+msgstr "Update started"
+
+#: src/libs/update-signature.c:419
+msgid "Downloading signature database"
+msgstr "Downloading signature database"
+
+#: src/libs/update-signature.c:420
+#, fuzzy
+msgid "Testing signature database"
+msgstr "Testing signature database"
+
+#: src/libs/update-signature.c:421
+msgid "Signature database updated"
+msgstr "Signature database updated"
+
+#: src/libs/update-signature.c:533
 msgid "Update Complete"
 msgstr "Update Complete"
 
-#: src/libs/update-signature.c:518
+#: src/libs/update-signature.c:533
 msgid "Update Failed"
 msgstr "Update Failed"

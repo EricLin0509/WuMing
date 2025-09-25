@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-23 18:08+0800\n"
+"POT-Creation-Date: 2025-09-25 23:47+0800\n"
 "PO-Revision-Date: 2025-08-07 20:36+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -276,22 +276,42 @@ msgstr ""
 msgid "User cancelled the scan"
 msgstr "用户取消了扫描"
 
-#: src/libs/scan.c:477
+#: src/libs/scan.c:474
 msgid "Scan Canceled"
 msgstr "扫描被取消"
 
-#: src/libs/scan.c:481
+#: src/libs/scan.c:478
 msgid "Scan Complete"
 msgstr "扫描完成"
 
-#: src/libs/scan.c:485
+#: src/libs/scan.c:482
 msgid "Scan Failed"
 msgstr "扫描失败"
 
-#: src/libs/update-signature.c:518
+#: src/libs/update-signature.c:417
+msgid "User dismissed the request"
+msgstr "用户拒绝了请求"
+
+#: src/libs/update-signature.c:418
+msgid "Update started"
+msgstr "更新已启动"
+
+#: src/libs/update-signature.c:419
+msgid "Downloading signature database"
+msgstr "正在下载病毒库"
+
+#: src/libs/update-signature.c:420
+msgid "Testing signature database"
+msgstr "正在测试病毒库"
+
+#: src/libs/update-signature.c:421
+msgid "Signature database updated"
+msgstr "病毒库已更新"
+
+#: src/libs/update-signature.c:533
 msgid "Update Complete"
 msgstr "更新完成"
 
-#: src/libs/update-signature.c:518
+#: src/libs/update-signature.c:533
 msgid "Update Failed"
 msgstr "更新失败"

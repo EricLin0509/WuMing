@@ -404,14 +404,6 @@ typedef struct {
     const char *status;
 } Pattern;
 
-static const Pattern patterns[] = {
-  {"Error executing command as another user: Request dismissed", N_("User dismissed the request")},
-  {"ClamAV update process started", N_("Update started")},
-  {"Downloading.*database", N_("Downloading signature database")},
-  {"Testing.*database", N_("Testing signature database")},
-  {"updated.*version", N_("Signature database updated")},
-};
-
 static gboolean
 update_ui_callback(gpointer user_data)
 {
@@ -421,13 +413,21 @@ update_ui_callback(gpointer user_data)
   g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
                       G_SOURCE_REMOVE);
 
+  Pattern patterns[] = {
+    {"Error executing command as another user: Request dismissed", gettext("User dismissed the request")},
+    {"ClamAV update process started", gettext("Update started")},
+    {"Downloading.*database", gettext("Downloading signature database")},
+    {"Testing.*database", gettext("Testing signature database")},
+    {"updated.*version", gettext("Signature database updated")},
+  };
+
   for (size_t i = 0; i < G_N_ELEMENTS(patterns); i++)
   {
     if (g_regex_match_simple(patterns[i].pattern, data->message, G_REGEX_CASELESS, 0))
     {
       adw_status_page_set_description(
                 ADW_STATUS_PAGE(ctx->update_status_page),
-                gettext(patterns[i].status));
+                patterns[i].status);
             break;
     }
   }

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-23 18:08+0800\n"
+"POT-Creation-Date: 2025-09-25 23:47+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -275,22 +275,42 @@ msgstr ""
 msgid "User cancelled the scan"
 msgstr ""
 
-#: src/libs/scan.c:477
+#: src/libs/scan.c:474
 msgid "Scan Canceled"
 msgstr ""
 
-#: src/libs/scan.c:481
+#: src/libs/scan.c:478
 msgid "Scan Complete"
 msgstr ""
 
-#: src/libs/scan.c:485
+#: src/libs/scan.c:482
 msgid "Scan Failed"
 msgstr ""
 
-#: src/libs/update-signature.c:518
+#: src/libs/update-signature.c:417
+msgid "User dismissed the request"
+msgstr ""
+
+#: src/libs/update-signature.c:418
+msgid "Update started"
+msgstr ""
+
+#: src/libs/update-signature.c:419
+msgid "Downloading signature database"
+msgstr ""
+
+#: src/libs/update-signature.c:420
+msgid "Testing signature database"
+msgstr ""
+
+#: src/libs/update-signature.c:421
+msgid "Signature database updated"
+msgstr ""
+
+#: src/libs/update-signature.c:533
 msgid "Update Complete"
 msgstr ""
 
-#: src/libs/update-signature.c:518
+#: src/libs/update-signature.c:533
 msgid "Update Failed"
 msgstr ""
