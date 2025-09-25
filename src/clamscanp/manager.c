@@ -83,6 +83,7 @@ void init_task_queue(TaskQueue *queue) {
     queue->front = 0;
     queue->rear = 0;
     atomic_init(&queue->in_progress, 0);
+    atomic_init(&queue->task_count, 0);
     memset(queue->tasks, 0, sizeof(Task) * MAX_TASKS);
 }
 
@@ -101,9 +102,10 @@ bool is_task_queue_empty_assumption(TaskQueue *queue) {
     if (queue == NULL) return true;
 
     if (sem_trywait(&queue->mutex) == 0) {
-        bool is_empty = (queue->front == queue->rear);
+        bool is_empty = (atomic_load(&queue->task_count) == 0); // Check if the task count is zero
+        bool has_tasks_in_progress = (atomic_load(&queue->in_progress) > 0); // Check if there are tasks in progress
         sem_post(&queue->mutex);
-        return is_empty && atomic_load(&queue->in_progress) == 0; // Also check if all tasks are finished
+        return is_empty && !has_tasks_in_progress; // If the task count is zero and there are no tasks in progress
     }
     return false; // Failed to get the lock, assume the queue is not empty
 }
@@ -123,6 +125,8 @@ void add_task(TaskQueue *dest, Task source) {
 
     int mask = MAX_TASKS - 1; // for and operation
     dest->rear = (dest->rear + 1) & mask; // Update the rear pointer
+
+    atomic_fetch_add(&dest->task_count, 1); // Increment the task count
 
     sem_post(&dest->mutex); // Unlock the queue
     sem_post(&dest->full); // Signal the full semaphore
@@ -145,6 +149,8 @@ bool get_task(Task *dest, TaskQueue *source) {
 
     int mask = MAX_TASKS - 1; // for and operation
     source->front = (source->front + 1) & mask; // Update the front pointer
+
+    atomic_fetch_sub(&source->task_count, 1); // Decrement the task count
 
     sem_post(&source->mutex); // Unlock the queue
     sem_post(&source->empty); // Signal the empty semaphore
@@ -286,31 +292,6 @@ error_callback_call:
     if (error_callback != NULL) error_callback(error_callback_args); // Execute the error function if an error occurs
 }
 
-/* Wait for processes to finish */
-/*
-  * Tips: This function SHOULD be called by the parent process after all child processes have been spawned
-  
-  * pid: a pointer or an array of pid_t to store the pid of the child process
-  * num_of_process: the number of processes to be waited for
-*/
-int wait_for_processes(pid_t *pid, size_t num_of_process) {
-    /* Check arguments before waiting for the processes */
-    if (!check_arguments(pid, num_of_process)) {
-        fprintf(stderr, "[ERROR] wait_for_processes: Invalid arguments\n");
-        return -1;
-    }
-
-    int status = -1; // The return value of the function
-
-    for (size_t i = 0; i < num_of_process; i++) {
-        pid_t *current_pid_ptr = pid + i; // Get the current pid pointer
-        if (*current_pid_ptr <= 0) continue; // Skip invalid pid
-        waitpid(*current_pid_ptr, &status, 0); // Wait for the process to finish
-    }
-
-    return status;
-}
-
 /* Process scan result */
 static void process_scan_result(const char *path, cl_error_t result, const char *virname) {
 	switch (result) {
@@ -331,7 +312,7 @@ void process_file(const char *path, struct cl_engine *engine, struct cl_scan_opt
 	cl_error_t result;
     int fd = open(path, FILE_OPEN_FLAGS); // Open the file
     if (fd == -1) {
-        fprintf(stderr, " [ERROR] process_file: Failed to open %s: %s\n", path, strerror(errno));
+        fprintf(stderr, "[ERROR] process_file: Failed to open %s: %s\n", path, strerror(errno));
         return;
     }
     

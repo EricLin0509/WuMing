@@ -64,6 +64,7 @@ typedef struct {
 	int front; // Queue front index
 	int rear; // Queue rear index
 	_Atomic size_t in_progress; // Number of tasks in progress
+	_Atomic size_t task_count; // Number of tasks in the queue
 	Task tasks[MAX_TASKS]; // The task queue
 } TaskQueue;
 
@@ -138,15 +139,6 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions);
 void spawn_new_process(Observer *observer,
                      void (*mission_callback)(void *args), void *mission_callback_args, 
                      void (*error_callback)(void *args), void *error_callback_args);
-
-/* Wait for processes to finish */
-/*
-  * Tips: This function SHOULD be called by the parent process after all child processes have been spawned
-  
-  * pid: a pointer or an array of pid_t to store the pid of the child process
-  * num_of_process: the number of processes to be waited for
-*/
-int wait_for_processes(pid_t *pid, size_t num_of_process);
 
 /* Scan a file */
 void process_file(const char *path, struct cl_engine *engine, struct cl_scan_options *scanoptions);
