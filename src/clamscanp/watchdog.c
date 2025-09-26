@@ -21,8 +21,10 @@
 /* This is the watchdog implementation for clamscanp */
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/wait.h>
 
 #include "watchdog.h"
@@ -101,16 +103,33 @@ void register_signal_handler(int signal, signal_handler handler) {
 	}
 }
 
+/* Wait for the processes in the observer */
+/*
+  * @param observer
+  * The observer to be waited for
+  * @param options
+  * Use for `waitpid()` options [OPTIONAL]
+  * @return
+  * `true` if all the processes in the can be waited for, `false` otherwise
+*/
+static bool wait_for_processes(Observer *observer, int options) {
+	if (observer == NULL || observer->pids == NULL) return false; // Skip invalid parameters
+
+	for (size_t i = 0; i < observer->num_of_processes; i++) {
+		if (waitpid(observer->pids[i], NULL, options) < 0) {
+			fprintf(stderr, "[ERROR] wait_for_processes: Failed to wait for the child process %d\n", observer->pids[i]);
+			continue; // skip the failed process
+		}
+	}
+
+	return true; // all the processes have been waited for
+}
+
 /* Send the signal to the target process to exit */
 static void send_signal_to_all_processes(Observer *observer) {
 	if (observer == NULL || observer->exit_condition_signal <= 0) return; // No need to send the signal if there is no exit condition signal
 
 	for (size_t i = 0; i < observer->num_of_processes; i++) {
-		if (kill(observer->pids[i], 0) == -1) {
-			fprintf(stderr, "[ERROR] send_signal_to_all_processes: Failed to check the status of the process %d\n", observer->pids[i]);
-			continue;
-		}
-
 		if (kill(observer->pids[i], observer->exit_condition_signal) < 0) {
 			fprintf(stderr, "[ERROR] send_exit_signal: Failed to send the exit signal to the process %d\n", observer->pids[i]);
 		}
@@ -132,16 +151,16 @@ void watchdog_main(Observer *observer, _Atomic CurrentStatus *current_status, Cu
 	
 	CurrentStatus status_copy;
 	while ((status_copy = get_status(current_status)) < target_status) { // wait for the process to set the target status (finished)
-		for (size_t i = 0; i < observer->num_of_processes; i++) {
-			if (waitpid(observer->pids[i], NULL, WNOHANG) < 0) {
-				fprintf(stderr, "[ERROR] watchdog_main: Failed to wait for the child process %d, aborting...\n", observer->pids[i]);
-				set_status(current_status, STATUS_FORCE_QUIT); // failed to wait for the child process, force quit
-				break; // exit the main loop to force quit the program
-			}
+		if (!wait_for_processes(observer, WNOHANG)) {
+			set_status(current_status, STATUS_FORCE_QUIT); // failed to wait for the child process, force quit
+			break; // exit the main loop to force quit the program
 		}
 
 		usleep(100000); // wait for 100ms
 	}
 
 	send_signal_to_all_processes(observer); // send the exit signal to all the child processes
+	if (!wait_for_processes(observer, 0)) { // ensure all the child processes have been exited
+		set_status(current_status, STATUS_FORCE_QUIT); // failed to wait for the child process, force quit
+	}
 }

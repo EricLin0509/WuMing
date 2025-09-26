@@ -278,7 +278,6 @@ int main(int argc, const char *argv[]) {
 
     // Wait for all child processes to exit
     watchdog_main(&shm->producer_observer, &shm->current_status, STATUS_PRODUCER_DONE);
-    printf("[DEBUG] Current status: %d\n", get_status(&shm->current_status));
     watchdog_main(&shm->worker_observer, &shm->current_status, STATUS_ALL_TASKS_DONE);
     
     printf("[INFO] Scan completed successfully.\n");
