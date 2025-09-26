@@ -54,6 +54,8 @@ Subprocess 2 (Child Process)             Subprocess 3 (Child Process)
 
 #include "manager.h"
 
+#define CLAMP(x, low, high) ((x) < (low)? (low) : ((x) > (high)? (high) : (x))) // Use for clamping the number of processes
+
 /* Use global variables making it easier to pass data between processes */
 static struct cl_scan_options options; // Options for scanning
 static struct cl_engine *engine; // ClamAV engine
@@ -110,13 +112,7 @@ static void resource_cleanup(void) {
 /* Error callback function when failed to create processes */
 static void create_process_error(void *args) {
     fprintf(stderr, "[ERROR] create_process_error: Failed to spawn process!\n");
-    Observer *observer = (Observer*)args;
-    for (size_t i = 0; i < observer->num_of_processes; i++) {
-        kill(observer->pids[i], SIGTERM); // Terminate the rest of the processes
-    }
-
-    resource_cleanup();
-    exit(EXIT_FAILURE);
+    set_status(&shm->current_status, STATUS_FORCE_QUIT); // Force quit the scan
 }
 
 /* Signal handler for terminating the scan */
@@ -254,7 +250,7 @@ int main(int argc, const char *argv[]) {
         return EXIT_SUCCESS;
     }
 
-    size_t num_workers = argc > 2 ? atoi(argv[2]) : 1; // Get the number of worker processes from the argument or default to 1
+    size_t num_workers = argc > 2 ? CLAMP(atoi(argv[2]), 1, MAX_PROCESSES) : 1; // Get the number of worker processes from the argument or default to 1
     size_t num_producers = num_workers >= 8 ? 4 : 2; // Set the number of producers to 4 if the number of worker processes is greater or equal to 8, otherwise set it to 2
 
     if (!init_resources(real_path)) { // Initialize the shared resources
@@ -282,6 +278,7 @@ int main(int argc, const char *argv[]) {
 
     // Wait for all child processes to exit
     watchdog_main(&shm->producer_observer, &shm->current_status, STATUS_PRODUCER_DONE);
+    printf("[DEBUG] Current status: %d\n", get_status(&shm->current_status));
     watchdog_main(&shm->worker_observer, &shm->current_status, STATUS_ALL_TASKS_DONE);
     
     printf("[INFO] Scan completed successfully.\n");

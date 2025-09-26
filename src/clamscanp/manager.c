@@ -237,13 +237,6 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions) {
     return engine;
 }
 
-/* Check arguments for `spawn_new_process()` and `wait_for_processes()` */
-static inline bool check_arguments(pid_t *pid, size_t num_of_process) {
-    if (pid == NULL) return false;
-    if (num_of_process == 0 || num_of_process > MAX_PROCESSES) return false;
-    return true;
-}
-
 /* Spawn a new process */
 /*
   * @param observer
@@ -265,8 +258,15 @@ static inline bool check_arguments(pid_t *pid, size_t num_of_process) {
 void spawn_new_process(Observer *observer,
                      void (*mission_callback)(void *args), void *mission_callback_args, 
                      void (*error_callback)(void *args), void *error_callback_args) {
-    if (mission_callback == NULL) {
-        fprintf(stderr, "[ERROR] spawn_new_process: mission_callback is NULL\n");
+    if (mission_callback == NULL || observer == NULL) {
+        fprintf(stderr, "[ERROR] spawn_new_process: Invalid arguments mission_callback=%p observer=%p\n", mission_callback, observer);
+        goto error_callback_call;
+    }
+
+    signal(observer->exit_condition_signal, SIG_IGN); // Ignore the exit condition signal in the parent process
+
+    if (observer->num_of_processes == 0 || observer->num_of_processes > MAX_PROCESSES) {
+        fprintf(stderr, "[ERROR] spawn_new_process: Invalid number of processes: %zu of %d\n", observer->num_of_processes, MAX_PROCESSES);
         goto error_callback_call;
     }
 

@@ -106,6 +106,11 @@ static void send_signal_to_all_processes(Observer *observer) {
 	if (observer == NULL || observer->exit_condition_signal <= 0) return; // No need to send the signal if there is no exit condition signal
 
 	for (size_t i = 0; i < observer->num_of_processes; i++) {
+		if (kill(observer->pids[i], 0) == -1) {
+			fprintf(stderr, "[ERROR] send_signal_to_all_processes: Failed to check the status of the process %d\n", observer->pids[i]);
+			continue;
+		}
+
 		if (kill(observer->pids[i], observer->exit_condition_signal) < 0) {
 			fprintf(stderr, "[ERROR] send_exit_signal: Failed to send the exit signal to the process %d\n", observer->pids[i]);
 		}
