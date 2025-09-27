@@ -3,7 +3,6 @@
   <requires lib="gtk" version="4.0"/>
   <requires lib="Adw" version="1.0"/>
   <template class="UpdateSignaturePage" parent="GtkWidget">
-    <property name="height-request">60</property>
     <child>
       <object class="AdwClamp" id="clamp">
         <property name="maximum-size">600</property>
@@ -16,15 +15,14 @@
             </style>
             <child>
               <object class="AdwActionRow" id="status_row">
-                <property name="height-request">40</property>
-                <property name="margin-top">5</property>
-                <property name="margin-bottom">0</property>
+                <property name="height-request">60</property>
+                <property name="activatable-widget">update_button</property>
                 <property name="title" translatable="yes">Current Signature Status</property>
                 <child>
                   <object class="GtkButton" id="update_button">
                     <property name="action-name">app.update</property>
-                    <property name="margin-top">2</property>
-                    <property name="margin-bottom">7</property>
+                    <property name="margin-top">5</property>
+                    <property name="margin-bottom">5</property>
                     <property name="child">
                       <object class="AdwButtonContent">
                         <property name="icon-name">software-update-available-symbolic</property>
@@ -38,9 +36,7 @@
             </child>
             <child>
               <object class="AdwActionRow" id="service_row">
-                <property name="height-request">40</property>
-                <property name="margin-top">0</property>
-                <property name="margin-bottom">5</property>
+                <property name="height-request">60</property>
                 <property name="title" translatable="yes">Freshclam service status</property>
               </object>
             </child>

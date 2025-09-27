@@ -3,14 +3,12 @@
   <requires lib="gtk" version="4.0"/>
   <requires lib="Adw" version="1.0"/>
   <template class="ScanPage" parent="GtkWidget">
-    <property name="height-request">60</property>
     <child>
       <object class="AdwClamp" id="clamp">
         <property name="maximum-size">400</property>
-        <property name="tightening-threshold">300</property>
         <property name="child">
           <object class="GtkBox">
-            <property name="spacing">10</property>
+            <property name="spacing">20</property>
             <property name="homogeneous">true</property>
             <child>
               <object class="GtkButton" id="scan_a_file_button">
