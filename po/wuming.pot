@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-25 23:47+0800\n"
+"POT-Creation-Date: 2025-09-27 23:55+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -77,7 +77,7 @@ msgid "Scan folder"
 msgstr ""
 
 #: src/shortcuts-dialog.ui:40 src/wuming-window.ui:76 src/wuming-window.ui:77
-#: src/wuming-window.ui:81 src/update-signature-page.c:132
+#: src/update-signature-page.c:132
 msgid "Update Signature"
 msgstr ""
 
@@ -94,23 +94,23 @@ msgstr ""
 msgid "Security Overview"
 msgstr ""
 
-#: src/wuming-window.ui:52 src/wuming-window.ui:97
+#: src/wuming-window.ui:52 src/wuming-window.ui:96
 msgid "Coming Soon..."
 msgstr ""
 
-#: src/wuming-window.ui:92 src/wuming-window.ui:93
+#: src/wuming-window.ui:91 src/wuming-window.ui:92
 msgid "Check History"
 msgstr ""
 
-#: src/wuming-window.ui:110
+#: src/wuming-window.ui:109
 msgid "_Preferences"
 msgstr ""
 
-#: src/wuming-window.ui:114
+#: src/wuming-window.ui:113
 msgid "_Keyboard Shortcuts"
 msgstr ""
 
-#: src/wuming-window.ui:118
+#: src/wuming-window.ui:117
 msgid "_About WuMing"
 msgstr ""
 
@@ -154,33 +154,45 @@ msgstr ""
 msgid "Cancel Scan Process"
 msgstr ""
 
-#: src/scan-page.ui:22
+#: src/scan-page.ui:20
 msgid "Scan file"
 msgstr ""
 
-#: src/scan-page.ui:39
+#: src/scan-page.ui:37
 msgid "Scan folder"
 msgstr ""
 
-#: src/update-signature-page.c:53
-msgid "Warning! No signature found! Please Update the signature!"
+#: src/update-signature-page.c:49
+msgid ""
+"Warning: No signature found\n"
+"Please update the signature now!"
 msgstr ""
 
-#: src/update-signature-page.c:60
+#: src/update-signature-page.c:50
 #, c-format
-msgid "Warning! Only found main.cvd! Date: %d.%d.%d %d"
+msgid ""
+"Warning: Only found main.cvd!\n"
+"Date: %d.%d.%d %d"
 msgstr ""
 
-#: src/update-signature-page.c:64
+#: src/update-signature-page.c:51
 #, c-format
 msgid "Current signature date: %d.%d.%d %d"
 msgstr ""
 
-#: src/update-signature-page.c:72
+#: src/update-signature-page.c:76
+msgid "Signature is up to date"
+msgstr ""
+
+#: src/update-signature-page.c:76
 msgid "Is up to date"
 msgstr ""
 
-#: src/update-signature-page.c:75
+#: src/update-signature-page.c:77
+msgid "Signature is outdated"
+msgstr ""
+
+#: src/update-signature-page.c:77
 msgid "Outdated!"
 msgstr ""
 
@@ -204,15 +216,15 @@ msgstr ""
 msgid "Asking for permission..."
 msgstr ""
 
-#: src/update-signature-page.ui:22
+#: src/update-signature-page.ui:19
 msgid "Current Signature Status"
 msgstr ""
 
-#: src/update-signature-page.ui:31
+#: src/update-signature-page.ui:28
 msgid "Update"
 msgstr ""
 
-#: src/update-signature-page.ui:44
+#: src/update-signature-page.ui:39
 msgid "Freshclam service status"
 msgstr ""
 
@@ -307,10 +319,10 @@ msgstr ""
 msgid "Signature database updated"
 msgstr ""
 
-#: src/libs/update-signature.c:533
+#: src/libs/update-signature.c:532
 msgid "Update Complete"
 msgstr ""
 
-#: src/libs/update-signature.c:533
+#: src/libs/update-signature.c:532
 msgid "Update Failed"
 msgstr ""

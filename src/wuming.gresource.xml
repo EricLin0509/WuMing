@@ -5,6 +5,8 @@
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/scan-folder-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/scan-file-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/status-ok-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/status-warning-symbolic.svg</file>
   </gresource>
 
   <gresource prefix="/com/ericlin/wuming/pages">

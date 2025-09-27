@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-25 23:47+0800\n"
+"POT-Creation-Date: 2025-09-27 23:55+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -80,7 +80,7 @@ msgid "Scan folder"
 msgstr "Scan folder"
 
 #: src/shortcuts-dialog.ui:40 src/wuming-window.ui:76 src/wuming-window.ui:77
-#: src/wuming-window.ui:81 src/update-signature-page.c:132
+#: src/update-signature-page.c:132
 msgid "Update Signature"
 msgstr "Update Signature"
 
@@ -98,23 +98,23 @@ msgstr "Main Menu"
 msgid "Security Overview"
 msgstr "Security Overview"
 
-#: src/wuming-window.ui:52 src/wuming-window.ui:97
+#: src/wuming-window.ui:52 src/wuming-window.ui:96
 msgid "Coming Soon..."
 msgstr "Coming Soon..."
 
-#: src/wuming-window.ui:92 src/wuming-window.ui:93
+#: src/wuming-window.ui:91 src/wuming-window.ui:92
 msgid "Check History"
 msgstr "Check History"
 
-#: src/wuming-window.ui:110
+#: src/wuming-window.ui:109
 msgid "_Preferences"
 msgstr "Preferences"
 
-#: src/wuming-window.ui:114
+#: src/wuming-window.ui:113
 msgid "_Keyboard Shortcuts"
 msgstr "Keyboard Shortcuts"
 
-#: src/wuming-window.ui:118
+#: src/wuming-window.ui:117
 msgid "_About WuMing"
 msgstr "About WuMing"
 
@@ -158,33 +158,52 @@ msgstr "Cancel"
 msgid "Cancel Scan Process"
 msgstr "Cancel Scan Process"
 
-#: src/scan-page.ui:22
+#: src/scan-page.ui:20
 msgid "Scan file"
 msgstr "Scan file"
 
-#: src/scan-page.ui:39
+#: src/scan-page.ui:37
 msgid "Scan folder"
 msgstr "Scan folder"
 
-#: src/update-signature-page.c:53
-msgid "Warning! No signature found! Please Update the signature!"
-msgstr "Warning! No signature found! Please Update the signature!"
+#: src/update-signature-page.c:49
+#, fuzzy
+msgid ""
+"Warning: No signature found\n"
+"Please update the signature now!"
+msgstr ""
+"Warning: No signature found\n"
+"Please update the signature now!"
 
-#: src/update-signature-page.c:60
-#, c-format
-msgid "Warning! Only found main.cvd! Date: %d.%d.%d %d"
-msgstr "Warning! Only found main.cvd! Date: %d.%d.%d %d"
+#: src/update-signature-page.c:50
+#, fuzzy, c-format
+msgid ""
+"Warning: Only found main.cvd!\n"
+"Date: %d.%d.%d %d"
+msgstr ""
+"Warning: Only found main.cvd!\n"
+"Date: %d.%d.%d %d"
 
-#: src/update-signature-page.c:64
+#: src/update-signature-page.c:51
 #, c-format
 msgid "Current signature date: %d.%d.%d %d"
 msgstr "Current signature date: %d.%d.%d %d"
 
-#: src/update-signature-page.c:72
+#: src/update-signature-page.c:76
+#, fuzzy
+msgid "Signature is up to date"
+msgstr "Signature is up to date"
+
+#: src/update-signature-page.c:76
 msgid "Is up to date"
 msgstr "Is up to date"
 
-#: src/update-signature-page.c:75
+#: src/update-signature-page.c:77
+#, fuzzy
+msgid "Signature is outdated"
+msgstr "Signature is outdated"
+
+#: src/update-signature-page.c:77
 msgid "Outdated!"
 msgstr "Outdated!"
 
@@ -208,15 +227,15 @@ msgstr "Updating..."
 msgid "Asking for permission..."
 msgstr "Asking for permission..."
 
-#: src/update-signature-page.ui:22
+#: src/update-signature-page.ui:19
 msgid "Current Signature Status"
 msgstr "Current Signature Status"
 
-#: src/update-signature-page.ui:31
+#: src/update-signature-page.ui:28
 msgid "Update"
 msgstr "Update"
 
-#: src/update-signature-page.ui:44
+#: src/update-signature-page.ui:39
 msgid "Freshclam service status"
 msgstr "Freshclam service status"
 
@@ -315,10 +334,10 @@ msgstr "Testing signature database"
 msgid "Signature database updated"
 msgstr "Signature database updated"
 
-#: src/libs/update-signature.c:533
+#: src/libs/update-signature.c:532
 msgid "Update Complete"
 msgstr "Update Complete"
 
-#: src/libs/update-signature.c:533
+#: src/libs/update-signature.c:532
 msgid "Update Failed"
 msgstr "Update Failed"

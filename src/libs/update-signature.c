@@ -468,8 +468,7 @@ update_complete_callback(gpointer user_data)
     scan_signature_date (result);
     is_signature_uptodate (result);
 
-    update_signature_page_show_date (UPDATE_SIGNATURE_PAGE (ctx->main_page), *result);
-    update_signature_page_show_isuptodate(UPDATE_SIGNATURE_PAGE (ctx->main_page), result->is_uptodate);
+    update_signature_page_show_isuptodate(UPDATE_SIGNATURE_PAGE (ctx->main_page), result);
     g_free (result);
   }
 

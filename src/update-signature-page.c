@@ -41,40 +41,40 @@ struct _UpdateSignaturePage {
 
 G_DEFINE_FINAL_TYPE (UpdateSignaturePage, update_signature_page, GTK_TYPE_WIDGET)
 
-void
-update_signature_page_show_date(UpdateSignaturePage *self, scan_result result)
+static char *
+build_show_date_message(const scan_result *result)
 {
-  GtkWidget *page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
-
   g_autofree char *message = NULL; // use g_autofree to avoid memory leak
 
-  if (!result.is_success)
-    {
-      message = g_strdup_printf (gettext("Warning! No signature found! Please Update the signature!"));
-      adw_status_page_set_description (ADW_STATUS_PAGE (page), message);
-      return;
-    }
+  if (!result->is_success) message = g_strdup_printf (gettext("Warning: No signature found\nPlease update the signature now!"));
+  else if (result->is_warning) message = g_strdup_printf (gettext ("Warning: Only found main.cvd!\nDate: %d.%d.%d %d"), result->year, result->month, result->day, result->time);
+  else message = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d"), result->year, result->month, result->day, result->time);
 
-  if (result.is_warning)
-    {
-      message = g_strdup_printf (gettext ("Warning! Only found main.cvd! Date: %d.%d.%d %d"), result.year, result.month, result.day, result.time);
-      adw_status_page_set_description (ADW_STATUS_PAGE (page), message);
-      return;
-    }
-  message = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d"), result.year, result.month, result.day, result.time);
-  adw_status_page_set_description (ADW_STATUS_PAGE (page), message);
-  return;
+  return g_steal_pointer(&message); // Steal the pointer to avoid cleanup at the end of the function
 }
 
-void
-update_signature_page_show_isuptodate(UpdateSignaturePage *self, bool is_uptodate)
+static void
+update_signature_page_prepare(UpdateSignaturePage *self, char *page_title, char *page_sub_title, const char *icon_name, char *row_subtitle)
 {
-  if (is_uptodate)adw_action_row_set_subtitle (self->status_row, gettext("Is up to date"));
-  else 
-  {
-    adw_action_row_set_subtitle (self->status_row, gettext("Outdated!"));
-    gtk_widget_add_css_class (GTK_WIDGET (self->update_button), "suggested-action");
-  }
+  GtkWidget *page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE); // Get the status page
+
+  /* Set title, description and icon */
+  adw_status_page_set_title (ADW_STATUS_PAGE (page), page_title);
+  adw_status_page_set_description (ADW_STATUS_PAGE (page), page_sub_title);
+  adw_status_page_set_icon_name (ADW_STATUS_PAGE (page), icon_name);
+  adw_action_row_set_subtitle (self->status_row, row_subtitle);
+}
+
+
+void
+update_signature_page_show_isuptodate(UpdateSignaturePage *self, const scan_result *result)
+{
+  GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
+
+  g_autofree char *message = build_show_date_message(result);
+
+  if (result->is_uptodate) update_signature_page_prepare(self, gettext("Signature is up to date"), message, "status-ok-symbolic", gettext("Is up to date"));
+  else update_signature_page_prepare(self, gettext("Signature is outdated"), message, "status-warning-symbolic", gettext("Outdated!"));
 }
 
 void

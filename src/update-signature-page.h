@@ -34,10 +34,7 @@ GtkWidget *
 update_signature_page_new(void);
 
 void
-update_signature_page_show_date(UpdateSignaturePage *self, scan_result result);
-
-void
-update_signature_page_show_isuptodate(UpdateSignaturePage *self, bool is_uptodate);
+update_signature_page_show_isuptodate(UpdateSignaturePage *self, const scan_result *result);
 
 void
 update_signature_page_show_servicestat(UpdateSignaturePage *self);

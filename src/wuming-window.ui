@@ -78,7 +78,6 @@
                 <property name="icon-name">software-update-available-symbolic</property>
                 <property name="child">
                   <object class="AdwStatusPage">
-                    <property name="title" translatable="yes">Update Signature</property>
                     <child>
                       <object class="UpdateSignaturePage" id="update_signature_page"/>
                     </child>
