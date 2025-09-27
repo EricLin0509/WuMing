@@ -33,7 +33,7 @@
 
 /* Initialize the current status of the scanning process */
 void init_status(_Atomic CurrentStatus *status) {
-	*status = STATUS_UNFINISHED;
+	atomic_init(status, STATUS_UNFINISHED);
 }
 
 /* Get the current status of the scanning process */
@@ -118,7 +118,7 @@ static bool wait_for_processes(Observer *observer, int options) {
 	for (size_t i = 0; i < observer->num_of_processes; i++) {
 		if (waitpid(observer->pids[i], NULL, options) < 0) {
 			fprintf(stderr, "[ERROR] wait_for_processes: Failed to wait for the child process %d\n", observer->pids[i]);
-			continue; // skip the failed process
+			return false; // failed to wait for the child process
 		}
 	}
 

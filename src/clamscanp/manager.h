@@ -36,9 +36,12 @@
 
 #define PATH_MAX 4096 // maximum length of path
 #define MAX_PROCESSES 64 // maximum number of processes can be used for scanning
-#define MAX_TASKS 4096 // maximum number of tasks can be added to the task queue
 
-_Static_assert((MAX_TASKS & (MAX_TASKS - 1)) == 0, "MAX_TASKS must be a power of two"); // MAX_TASKS must be a power of two
+#define MAX_TASKS 4096 // maximum number of tasks can be added to the task queue
+#define MASK (MAX_TASKS - 1) // mask to get the index of the task queue
+#define MAX_GET_TASKS 20 // maximum number of tasks can be retrieved at once from the task queue
+
+_Static_assert((MAX_TASKS & MASK) == 0, "MAX_TASKS must be a power of two"); // MAX_TASKS must be a power of two
 
 /* Task type to indicate what kind of task to perform */
 typedef enum {
@@ -100,11 +103,19 @@ void add_task(TaskQueue *dest, Task source);
 
 /* Get a task from the task queue */
 /*
-  * dest: a pointer to the task to be retrieved
-  * source: the task queue to be retrieved from
-  * return value: true if a task is retrieved, false if is timeout or error occurred
+  * @param dest
+  * the tasks to be retrieved
+  *
+  * @param source
+  * the task queue to be retrieved from
+  *
+  * @return
+  * Number of tasks retrieved from the queue, 0 if no task is retrieved
+  *
+  * @warning
+  * This function use non-blocking semaphore to avoid busy waiting, so it may need loops to wait for the task to be available
 */
-bool get_task(Task *dest, TaskQueue *source);
+size_t get_task(Task *dest, TaskQueue *source);
 
 /* Turn user input path into absolute path */
 char *get_absolute_path(const char *orignal_path);

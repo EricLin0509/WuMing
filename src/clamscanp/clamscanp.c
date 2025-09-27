@@ -171,17 +171,18 @@ static void producer_main(void *args) {
     if (args == NULL) return; // Check if the argument is valid
     TaskQueue *queue = (TaskQueue*)args; // Get the task queue from the argument
 
-    Task task; // Initialize a task to get from the task queue
+    Task task[MAX_GET_TASKS]; // Initialize tasks array to get tasks from the task queue
     while (get_status(&shm->current_status) != STATUS_FORCE_QUIT) {
         is_producer_done(queue); // Check if the producer is done
 
-        if (get_task(&task, queue)) { // Get a task from the task queue
-            if (task.type != SCAN_DIR) continue; // Skip invalid tasks type
+        size_t tasks_to_get = get_task(task, queue); // Get tasks from the task queue
+        if (tasks_to_get == 0) continue; // If there is no task to get, continue
 
+        for (size_t i = 0; i < tasks_to_get; i++) {
+            if (task[i].type != SCAN_DIR) continue; // Skip invalid tasks type
             atomic_fetch_add(&queue->in_progress, 1); // Increment the number of tasks in progress
 
-            // Traverse the directory and add tasks to the task queue
-            trverse_directory(task.path, queue, &shm->file_tasks);
+            trverse_directory(task[i].path, &shm->dir_tasks, &shm->file_tasks); // Traverse the directory and add tasks to the task queue
 
             atomic_fetch_sub(&queue->in_progress, 1); // Decrement the number of tasks in progress
         }
@@ -206,16 +207,18 @@ static void worker_main(void *args) {
     if (args == NULL) return; // Check if the argument is valid
     TaskQueue *queue = (TaskQueue*)args; // Get the task queue from the argument
 
-    Task task; // Initialize a task to get from the task queue
+    Task task[MAX_GET_TASKS]; // Initialize task array to get tasks from the task queue
     while (get_status(&shm->current_status) != STATUS_FORCE_QUIT) {
         is_all_task_done(queue); // Check if all tasks are done
 
-        if (get_task(&task, queue)) { // Get a task from the task queue
-            if (task.type != SCAN_FILE) continue; // Skip invalid tasks type
+        size_t tasks_to_get = get_task(task, queue); // Get tasks from the task queue
+        if (tasks_to_get == 0) continue; // If there is no task to get, continue
 
+        for (size_t i = 0; i < tasks_to_get; i++) {
+            if (task[i].type != SCAN_FILE) continue; // Skip invalid tasks type
             atomic_fetch_add(&queue->in_progress, 1); // Increment the number of tasks in progress
 
-            process_file(task.path, engine, &options); // Scan the file
+            process_file(task[i].path, engine, &options); // Scan the file
 
             atomic_fetch_sub(&queue->in_progress, 1); // Decrement the number of tasks in progress
         }

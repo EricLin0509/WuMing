@@ -44,31 +44,11 @@
 #define BASE_TIMEOUT_MS 50 // Base timeout for waiting for the semaphore
 #define CALCULATE_WAIT_MS(current_timeout_ms) (current_timeout_ms + (rand() % JITTER_RANGE)) // Calculate the dynamic timeout for waiting for the semaphore
 
-/* Due to macOS doesn't support `sem_timedwait()`, so add a alternative implementation of `sem_timedwait()` */
-/*
-  * max_timeout_ms: the maximum timeout in milliseconds for waiting the semaphore
-*/
-static int sem_timewait(sem_t *restrict sem, const size_t max_timeout_ms) {
-    size_t current_timeout = BASE_TIMEOUT_MS; // Initialize the current timeout
-
-    while (current_timeout < max_timeout_ms) {
-        if (sem_trywait(sem) == 0) return 0; // The semaphore is available, return immediately
-        else if (errno != EAGAIN) return -1; // Failed to wait for the semaphore, return with error
-
-        usleep(current_timeout * 1000); // `usleep()` use microseconds as unit, so multiply by 1000 to convert it to milliseconds
-        
-        current_timeout = CALCULATE_WAIT_MS(current_timeout); // Calculate the next timeout
-    }
-
-    errno = ETIMEDOUT;
-    return -1; // Timeout exceeded, return with error
-}
-
 /* Build task from path */
 Task build_task(TaskType type, char *path) {
     Task task;
     task.type = type;
-    if (path) strncpy(task.path, path, PATH_MAX);
+    if (path) strncpy(task.path, path, PATH_MAX - 1); // -1 for null terminator
     return task;
 }
 
@@ -123,8 +103,7 @@ void add_task(TaskQueue *dest, Task source) {
 
     dest->tasks[dest->rear] = source; // Add the task to the queue
 
-    int mask = MAX_TASKS - 1; // for and operation
-    dest->rear = (dest->rear + 1) & mask; // Update the rear pointer
+    dest->rear = (dest->rear + 1) & MASK; // Update the rear pointer
 
     atomic_fetch_add(&dest->task_count, 1); // Increment the task count
 
@@ -132,30 +111,61 @@ void add_task(TaskQueue *dest, Task source) {
     sem_post(&dest->full); // Signal the full semaphore
 }
 
+/* Calculate the task to get number */
+static inline size_t calculate_task_to_get_number(TaskQueue *queue) {
+    if (queue == NULL) return 0; // Invalid arguments
+
+    size_t available_tasks = atomic_load(&queue->task_count); // Get the available tasks
+    if (available_tasks == 0) return 0; // No task is available
+
+    return (available_tasks < MAX_GET_TASKS) ? available_tasks : MAX_GET_TASKS; // Calculate the number of tasks to get
+}
+
 /* Get a task from the task queue */
 /*
-  * dest: a pointer to the task to be retrieved
-  * source: the task queue to be retrieved from
-  * return value: true if a task is retrieved, false if is timeout or error occurred
+  * @param dest
+  * the tasks to be retrieved
+  *
+  * @param source
+  * the task queue to be retrieved from
+  *
+  * @return
+  * Number of tasks retrieved from the queue, 0 if no task is retrieved
+  *
+  * @warning
+  * This function use non-blocking semaphore to avoid busy waiting, so it may need loops to wait for the task to be available
 */
-bool get_task(Task *dest, TaskQueue *source) {
-    if (source == NULL || dest == NULL) return false;
+size_t get_task(Task *dest, TaskQueue *source) {
+    if (dest == NULL || source == NULL) return 0; // Invalid arguments
 
-    if (sem_timewait(&source->full, 1000) != 0) return false; // Timeout exceeded, return with error
+    if (sem_trywait(&source->mutex) != 0) return 0; // Failed to get the lock, assume no task is available
 
-    sem_wait(&source->mutex); // Lock the queue
+    size_t tasks_to_get = calculate_task_to_get_number(source); // Calculate the number of tasks to get
+    if (tasks_to_get == 0) {
+        sem_post(&source->mutex); // Unlock the queue
+        return 0; // No task is available
+    }
 
-    *dest = source->tasks[source->front]; // Get the task from the queue
+    for (size_t i = 0; i < tasks_to_get; i++) {
+        // Try to decrement the `full` semaphore, if failed, decrement `task_to_get` and exit the loop
+        if (sem_trywait(&source->full) != 0) {
+            tasks_to_get = i;
+            break;
+        }
 
-    int mask = MAX_TASKS - 1; // for and operation
-    source->front = (source->front + 1) & mask; // Update the front pointer
+        // Get the task from the queue
+        dest[i] = source->tasks[source->front];
 
-    atomic_fetch_sub(&source->task_count, 1); // Decrement the task count
+        source->front = (source->front + 1) & MASK; // Update the front pointer
 
+        atomic_fetch_sub(&source->task_count, 1); // Decrement the task count
+    }
     sem_post(&source->mutex); // Unlock the queue
-    sem_post(&source->empty); // Signal the empty semaphore
 
-    return true;
+    for (size_t i = 0; i < tasks_to_get; i++) { // Post the `empty` semaphore for each task retrieved
+        sem_post(&source->empty);
+    }
+    return tasks_to_get;
 }
 
 /* Turn user input path into absolute path */
