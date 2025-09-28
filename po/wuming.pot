@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-27 23:55+0800\n"
+"POT-Creation-Date: 2025-09-28 14:49+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -77,7 +77,7 @@ msgid "Scan folder"
 msgstr ""
 
 #: src/shortcuts-dialog.ui:40 src/wuming-window.ui:76 src/wuming-window.ui:77
-#: src/update-signature-page.c:132
+#: src/update-signature-page.c:140
 msgid "Update Signature"
 msgstr ""
 
@@ -126,7 +126,7 @@ msgstr ""
 msgid "Show threats"
 msgstr ""
 
-#: src/scan-page.c:220 src/update-signature-page.c:146
+#: src/scan-page.c:220 src/update-signature-page.c:154
 msgid "Close"
 msgstr ""
 
@@ -162,57 +162,67 @@ msgstr ""
 msgid "Scan folder"
 msgstr ""
 
-#: src/update-signature-page.c:49
+#: src/update-signature-page.c:58
+msgid "Signature Is Outdated"
+msgstr ""
+
+#: src/update-signature-page.c:59 src/update-signature-page.c:71
+#, c-format
+msgid "Current signature date: %d.%d.%d %d"
+msgstr ""
+
+#: src/update-signature-page.c:60
+msgid "Outdated!"
+msgstr ""
+
+#: src/update-signature-page.c:64
+msgid "No Signature Found"
+msgstr ""
+
+#: src/update-signature-page.c:65
 msgid ""
 "Warning: No signature found\n"
 "Please update the signature now!"
 msgstr ""
 
-#: src/update-signature-page.c:50
-#, c-format
-msgid ""
-"Warning: Only found main.cvd!\n"
-"Date: %d.%d.%d %d"
+#: src/update-signature-page.c:66
+msgid "No signature"
 msgstr ""
 
-#: src/update-signature-page.c:51
-#, c-format
-msgid "Current signature date: %d.%d.%d %d"
+#: src/update-signature-page.c:70
+msgid "Signature Is Up To Date"
 msgstr ""
 
-#: src/update-signature-page.c:76
-msgid "Signature is up to date"
+#: src/update-signature-page.c:72
+msgid "Is Up To Date"
 msgstr ""
 
-#: src/update-signature-page.c:76
-msgid "Is up to date"
+#: src/update-signature-page.c:76 src/update-signature-page.c:78
+msgid "Unknown Signature Status"
 msgstr ""
 
 #: src/update-signature-page.c:77
-msgid "Signature is outdated"
-msgstr ""
-
-#: src/update-signature-page.c:77
-msgid "Outdated!"
-msgstr ""
-
-#: src/update-signature-page.c:86
-msgid "Enabled"
-msgstr ""
-
-#: src/update-signature-page.c:87
-msgid "Disabled"
-msgstr ""
-
-#: src/update-signature-page.c:88
-msgid "Failed to check!"
+#, c-format
+msgid "Unknown signature status: %d"
 msgstr ""
 
 #: src/update-signature-page.c:94
-msgid "Updating..."
+msgid "Enabled"
 msgstr ""
 
 #: src/update-signature-page.c:95
+msgid "Disabled"
+msgstr ""
+
+#: src/update-signature-page.c:96
+msgid "Failed to check!"
+msgstr ""
+
+#: src/update-signature-page.c:102
+msgid "Updating..."
+msgstr ""
+
+#: src/update-signature-page.c:103
 msgid "Asking for permission..."
 msgstr ""
 
@@ -299,30 +309,30 @@ msgstr ""
 msgid "Scan Failed"
 msgstr ""
 
-#: src/libs/update-signature.c:417
+#: src/libs/update-signature.c:414
 msgid "User dismissed the request"
 msgstr ""
 
-#: src/libs/update-signature.c:418
+#: src/libs/update-signature.c:415
 msgid "Update started"
 msgstr ""
 
-#: src/libs/update-signature.c:419
+#: src/libs/update-signature.c:416
 msgid "Downloading signature database"
 msgstr ""
 
-#: src/libs/update-signature.c:420
+#: src/libs/update-signature.c:417
 msgid "Testing signature database"
 msgstr ""
 
-#: src/libs/update-signature.c:421
+#: src/libs/update-signature.c:418
 msgid "Signature database updated"
 msgstr ""
 
-#: src/libs/update-signature.c:532
+#: src/libs/update-signature.c:529
 msgid "Update Complete"
 msgstr ""
 
-#: src/libs/update-signature.c:532
+#: src/libs/update-signature.c:529
 msgid "Update Failed"
 msgstr ""

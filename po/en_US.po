@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-27 23:55+0800\n"
+"POT-Creation-Date: 2025-09-28 14:49+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -80,7 +80,7 @@ msgid "Scan folder"
 msgstr "Scan folder"
 
 #: src/shortcuts-dialog.ui:40 src/wuming-window.ui:76 src/wuming-window.ui:77
-#: src/update-signature-page.c:132
+#: src/update-signature-page.c:140
 msgid "Update Signature"
 msgstr "Update Signature"
 
@@ -130,7 +130,7 @@ msgstr "Preparing..."
 msgid "Show threats"
 msgstr "Show threats"
 
-#: src/scan-page.c:220 src/update-signature-page.c:146
+#: src/scan-page.c:220 src/update-signature-page.c:154
 msgid "Close"
 msgstr "Close"
 
@@ -166,64 +166,75 @@ msgstr "Scan file"
 msgid "Scan folder"
 msgstr "Scan folder"
 
-#: src/update-signature-page.c:49
+#: src/update-signature-page.c:58
 #, fuzzy
-msgid ""
-"Warning: No signature found\n"
-"Please update the signature now!"
-msgstr ""
-"Warning: No signature found\n"
-"Please update the signature now!"
+msgid "Signature Is Outdated"
+msgstr "Signature is outdated"
 
-#: src/update-signature-page.c:50
-#, fuzzy, c-format
-msgid ""
-"Warning: Only found main.cvd!\n"
-"Date: %d.%d.%d %d"
-msgstr ""
-"Warning: Only found main.cvd!\n"
-"Date: %d.%d.%d %d"
-
-#: src/update-signature-page.c:51
+#: src/update-signature-page.c:59 src/update-signature-page.c:71
 #, c-format
 msgid "Current signature date: %d.%d.%d %d"
 msgstr "Current signature date: %d.%d.%d %d"
 
-#: src/update-signature-page.c:76
-#, fuzzy
-msgid "Signature is up to date"
-msgstr "Signature is up to date"
-
-#: src/update-signature-page.c:76
-msgid "Is up to date"
-msgstr "Is up to date"
-
-#: src/update-signature-page.c:77
-#, fuzzy
-msgid "Signature is outdated"
-msgstr "Signature is outdated"
-
-#: src/update-signature-page.c:77
+#: src/update-signature-page.c:60
 msgid "Outdated!"
 msgstr "Outdated!"
 
-#: src/update-signature-page.c:86
+#: src/update-signature-page.c:64
+#, fuzzy
+msgid "No Signature Found"
+msgstr "No Signature Found"
+
+#: src/update-signature-page.c:65
+#, fuzzy
+msgid ""
+"Warning: No signature found\n"
+"Please update the signature now!"
+msgstr ""
+"Warning: No signature found\n"
+"Please update the signature now!"
+
+#: src/update-signature-page.c:66
+#, fuzzy
+msgid "No signature"
+msgstr "No signature"
+
+#: src/update-signature-page.c:70
+#, fuzzy
+msgid "Signature Is Up To Date"
+msgstr "Signature Is Up To Date"
+
+#: src/update-signature-page.c:72
+msgid "Is Up To Date"
+msgstr "Is Up To Date"
+
+#: src/update-signature-page.c:76 src/update-signature-page.c:78
+#, fuzzy
+msgid "Unknown Signature Status"
+msgstr "Unknown Signature Status"
+
+#: src/update-signature-page.c:77
+#, fuzzy, c-format
+msgid "Unknown signature status: %d"
+msgstr "Unknown signature status: %d"
+
+#: src/update-signature-page.c:94
 msgid "Enabled"
 msgstr "Enabled"
 
-#: src/update-signature-page.c:87
+#: src/update-signature-page.c:95
 msgid "Disabled"
 msgstr "Disabled"
 
-#: src/update-signature-page.c:88
+#: src/update-signature-page.c:96
 msgid "Failed to check!"
 msgstr "Failed to check!"
 
-#: src/update-signature-page.c:94
+#: src/update-signature-page.c:102
 msgid "Updating..."
 msgstr "Updating..."
 
-#: src/update-signature-page.c:95
+#: src/update-signature-page.c:103
 msgid "Asking for permission..."
 msgstr "Asking for permission..."
 
@@ -312,32 +323,32 @@ msgstr "Scan Complete"
 msgid "Scan Failed"
 msgstr "Scan Failed"
 
-#: src/libs/update-signature.c:417
+#: src/libs/update-signature.c:414
 msgid "User dismissed the request"
 msgstr "User dismissed the request"
 
-#: src/libs/update-signature.c:418
+#: src/libs/update-signature.c:415
 #, fuzzy
 msgid "Update started"
 msgstr "Update started"
 
-#: src/libs/update-signature.c:419
+#: src/libs/update-signature.c:416
 msgid "Downloading signature database"
 msgstr "Downloading signature database"
 
-#: src/libs/update-signature.c:420
+#: src/libs/update-signature.c:417
 #, fuzzy
 msgid "Testing signature database"
 msgstr "Testing signature database"
 
-#: src/libs/update-signature.c:421
+#: src/libs/update-signature.c:418
 msgid "Signature database updated"
 msgstr "Signature database updated"
 
-#: src/libs/update-signature.c:532
+#: src/libs/update-signature.c:529
 msgid "Update Complete"
 msgstr "Update Complete"
 
-#: src/libs/update-signature.c:532
+#: src/libs/update-signature.c:529
 msgid "Update Failed"
 msgstr "Update Failed"

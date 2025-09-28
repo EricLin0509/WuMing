@@ -244,22 +244,24 @@ static void
 update_scan_result(scan_result *result, int cvd_days, int cld_days,
                    DatabaseFileParams *cvd, DatabaseFileParams *cld)
 {
-    const gboolean cvd_valid = (cvd_days > 0);
-    const gboolean cld_valid = (cld_days > 0);
+  g_return_if_fail(result != NULL && cvd != NULL && cld != NULL);
+  if (result->status & SIGNATURE_STATUS_NOT_FOUND) return; // Signature not found, no need to choose
 
-    if (!cvd_valid && !cld_valid)
-    {
-        result->is_success = FALSE;
-        g_warning("No valid signature dates found");
-        return;
-    }
+  const gboolean cvd_valid = (cvd_days > 0);
+  const gboolean cld_valid = (cld_days > 0);
 
-    DatabaseFileParams* latest = (cvd_days >= cld_days) ? cvd : cld;
-    result->year   = latest->year;
-    result->month  = latest->month;
-    result->day    = latest->day;
-    result->time   = latest->time;
-    result->is_success = TRUE;
+  if (!cvd_valid && !cld_valid)
+  {
+    result->status |= SIGNATURE_STATUS_NOT_FOUND;
+    g_warning("No valid signature dates found");
+    return;
+  }
+
+  DatabaseFileParams* latest = (cvd_days >= cld_days) ? cvd : cld;
+  result->year   = latest->year;
+  result->month  = latest->month;
+  result->day    = latest->day;
+  result->time   = latest->time;
 }
 
 /*Scan the signature date*/
@@ -280,14 +282,10 @@ scan_signature_date(scan_result *result)
   has_daily |= parse_database_file (cld_date, database_dir, "daily.cld");
 
   /*If no daily database found, try main.cvd*/
-  if (!has_daily)
+  if (!has_daily && !parse_database_file (cvd_date, database_dir, "main.cvd"))
     {
-      result->is_warning = TRUE;
-      if (!parse_database_file (cvd_date, database_dir, "main.cvd"))
-        {
-          result->is_success = FALSE;
-          goto clean_up;
-        }
+      result->status |= SIGNATURE_STATUS_NOT_FOUND;
+      goto clean_up;
     }
 
   int cvd_days = date_to_days(cvd_date->year, cvd_date->month, cvd_date->day);
@@ -303,6 +301,9 @@ clean_up:
 void
 is_signature_uptodate(scan_result *result)
 {
+  g_return_if_fail(result != NULL);
+  if (result->status & SIGNATURE_STATUS_NOT_FOUND) return; // Signature not found, no need to check
+
   /* Get Current Time */
   time_t t = time(NULL);
   struct tm current_time;
@@ -313,12 +314,8 @@ is_signature_uptodate(scan_result *result)
                  date_to_days(result->year, result->month, result->day);
   g_print("[INFO] day diff: %d\n", day_diff);
 
-  if (day_diff > 1)
-  {
-    result->is_uptodate = false;
-    return;
-  }
-  result->is_uptodate = true;
+  if (day_diff > 1) return; // Signature is not up to date
+  result->status |= SIGNATURE_STATUS_UPTODATE;
 }
 
 /*Update Signature*/

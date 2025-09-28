@@ -41,40 +41,48 @@ struct _UpdateSignaturePage {
 
 G_DEFINE_FINAL_TYPE (UpdateSignaturePage, update_signature_page, GTK_TYPE_WIDGET)
 
-static char *
-build_show_date_message(const scan_result *result)
-{
-  g_autofree char *message = NULL; // use g_autofree to avoid memory leak
-
-  if (!result->is_success) message = g_strdup_printf (gettext("Warning: No signature found\nPlease update the signature now!"));
-  else if (result->is_warning) message = g_strdup_printf (gettext ("Warning: Only found main.cvd!\nDate: %d.%d.%d %d"), result->year, result->month, result->day, result->time);
-  else message = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d"), result->year, result->month, result->day, result->time);
-
-  return g_steal_pointer(&message); // Steal the pointer to avoid cleanup at the end of the function
-}
-
-static void
-update_signature_page_prepare(UpdateSignaturePage *self, char *page_title, char *page_sub_title, const char *icon_name, char *row_subtitle)
-{
-  GtkWidget *page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE); // Get the status page
-
-  /* Set title, description and icon */
-  adw_status_page_set_title (ADW_STATUS_PAGE (page), page_title);
-  adw_status_page_set_description (ADW_STATUS_PAGE (page), page_sub_title);
-  adw_status_page_set_icon_name (ADW_STATUS_PAGE (page), icon_name);
-  adw_action_row_set_subtitle (self->status_row, row_subtitle);
-}
-
-
 void
 update_signature_page_show_isuptodate(UpdateSignaturePage *self, const scan_result *result)
 {
   GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
 
-  g_autofree char *message = build_show_date_message(result);
+  g_autofree char *signature_msg = NULL; // The title message for `AdwStatusPage`
+  g_autofree char *date_msg = NULL; // The description message for `AdwStatusPage`
+  g_autofree char *row_subtitle = NULL; // The subtitle message for `AdwActionRow`
 
-  if (result->is_uptodate) update_signature_page_prepare(self, gettext("Signature is up to date"), message, "status-ok-symbolic", gettext("Is up to date"));
-  else update_signature_page_prepare(self, gettext("Signature is outdated"), message, "status-warning-symbolic", gettext("Outdated!"));
+  /* Using bit mask to check the status */
+  switch (result->status)
+  {
+    case 0: // Signature is oudated
+      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-warning-symbolic");
+      signature_msg = g_strdup_printf (gettext("Signature Is Outdated"));
+      date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d"), result->year, result->month, result->day, result->time);
+      row_subtitle = g_strdup_printf (gettext("Outdated!"));
+      break;
+    case 1: // No signature found
+      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-warning-symbolic");
+      signature_msg = g_strdup_printf (gettext("No Signature Found"));
+      date_msg = g_strdup_printf (gettext("Warning: No signature found\nPlease update the signature now!"));
+      row_subtitle = g_strdup_printf (gettext("No signature"));
+      break;
+    case 16: // Signature is up-to-date
+      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-ok-symbolic");
+      signature_msg = g_strdup_printf (gettext("Signature Is Up To Date"));
+      date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d"), result->year, result->month, result->day, result->time);
+      row_subtitle = g_strdup_printf (gettext("Is Up To Date"));
+      break;
+    default: // Bit mask is invalid (because these two bit mask cannot be set at the same time)
+      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-warning-symbolic");
+      signature_msg = g_strdup_printf (gettext("Unknown Signature Status"));
+      date_msg = g_strdup_printf (gettext("Unknown signature status: %d"), result->status);
+      row_subtitle = g_strdup_printf (gettext("Unknown Signature Status"));
+      break;
+  }
+
+  adw_status_page_set_title (ADW_STATUS_PAGE (status_page), signature_msg);
+  adw_status_page_set_description (ADW_STATUS_PAGE (status_page), date_msg);
+
+  adw_action_row_set_subtitle (self->status_row, row_subtitle);
 }
 
 void

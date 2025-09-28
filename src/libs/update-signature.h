@@ -22,14 +22,19 @@
 
 #include <adwaita.h>
 
+/* BIT Mask for indicating signature status */
+/*
+    @warning These bit masks cannot be set at the same time
+*/
+#define SIGNATURE_STATUS_UPTODATE 0x10 // Signature is up-to-date
+#define SIGNATURE_STATUS_NOT_FOUND 1 // No signature found
+
 typedef struct scan_result {
-    int  year;
-    int  month;
-    int  day;
-    int  time;
-    bool is_warning;
-    bool is_success;
-    bool is_uptodate;
+    int year;
+    int month;
+    int day;
+    int time;
+    unsigned short status;
 } scan_result;
 
 void
