@@ -29,6 +29,8 @@
 #define SIGNATURE_STATUS_UPTODATE 0x10 // Signature is up-to-date
 #define SIGNATURE_STATUS_NOT_FOUND 1 // No signature found
 
+typedef struct _UpdateSignaturePage UpdateSignaturePage;
+
 typedef struct scan_result {
     int year;
     int month;
@@ -44,7 +46,4 @@ void
 is_signature_uptodate(scan_result *result);
 
 void
-start_update(AdwDialog *dialog, 
-             GtkWidget *page, 
-             GtkWidget *close_button, 
-             GtkWidget *update_button);
+start_update(UpdateSignaturePage *page);

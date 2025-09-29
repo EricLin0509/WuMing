@@ -39,4 +39,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const scan_resu
 void
 update_signature_page_show_servicestat(UpdateSignaturePage *self);
 
+void
+updating_page_show_final_result(UpdateSignaturePage *self, const char *message, const char *icon_name);
+
 G_END_DECLS
