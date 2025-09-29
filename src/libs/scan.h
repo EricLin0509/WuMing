@@ -22,14 +22,7 @@
 
 #include <adwaita.h>
 
+typedef struct _ScanPage ScanPage;
+
 void
-start_scan(AdwDialog *dialog,
-             GtkWidget *navigation_view,
-             GtkWidget *scan_status,
-             GtkWidget *close_button,
-             AdwNavigationPage *threat_navigation_page,
-             GtkWidget *threat_status,
-             GtkWidget *threat_button,
-             AdwNavigationPage *cancel_navigation_page,
-             GtkWidget *cancel_button,
-             char *path);
+start_scan(ScanPage *page, const char *path);

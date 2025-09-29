@@ -13,5 +13,7 @@
     <file preprocess="xml-stripblanks">update-signature-page.ui</file>
     <file preprocess="xml-stripblanks">updating-page.ui</file>
     <file preprocess="xml-stripblanks">scan-page.ui</file>
+    <file preprocess="xml-stripblanks">scanning-page.ui</file>
+    <file preprocess="xml-stripblanks">threat-page.ui</file>
   </gresource>
 </gresources>

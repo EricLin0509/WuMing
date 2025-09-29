@@ -111,6 +111,24 @@ update_signature_page_show_servicestat(UpdateSignaturePage *self)
 }
 
 static void
+updating_page_disconnect_signal(UpdateSignaturePage *self)
+{
+  /* Cancel button signal */
+  if (self->cancel_button_signal_id > 0)
+  {
+    g_signal_handler_disconnect(self->cancel_button, self->cancel_button_signal_id);
+    self->cancel_button_signal_id = 0;
+  }
+
+  /* Close button signal */
+  if(self->close_button_signal_id > 0)
+  {
+    g_signal_handler_disconnect(self->close_button, self->close_button_signal_id);
+    self->close_button_signal_id = 0;
+  }
+}
+
+static void
 updating_page_reset(UpdateSignaturePage *self)
 {
   /* Reset `AdwStatusPage` */
@@ -127,17 +145,7 @@ updating_page_reset(UpdateSignaturePage *self)
   gtk_widget_set_visible (GTK_WIDGET (self->close_button), FALSE);
 
   /* Reset signal id */
-  if (self->cancel_button_signal_id > 0)
-  {
-    g_signal_handler_disconnect(self->cancel_button, self->cancel_button_signal_id);
-    self->cancel_button_signal_id = 0;
-  }
-
-  if(self->close_button_signal_id > 0)
-  {
-    g_signal_handler_disconnect(self->close_button, self->close_button_signal_id);
-    self->close_button_signal_id = 0;
-  }
+  updating_page_disconnect_signal(self);
 }
 
 static void
@@ -145,8 +153,9 @@ reset_updating_page_and_start_update(UpdateSignaturePage *self)
 {
   /* Get `AdwNavigationView` */
   AdwNavigationView *view = ADW_NAVIGATION_VIEW(gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_NAVIGATION_VIEW));
+  AdwNavigationPage *page = adw_navigation_view_get_visible_page(view);
 
-  if (adw_navigation_view_get_visible_page(view) == self->update_nav_page) return; // No need to update when is updating
+  if (!page || page == self->update_nav_page) return; // No need to update when is updating
 
   g_print("[INFO] Update Signature\n");
 
@@ -212,7 +221,7 @@ update_signature_page_dispose(GObject *gobject)
 
   GtkWidget *update_nav_page = GTK_WIDGET (self->update_nav_page); // Cast it for cleaning up
 
-  if (self->close_button_signal_id > 0) g_signal_handler_disconnect(self->close_button, self->close_button_signal_id); // Remove signal id
+  updating_page_disconnect_signal(self);
 
   g_clear_object(&self->spinner);
   g_clear_pointer(&update_nav_page, gtk_widget_unparent);
