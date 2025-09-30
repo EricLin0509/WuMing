@@ -31,29 +31,4 @@ G_DECLARE_FINAL_TYPE (ScanPage, scan_page, SCAN, PAGE, GtkWidget)
 GtkWidget *
 scan_page_new(void);
 
-GtkWidget *
-threat_page_get_list(ScanPage *self);
-
-
-void
-threat_page_prepend_threat(ScanPage *self, AdwActionRow *row);
-
-void
-show_threat_page (ScanPage *self);
-
-void
-threat_page_clear_list(ScanPage *self);
-
-void
-cancel_signal_bind(ScanPage *self, GCallback cancel_callback, gpointer user_data);
-
-void
-cancel_signal_clear(ScanPage *self);
-
-void
-scanning_page_set_current_status(ScanPage *self, const char *status);
-
-void
-scanning_page_set_final_result(ScanPage *self, const char *result, const char *detail, const char *icon_name);
-
 G_END_DECLS

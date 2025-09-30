@@ -27,21 +27,16 @@
 struct _UpdateSignaturePage {
   GtkWidget          parent_instance;
 
+  /*UpdateDialog*/
+  AdwDialog          *dialog;
+  GtkWidget          *update_status;
+  GtkWidget          *close_button;
+
   /*Child*/
   GtkWidget          *clamp;
   AdwActionRow       *status_row;
   GtkButton          *update_button;
   AdwActionRow       *service_row;
-
-  /* Private */
-  AdwSpinnerPaintable *spinner;
-  /* UpdatingPage */
-  AdwNavigationPage  *update_nav_page;
-  AdwStatusPage      *status_page;
-  GtkButton          *cancel_button;
-  gulong                cancel_button_signal_id;
-  GtkButton          *close_button;
-  gulong                close_button_signal_id;
 };
 
 G_DEFINE_FINAL_TYPE (UpdateSignaturePage, update_signature_page, GTK_TYPE_WIDGET)
@@ -96,92 +91,21 @@ update_signature_page_show_servicestat(UpdateSignaturePage *self)
   const char *service = "clamav-freshclam.service";
   int is_enabled = is_service_enabled(service);
 
-  switch (is_enabled)
-  {
-    case 0: // Service is disabled
-      adw_action_row_set_subtitle (self->service_row, gettext("Disabled"));
-      break;
-    case 1: // Service is enabled
-      adw_action_row_set_subtitle (self->service_row, gettext("Enabled"));
-      break;
-    default: // Error
-      adw_action_row_set_subtitle (self->service_row, gettext("Failed to check!"));
-      break;
-  }
+  if (is_enabled == 1) adw_action_row_set_subtitle (self->service_row, gettext("Enabled"));
+  else if (is_enabled == 0) adw_action_row_set_subtitle (self->service_row, gettext("Disabled"));
+  else adw_action_row_set_subtitle (self->service_row, gettext("Failed to check!"));
 }
 
 static void
-updating_page_disconnect_signal(UpdateSignaturePage *self)
+reset_update_dialog_and_start_update(UpdateSignaturePage *self)
 {
-  /* Cancel button signal */
-  if (self->cancel_button_signal_id > 0)
-  {
-    g_signal_handler_disconnect(self->cancel_button, self->cancel_button_signal_id);
-    self->cancel_button_signal_id = 0;
-  }
+  adw_status_page_set_title (ADW_STATUS_PAGE (self->update_status), gettext("Updating..."));
+  adw_status_page_set_description (ADW_STATUS_PAGE (self->update_status), gettext("Asking for permission..."));
+  gtk_widget_set_visible(self->close_button, FALSE);
+  gtk_widget_set_sensitive (self->close_button, FALSE);
 
-  /* Close button signal */
-  if(self->close_button_signal_id > 0)
-  {
-    g_signal_handler_disconnect(self->close_button, self->close_button_signal_id);
-    self->close_button_signal_id = 0;
-  }
-}
-
-static void
-updating_page_reset(UpdateSignaturePage *self)
-{
-  /* Reset `AdwStatusPage` */
-  adw_status_page_set_paintable(self->status_page, GDK_PAINTABLE (self->spinner));
-  adw_status_page_set_title (self->status_page, gettext("Updating..."));
-  adw_status_page_set_description (self->status_page, gettext("This might take a while"));
-
-  /* Enable cancel button */
-  gtk_widget_set_sensitive (GTK_WIDGET (self->cancel_button), TRUE);
-  gtk_widget_set_visible (GTK_WIDGET (self->cancel_button), TRUE);
-
-  /* Disable close button */
-  gtk_widget_set_sensitive (GTK_WIDGET (self->close_button), FALSE);
-  gtk_widget_set_visible (GTK_WIDGET (self->close_button), FALSE);
-
-  /* Reset signal id */
-  updating_page_disconnect_signal(self);
-}
-
-static void
-reset_updating_page_and_start_update(UpdateSignaturePage *self)
-{
-  /* Get `AdwNavigationView` */
-  AdwNavigationView *view = ADW_NAVIGATION_VIEW(gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_NAVIGATION_VIEW));
-  AdwNavigationPage *page = adw_navigation_view_get_visible_page(view);
-
-  if (!page || page == self->update_nav_page) return; // No need to update when is updating
-
-  g_print("[INFO] Update Signature\n");
-
-  updating_page_reset(self);
-  self->close_button_signal_id = g_signal_connect_swapped(self->close_button, "clicked", G_CALLBACK(adw_navigation_view_pop), view);
-
-  adw_navigation_view_push (view, self->update_nav_page);
-
-  /* Start update */
-  start_update(self);
-}
-
-void
-updating_page_show_final_result(UpdateSignaturePage *self, const char *message, const char *icon_name)
-{
-  adw_status_page_set_icon_name(self->status_page, icon_name);
-  adw_status_page_set_title (self->status_page, message);
-  adw_status_page_set_description (self->status_page, NULL);
-
-  /* Enable close button */ 
-  gtk_widget_set_sensitive (GTK_WIDGET (self->close_button), TRUE);
-  gtk_widget_set_visible (GTK_WIDGET (self->close_button), TRUE);
-
-  /* Disable cancel button */
-  gtk_widget_set_sensitive (GTK_WIDGET (self->cancel_button), FALSE);
-  gtk_widget_set_visible (GTK_WIDGET (self->cancel_button), FALSE);
+  adw_dialog_present (self->dialog, GTK_WIDGET (self));
+  start_update(self->dialog, self->update_status, self->close_button, GTK_WIDGET (self->update_button));
 }
 
 static void
@@ -193,23 +117,45 @@ update_signature_cb (GSimpleAction *action,
   GtkButton *update_button = GTK_BUTTON(self->update_button);
 
   gtk_widget_set_sensitive (GTK_WIDGET (update_button), FALSE);
+  g_print("[INFO] Update Signature\n");
 
   /*Reset Widget and start update*/
-  reset_updating_page_and_start_update(self);
+  reset_update_dialog_and_start_update(self);
 
   gtk_widget_set_sensitive (GTK_WIDGET (update_button), TRUE);
 }
 
 static void
-build_updating_page(UpdateSignaturePage *self)
+build_update_dialog(UpdateSignaturePage *self)
 {
-  GtkBuilder *builder = gtk_builder_new_from_resource("/com/ericlin/wuming/pages/updating-page.ui");
-  self->update_nav_page = ADW_NAVIGATION_PAGE(gtk_builder_get_object(builder, "update_nav_page"));
-  g_object_ref_sink(self->update_nav_page); // Keep a reference to the object
-  self->status_page = ADW_STATUS_PAGE(gtk_builder_get_object(builder, "status_page"));
-  self->cancel_button = GTK_BUTTON(gtk_builder_get_object(builder, "cancel_button"));
-  self->close_button = GTK_BUTTON(gtk_builder_get_object(builder, "close_button"));
-  g_object_unref(builder);
+  /* Create dialog */
+  self->dialog = g_object_ref_sink(adw_dialog_new());
+  adw_dialog_set_can_close(ADW_DIALOG (self->dialog), FALSE);
+  adw_dialog_set_content_height (self->dialog, 320);
+  adw_dialog_set_content_width (self->dialog, 420);
+
+  /* Create header */
+  GtkWidget *toolbar = adw_toolbar_view_new();
+  GtkWidget *header = adw_header_bar_new();
+  GtkWidget *title = gtk_label_new(gettext("Update Signature"));
+  gtk_widget_add_css_class(title, "heading");
+  adw_header_bar_set_title_widget(ADW_HEADER_BAR(header), title);
+  adw_header_bar_set_show_end_title_buttons(ADW_HEADER_BAR(header), FALSE); // Hide the buttons on the right side
+  adw_toolbar_view_add_top_bar(ADW_TOOLBAR_VIEW(toolbar), header);
+
+  adw_dialog_set_child(self->dialog, toolbar);
+
+  /* Update Status */
+  self->update_status = adw_status_page_new ();
+  adw_toolbar_view_set_content(ADW_TOOLBAR_VIEW(toolbar), self->update_status);
+
+  self->close_button = gtk_button_new ();
+  gtk_widget_set_halign (self->close_button, GTK_ALIGN_CENTER);
+  gtk_button_set_label (GTK_BUTTON (self->close_button), gettext("Close"));
+  adw_status_page_set_child (ADW_STATUS_PAGE (self->update_status), self->close_button);
+
+  // Connect close button signal
+  g_signal_connect_swapped(GTK_BUTTON(self->close_button), "clicked", G_CALLBACK(adw_dialog_force_close), ADW_DIALOG (self->dialog));
 }
 
 /*GObject Essential Functions */
@@ -219,12 +165,9 @@ update_signature_page_dispose(GObject *gobject)
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE (gobject);
 
-  GtkWidget *update_nav_page = GTK_WIDGET (self->update_nav_page); // Cast it for cleaning up
+  GtkWidget *dialog = GTK_WIDGET (self->dialog); // Cast it for cleaning up
 
-  updating_page_disconnect_signal(self);
-
-  g_clear_object(&self->spinner);
-  g_clear_pointer(&update_nav_page, gtk_widget_unparent);
+  g_clear_pointer(&dialog, gtk_widget_unparent);
   g_clear_pointer(&self->clamp, gtk_widget_unparent);
 
   G_OBJECT_CLASS(update_signature_page_parent_class)->dispose(gobject);
@@ -270,12 +213,8 @@ update_signature_page_init (UpdateSignaturePage *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  /*Build Updating Page*/
-  build_updating_page(self);
-
-  /* Create `AdwSpinnerPaintable` */
-  self->spinner = adw_spinner_paintable_new(GTK_WIDGET (self->status_page));
-  g_object_ref_sink(self->spinner); // Keep the reference to the object
+  /*Build UpdateDialog*/
+  build_update_dialog(self);
 
   /* Map update action */
   GApplication *app = g_application_get_default();
