@@ -11,6 +11,7 @@
 
   <gresource prefix="/com/ericlin/wuming/pages">
     <file preprocess="xml-stripblanks">update-signature-page.ui</file>
+    <file preprocess="xml-stripblanks">updating-page.ui</file>
     <file preprocess="xml-stripblanks">scan-page.ui</file>
   </gresource>
 </gresources>

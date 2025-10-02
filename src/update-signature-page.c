@@ -21,16 +21,13 @@
 #include <glib/gi18n.h>
 
 #include "update-signature-page.h"
+#include "wuming-window.h"
+#include "updating-page.h"
 
 #include "libs/systemd-control.h"
 
 struct _UpdateSignaturePage {
   GtkWidget          parent_instance;
-
-  /*UpdateDialog*/
-  AdwDialog          *dialog;
-  GtkWidget          *update_status;
-  GtkWidget          *close_button;
 
   /*Child*/
   GtkWidget          *clamp;
@@ -97,65 +94,23 @@ update_signature_page_show_servicestat(UpdateSignaturePage *self)
 }
 
 static void
-reset_update_dialog_and_start_update(UpdateSignaturePage *self)
-{
-  adw_status_page_set_title (ADW_STATUS_PAGE (self->update_status), gettext("Updating..."));
-  adw_status_page_set_description (ADW_STATUS_PAGE (self->update_status), gettext("Asking for permission..."));
-  gtk_widget_set_visible(self->close_button, FALSE);
-  gtk_widget_set_sensitive (self->close_button, FALSE);
-
-  adw_dialog_present (self->dialog, GTK_WIDGET (self));
-  start_update(self->dialog, self->update_status, self->close_button, GTK_WIDGET (self->update_button));
-}
-
-static void
 update_signature_cb (GSimpleAction *action,
                                 GVariant      *parameter,
                                 gpointer       user_data)
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE(user_data);
-  GtkButton *update_button = GTK_BUTTON(self->update_button);
+  WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
+  UpdatingPage *updating_page = UPDATING_PAGE (wuming_window_get_updating_page (window));
 
-  gtk_widget_set_sensitive (GTK_WIDGET (update_button), FALSE);
+  if (wuming_window_is_current_page_tag (window, "updating_nav_page")) return; // No need to update signature if is in updating page
+
   g_print("[INFO] Update Signature\n");
 
-  /*Reset Widget and start update*/
-  reset_update_dialog_and_start_update(self);
+  updating_page_reset (updating_page);
 
-  gtk_widget_set_sensitive (GTK_WIDGET (update_button), TRUE);
-}
+  wuming_window_push_page_by_tag (window, "updating_nav_page");
 
-static void
-build_update_dialog(UpdateSignaturePage *self)
-{
-  /* Create dialog */
-  self->dialog = g_object_ref_sink(adw_dialog_new());
-  adw_dialog_set_can_close(ADW_DIALOG (self->dialog), FALSE);
-  adw_dialog_set_content_height (self->dialog, 320);
-  adw_dialog_set_content_width (self->dialog, 420);
-
-  /* Create header */
-  GtkWidget *toolbar = adw_toolbar_view_new();
-  GtkWidget *header = adw_header_bar_new();
-  GtkWidget *title = gtk_label_new(gettext("Update Signature"));
-  gtk_widget_add_css_class(title, "heading");
-  adw_header_bar_set_title_widget(ADW_HEADER_BAR(header), title);
-  adw_header_bar_set_show_end_title_buttons(ADW_HEADER_BAR(header), FALSE); // Hide the buttons on the right side
-  adw_toolbar_view_add_top_bar(ADW_TOOLBAR_VIEW(toolbar), header);
-
-  adw_dialog_set_child(self->dialog, toolbar);
-
-  /* Update Status */
-  self->update_status = adw_status_page_new ();
-  adw_toolbar_view_set_content(ADW_TOOLBAR_VIEW(toolbar), self->update_status);
-
-  self->close_button = gtk_button_new ();
-  gtk_widget_set_halign (self->close_button, GTK_ALIGN_CENTER);
-  gtk_button_set_label (GTK_BUTTON (self->close_button), gettext("Close"));
-  adw_status_page_set_child (ADW_STATUS_PAGE (self->update_status), self->close_button);
-
-  // Connect close button signal
-  g_signal_connect_swapped(GTK_BUTTON(self->close_button), "clicked", G_CALLBACK(adw_dialog_force_close), ADW_DIALOG (self->dialog));
+  start_update(window, self, updating_page);
 }
 
 /*GObject Essential Functions */
@@ -165,9 +120,6 @@ update_signature_page_dispose(GObject *gobject)
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE (gobject);
 
-  GtkWidget *dialog = GTK_WIDGET (self->dialog); // Cast it for cleaning up
-
-  g_clear_pointer(&dialog, gtk_widget_unparent);
   g_clear_pointer(&self->clamp, gtk_widget_unparent);
 
   G_OBJECT_CLASS(update_signature_page_parent_class)->dispose(gobject);
@@ -212,9 +164,6 @@ static void
 update_signature_page_init (UpdateSignaturePage *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-
-  /*Build UpdateDialog*/
-  build_update_dialog(self);
 
   /* Map update action */
   GApplication *app = g_application_get_default();

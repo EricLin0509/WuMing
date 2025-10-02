@@ -28,6 +28,8 @@
 #include "subprocess-components.h"
 #include "update-signature.h"
 
+#include "../wuming-window.h"
+#include "../updating-page.h"
 #include "../update-signature-page.h"
 
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
@@ -326,10 +328,9 @@ typedef struct {
   gboolean success;
 
   /*No need to protect these fields because they always same after initialize*/
-  GtkWidget *main_page;
-  AdwDialog *update_dialog;
-  GtkWidget *update_status_page;
-  GtkWidget *close_button;
+  WumingWindow *window;
+  UpdateSignaturePage *update_signature_page;
+  UpdatingPage *updating_page;
 
   /* Protected by atomic ref count */
   volatile gint ref_count;
@@ -396,42 +397,6 @@ resource_clean_up(gpointer user_data)
   g_free(data);
 }
 
-typedef struct {
-    const char *pattern;
-    const char *status;
-} Pattern;
-
-static gboolean
-update_ui_callback(gpointer user_data)
-{
-  IdleData *data = (IdleData *)user_data;
-  UpdateContext *ctx = data->context;
-
-  g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
-                      G_SOURCE_REMOVE);
-
-  Pattern patterns[] = {
-    {"Error executing command as another user: Request dismissed", gettext("User dismissed the request")},
-    {"ClamAV update process started", gettext("Update started")},
-    {"Downloading.*database", gettext("Downloading signature database")},
-    {"Testing.*database", gettext("Testing signature database")},
-    {"updated.*version", gettext("Signature database updated")},
-  };
-
-  for (size_t i = 0; i < G_N_ELEMENTS(patterns); i++)
-  {
-    if (g_regex_match_simple(patterns[i].pattern, data->message, G_REGEX_CASELESS, 0))
-    {
-      adw_status_page_set_description(
-                ADW_STATUS_PAGE(ctx->update_status_page),
-                patterns[i].status);
-            break;
-    }
-  }
-
-  return G_SOURCE_REMOVE;
-}
-
 static gboolean
 update_complete_callback(gpointer user_data)
 {
@@ -444,28 +409,18 @@ update_complete_callback(gpointer user_data)
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
-  if (ctx->update_status_page && GTK_IS_WIDGET(ctx->update_status_page))
-  {
-    adw_status_page_set_title(
-      ADW_STATUS_PAGE(ctx->update_status_page),
-      data->message
-    );
-  }
+  const char *icon_name = is_success ? "status-ok-symbolic" : "status-warning-symbolic";
 
-  if (ctx->close_button && GTK_IS_WIDGET(ctx->close_button))
-  {
-    gtk_widget_set_visible(ctx->close_button, TRUE);
-    gtk_widget_set_sensitive(ctx->close_button, TRUE);
-  }
+  updating_page_set_final_result(ctx->updating_page, data->message, icon_name);
 
-  if (ctx->main_page && GTK_IS_WIDGET(ctx->main_page) && is_success) // Re-scan the signature if update is successful
+  if (is_success) // Re-scan the signature if update is successful
   {
     /*Re-scan the signature*/
     scan_result *result = g_new0 (scan_result, 1);
     scan_signature_date (result);
     is_signature_uptodate (result);
 
-    update_signature_page_show_isuptodate(UPDATE_SIGNATURE_PAGE (ctx->main_page), result);
+    update_signature_page_show_isuptodate(ctx->update_signature_page, result);
     g_free (result);
   }
 
@@ -476,48 +431,14 @@ static gpointer
 update_thread(gpointer data)
 {
     UpdateContext *ctx = data;
-    int pipefd[2];
     pid_t pid;
     
-    /*Initialize ring buffer and line accumulator*/
-    RingBuffer ring_buf;
-    ring_buffer_init(&ring_buf);
-    
     /*Spawn update process*/
-    if (!spawn_new_process(pipefd, &pid,
+    if (!spawn_new_process_no_pipes(&pid,
         PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL))
     {
         update_context_unref(ctx);
         return NULL;
-    }
-
-    /*Initialize IO context*/
-    IOContext io_ctx = {
-        .pipefd = pipefd[0],
-        .ring_buf = &ring_buf,
-    };
-
-    /*Start update thread*/
-    struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
-    int idle_counter = 0;
-    int dynamic_timeout = BASE_TIMEOUT_MS;
-    int ready = 0; // Whether there is data to read from the pipe
-    gboolean eof_received = FALSE;
-
-    while (!eof_received)
-    {
-        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout, &ready);
-        ready = poll(&fds, 1, timeout);
-        
-        if (ready > 0)
-        {        
-          process_output_lines(&io_ctx, update_context_ref, ctx, update_ui_callback, resource_clean_up);
-
-          if (!handle_io_event(&io_ctx))
-          {
-            eof_received = TRUE;
-          }
-        }
     }
 
     /*Clean up*/
@@ -530,24 +451,21 @@ update_thread(gpointer data)
 
     send_final_message(update_context_ref, (void *)ctx, status_text, success, update_complete_callback, resource_clean_up);
     
-    close(pipefd[0]);
     update_context_unref(ctx);
     return NULL;
 }
 
 void
-start_update(AdwDialog *dialog, GtkWidget *page, GtkWidget *close_button, GtkWidget *update_button)
+start_update(WumingWindow *window, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page)
 {
   UpdateContext *ctx = update_context_new();
 
   g_mutex_lock(&ctx->mutex);
   ctx->completed = FALSE;
   ctx->success = FALSE;
-  ctx->main_page =
-          gtk_widget_get_ancestor (update_button, UPDATE_SIGNATURE_TYPE_PAGE); // Get the main page
-  ctx->update_dialog = dialog;
-  ctx->update_status_page = page;
-  ctx->close_button = close_button;
+  ctx->window = window;
+  ctx->update_signature_page = update_signature_page;
+  ctx->updating_page = updating_page;
   ctx->ref_count = G_ATOMIC_REF_COUNT_INIT;
   g_mutex_unlock(&ctx->mutex);
 

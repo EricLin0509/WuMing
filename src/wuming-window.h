@@ -28,4 +28,32 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (WumingWindow, wuming_window, WUMING, WINDOW, AdwApplicationWindow)
 
+/* Push a page by tag */
+void
+wuming_window_push_page_by_tag (WumingWindow *self, const char *tag);
+
+/* Pop the current page */
+void
+wuming_window_pop_page (WumingWindow *self);
+
+/* Get current Page tag */
+const char *
+wuming_window_get_current_page_tag (WumingWindow *self);
+
+/* Get `UpdatingPage` */
+GtkWidget *
+wuming_window_get_updating_page (WumingWindow *self);
+
+/* Compare current page tag with the given tag */
+/*
+  * @param self
+  * the WumingWindow instance
+  * @param tag
+  * the tag to compare with
+  * @return
+  * true if the current page tag is the same as the given tag, false otherwise
+*/
+gboolean
+wuming_window_is_current_page_tag (WumingWindow *self, const char *tag);
+
 G_END_DECLS

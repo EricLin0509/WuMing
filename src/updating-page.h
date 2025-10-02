@@ -1,4 +1,4 @@
-/* update-signature.h
+/* updating-page.h
  *
  * Copyright 2025 EricLin
  *
@@ -22,30 +22,19 @@
 
 #include <adwaita.h>
 
-typedef struct _WumingWindow WumingWindow;
-typedef struct _UpdateSignaturePage UpdateSignaturePage;
-typedef struct _UpdatingPage UpdatingPage;
+G_BEGIN_DECLS
 
-/* BIT Mask for indicating signature status */
-/*
-    @warning These bit masks cannot be set at the same time
-*/
-#define SIGNATURE_STATUS_UPTODATE 0x10 // Signature is up-to-date
-#define SIGNATURE_STATUS_NOT_FOUND 1 // No signature found
+#define UPDATING_TYPE_PAGE (updating_page_get_type ())
 
-typedef struct scan_result {
-    int year;
-    int month;
-    int day;
-    int time;
-    unsigned short status;
-} scan_result;
+G_DECLARE_FINAL_TYPE (UpdatingPage, updating_page, UPDATING, PAGE, GtkWidget)
+
+GtkWidget *
+updating_page_new (void);
 
 void
-scan_signature_date(scan_result *result);
+updating_page_reset (UpdatingPage *self);
 
 void
-is_signature_uptodate(scan_result *result);
+updating_page_set_final_result (UpdatingPage *self, const char *result, const char *icon_name);
 
-void
-start_update(WumingWindow *window, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page);
+G_END_DECLS

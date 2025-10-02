@@ -24,12 +24,17 @@
 
 #include "update-signature-page.h"
 #include "scan-page.h"
+#include "updating-page.h"
 
 struct _WumingWindow
 {
 	AdwApplicationWindow  parent_instance;
 
 	/* Template widgets */
+    AdwNavigationView   *navigation_view; // NavigationView
+
+    /* Main Navigation Page */
+    AdwNavigationPage   *main_nav_page;
 
     /* Top window elements */
 	AdwViewStack        *view_stack; // ViewStack
@@ -45,9 +50,57 @@ struct _WumingWindow
 
     /* Check History Page */
     AdwStatusPage       *check_history_page;
+
+    /* Updating Navigation Page */
+    AdwNavigationPage   *updating_nav_page;
+    UpdatingPage        *updating_page;
 };
 
 G_DEFINE_FINAL_TYPE (WumingWindow, wuming_window, ADW_TYPE_APPLICATION_WINDOW)
+
+/* Push a page by tag */
+void
+wuming_window_push_page_by_tag (WumingWindow *self, const char *tag)
+{
+    adw_navigation_view_push_by_tag (self->navigation_view, tag);
+}
+
+/* Pop the current page */
+void
+wuming_window_pop_page (WumingWindow *self)
+{
+    adw_navigation_view_pop (self->navigation_view);
+}
+
+/* Get current Page tag */
+const char *
+wuming_window_get_current_page_tag (WumingWindow *self)
+{
+    return adw_navigation_view_get_visible_page_tag (self->navigation_view);
+}
+
+/* Get `UpdatingPage` */
+GtkWidget *
+wuming_window_get_updating_page (WumingWindow *self)
+{
+    return GTK_WIDGET (self->updating_page);
+}
+
+/* Compare current page tag with the given tag */
+/*
+  * @param self
+  * the WumingWindow instance
+  * @param tag
+  * the tag to compare with
+  * @return
+  * true if the current page tag is the same as the given tag, false otherwise
+*/
+gboolean
+wuming_window_is_current_page_tag (WumingWindow *self, const char *tag)
+{
+    const char *current_tag = wuming_window_get_current_page_tag (self);
+    return g_strcmp0 (current_tag, tag) == 0;
+}
 
 /* GObject essential functions */
 static void
@@ -70,6 +123,11 @@ wuming_window_class_init (WumingWindowClass *klass)
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/wuming-window.ui");
 
+    gtk_widget_class_bind_template_child (widget_class, WumingWindow, navigation_view);
+
+    /* Main Navigation Page */
+    gtk_widget_class_bind_template_child (widget_class, WumingWindow, main_nav_page);
+
     /* Top window elements */
 	gtk_widget_class_bind_template_child (widget_class, WumingWindow, view_stack);
 
@@ -85,8 +143,13 @@ wuming_window_class_init (WumingWindowClass *klass)
     /* Check History Page */
     gtk_widget_class_bind_template_child (widget_class, WumingWindow, check_history_page);
 
+    /* Updating Navigation Page */
+    gtk_widget_class_bind_template_child (widget_class, WumingWindow, updating_nav_page);
+    gtk_widget_class_bind_template_child (widget_class, WumingWindow, updating_page);
+
     g_type_ensure (SCAN_TYPE_PAGE);
     g_type_ensure(UPDATE_SIGNATURE_TYPE_PAGE);
+    g_type_ensure(UPDATING_TYPE_PAGE);
 }
 
 static void
