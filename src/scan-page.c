@@ -109,6 +109,17 @@ start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
     }
 }
 
+static gboolean
+check_is_scanning (WumingWindow *window)
+{
+  g_return_val_if_fail (WUMING_IS_WINDOW (window), TRUE); // Fallback save if window is not a WumingWindow
+
+  if (wuming_window_is_current_page_tag (window, "scanning_nav_page")) return TRUE;
+  if (wuming_window_is_current_page_tag (window, "threat_nav_page")) return TRUE;
+
+  return FALSE;
+}
+
 /*Callbacks*/
 
 static void
@@ -117,19 +128,18 @@ file_chooser (GSimpleAction *action,
                                 gpointer       user_data)
 {
   ScanPage *self = user_data;
-  GtkButton *file_button = GTK_BUTTON(self->scan_a_file_button);
 
-  gtk_widget_set_sensitive (GTK_WIDGET (file_button), FALSE);
+  WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
+
+  if (check_is_scanning (window)) return; // Prevent multiple scans
+
   g_print("[INFO] Choose a file\n");
-
-  GtkWidget *window = gtk_widget_get_ancestor (GTK_WIDGET (file_button), ADW_TYPE_APPLICATION_WINDOW);
 
   GtkFileDialog *dialog;
   dialog = gtk_file_dialog_new ();
   gtk_file_dialog_open (dialog, GTK_WINDOW (window), NULL, start_scan_file, user_data); // Select a file
 
   g_object_unref (dialog);
-  gtk_widget_set_sensitive (GTK_WIDGET (file_button), TRUE);
 }
 
 static void
@@ -138,19 +148,18 @@ folder_chooser (GSimpleAction *action,
                                 gpointer       user_data)
 {
   ScanPage *self = user_data;
-  GtkButton *folder_button = GTK_BUTTON(self->scan_a_folder_button);
 
-  gtk_widget_set_sensitive (GTK_WIDGET (folder_button), FALSE);
+  WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
+
+  if (check_is_scanning (window)) return; // Prevent multiple scans
+
   g_print("[INFO] Choose a folder\n");
-
-  GtkWidget *window = gtk_widget_get_ancestor (GTK_WIDGET (folder_button), ADW_TYPE_APPLICATION_WINDOW);
 
   GtkFileDialog *dialog;
   dialog = gtk_file_dialog_new ();
   gtk_file_dialog_select_folder (dialog, GTK_WINDOW (window), NULL, start_scan_folder, user_data); // Select a folder
 
   g_object_unref (dialog);
-  gtk_widget_set_sensitive (GTK_WIDGET (folder_button), TRUE);
 }
 
 /*GObject Essential Functions */
