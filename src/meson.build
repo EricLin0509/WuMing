@@ -5,6 +5,8 @@ wuming_sources = [
   'update-signature-page.c',
   'updating-page.c',
   'scan-page.c',
+  'scanning-page.c',
+  'threat-page.c',
 ]
 
 wuming_deps = [

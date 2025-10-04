@@ -1,4 +1,4 @@
-/* scan.h
+/* threat-page.h
  *
  * Copyright 2025 EricLin
  *
@@ -22,9 +22,25 @@
 
 #include <adwaita.h>
 
-typedef struct _WumingWindow WumingWindow;
-typedef struct _ScanningPage ScanningPage;
-typedef struct _ThreatPage ThreatPage;
+G_BEGIN_DECLS
+
+#define THREAT_TYPE_PAGE (threat_page_get_type ())
+
+G_DECLARE_FINAL_TYPE (ThreatPage, threat_page, THREAT, PAGE, GtkWidget)
+
+GtkWidget *
+threat_page_get_list_box (ThreatPage *self);
 
 void
-start_scan(WumingWindow *window, ScanningPage *scanning_page, ThreatPage *threat_page, const char *path);
+threat_page_add_threat (ThreatPage *self, GtkWidget *row);
+
+void
+threat_page_remove_threat (ThreatPage *self, GtkWidget *row);
+
+void
+threat_page_clear (ThreatPage *self);
+
+GtkWidget *
+threat_page_new (void);
+
+G_END_DECLS

@@ -44,6 +44,14 @@ wuming_window_get_current_page_tag (WumingWindow *self);
 GtkWidget *
 wuming_window_get_updating_page (WumingWindow *self);
 
+/* Get `ScanningPage` */
+GtkWidget *
+wuming_window_get_scanning_page (WumingWindow *self);
+
+/* Get `ThreatPage` */
+GtkWidget *
+wuming_window_get_threat_page (WumingWindow *self);
+
 /* Compare current page tag with the given tag */
 /*
   * @param self

@@ -132,6 +132,27 @@
             </property>
           </object>
         </child>
+        <child>
+          <!-- AdwNavigationPage for Scanning Page -->
+          <object class="AdwNavigationPage" id="scanning_nav_page">
+            <property name="title" translatable="yes">Scan</property>
+            <property name="tag">scanning_nav_page</property>
+            <property name="can-pop">false</property>
+            <property name="child">
+              <object class="ScanningPage" id="scanning_page"/>
+            </property>
+          </object>
+        </child>
+        <child>
+          <!-- AdwNavigationPage for Threat Page -->
+          <object class="AdwNavigationPage" id="threat_nav_page">
+            <property name="title" translatable="yes">Threats</property>
+            <property name="tag">threat_nav_page</property>
+            <property name="child">
+              <object class="ThreatPage" id="threat_page"/>
+            </property>
+          </object>
+        </child>
       </object>
     </property>
   </template>

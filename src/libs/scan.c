@@ -28,7 +28,9 @@
 
 #include "delete-file.h"
 
-#include "../scan-page.h"
+#include "../wuming-window.h"
+#include "../scanning-page.h"
+#include "../threat-page.h"
 
 #define CLAMSCAN_PATH "/usr/bin/clamscan"
 
@@ -43,23 +45,13 @@ typedef struct {
   gint total_files; // Total files scanned
   gint total_threats; // Total threats found during scan
 
-  GMutex threats_mutex; // Only protect "threat_paths" and "threat_list" fields
-  GList *threat_paths; // List of threats found during scan
-  GtkWidget *threat_list_box; // List view of threats found after scan
+  GMutex threats_mutex; // Only protect "threat_paths" and "ThreatPage" fields
+  GList *threat_paths; // List of threat paths found during scan
+  ThreatPage *threat_page; // The threat page
 
   /*No need to protect these fields because they always same after initialize*/
-  AdwDialog *scan_dialog;
-  gulong scan_dialog_handler_id;
-  GtkWidget *navigation_view; // use for pushing the `threat_navigation_page` to the navigation view
-  GtkWidget *scan_status_page;
-  GtkWidget *close_button;
-  gulong close_button_handler_id;
-  AdwNavigationPage *threat_navigation_page; // use for pushing it to the navigation view
-  GtkWidget *threat_status_page; // use for adding the `threat_list_box` to the status page
-  GtkWidget *threat_button;
-  AdwNavigationPage *cancel_navigation_page; // use for canceling the scan
-  GtkWidget *cancel_button;
-  gulong cancel_button_handler_id;
+  WumingWindow *window; // The main window
+  ScanningPage *scanning_page; // The scanning page
   char *path; // file/folder path
 
   /* Protected by atomic operation */
@@ -72,10 +64,6 @@ scan_context_new(void)
   ScanContext *ctx = g_new0(ScanContext, 1);
   g_mutex_init(&ctx->mutex);
   g_mutex_init(&ctx->threats_mutex);
-
-  ctx->threat_list_box = gtk_list_box_new(); // Create the list view for threats
-  gtk_widget_add_css_class(ctx->threat_list_box, "boxed-list"); // Add boxed-list style class to the list view
-  gtk_list_box_set_selection_mode(GTK_LIST_BOX(ctx->threat_list_box), GTK_SELECTION_NONE); // Disable selection for the list view
 
   ctx->cancellable = g_cancellable_new(); // Initialize the cancellable object
   ctx->ref_count = 1;
@@ -98,16 +86,15 @@ scan_context_unref(gpointer ctx)
   ScanContext *context = (ScanContext*)ctx;
   if (context && g_atomic_int_dec_and_test(&context->ref_count))
   {
+    scanning_page_revoke_close_signal(context->scanning_page); // Revoke the close signal
+    scanning_page_revoke_cancel_signal(context->scanning_page); // Revoke the cancel signal
+
     if (context->cancellable) g_object_unref(context->cancellable);
 
     g_mutex_clear(&context->mutex);
     g_mutex_clear(&context->threats_mutex);
 
     g_clear_pointer(&context->path, g_free);
-
-    g_clear_signal_handler (&context->scan_dialog_handler_id, G_OBJECT (context->scan_dialog));
-    g_clear_signal_handler (&context->close_button_handler_id, G_OBJECT (context->close_button));
-    g_clear_signal_handler (&context->cancel_button_handler_id, G_OBJECT (context->cancel_button));
 
     g_atomic_int_set(&context->ref_count, INT_MIN);
     g_free(context);
@@ -191,19 +178,27 @@ create_threat_action_row(GtkWidget **delete_button, const char *path)
 {
   GtkWidget *action_row = adw_action_row_new(); // Create the action row for the list view
   gtk_widget_add_css_class(action_row, "property"); // Add property syle class to the action row
+  gtk_widget_set_size_request(action_row, -1, 60); // Set the size request for the action row
   adw_action_row_set_subtitle(ADW_ACTION_ROW(action_row), path);
 
   /* Delete button for the action row */
-  *delete_button = gtk_button_new_with_label(gettext("Delete"));
+  *delete_button = gtk_button_new();
+  gtk_widget_set_size_request(*delete_button, -1, 40);
   gtk_widget_set_halign(*delete_button, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(*delete_button, GTK_ALIGN_CENTER);
+
+  GtkWidget *content = adw_button_content_new(); // Create the button content
+  adw_button_content_set_label(ADW_BUTTON_CONTENT(content), gettext("Delete"));
+  adw_button_content_set_icon_name(ADW_BUTTON_CONTENT(content), "delete-symbolic");
+
+  gtk_button_set_child(GTK_BUTTON(*delete_button), content);
   
   adw_action_row_add_suffix(ADW_ACTION_ROW(action_row), *delete_button); // Add the delete button to the action row
 
   return action_row;
 }
 
-/* thread-safe method to add/output/clear a threat path to the list */
+/* thread-safe method to add/clear a threat path to the list */
 static void
 add_threat_path(ScanContext *ctx, const char *path)
 {
@@ -215,10 +210,12 @@ add_threat_path(ScanContext *ctx, const char *path)
   GtkWidget *delete_button = NULL;
   GtkWidget *action_row = create_threat_action_row(&delete_button, path); // Create the action row for the list view
 
-  gtk_list_box_prepend(GTK_LIST_BOX(ctx->threat_list_box), action_row);
+  /* Add the action row to the list view */
+  threat_page_add_threat (ctx->threat_page, action_row);
+  GtkWidget *threat_list_box = threat_page_get_list_box(ctx->threat_page);
 
   /* Set file properties and connect signal */
-  DeleteFileData *delete_data = delete_file_data_new(ctx->threat_list_box, action_row);
+  DeleteFileData *delete_data = delete_file_data_new(threat_list_box, action_row);
   if (!set_file_properties(delete_data)) // Set the file properties for the action row
   {
     /* If failed to set file properties, disable the AdwActionRow */
@@ -241,17 +238,6 @@ add_threat_path(ScanContext *ctx, const char *path)
   g_mutex_unlock(&ctx->threats_mutex);
 }
 
-static void
-output_threat_path(ScanContext *ctx) // This will add to the AdwStatusPage
-{
-  g_return_if_fail(ctx);
-  g_return_if_fail(ctx->threat_list_box);
-  
-  g_mutex_lock(&ctx->threats_mutex);
-  adw_status_page_set_child (ADW_STATUS_PAGE(ctx->threat_status_page), ctx->threat_list_box); // Add the list view to the status page
-  g_mutex_unlock(&ctx->threats_mutex);
-}
-
 /* clear the GList `data` field callback function */
 static inline void
 clear_list_elements_func(void *data)
@@ -268,18 +254,9 @@ clear_threat_paths(ScanContext *ctx)
   g_debug("Clearing threat paths\n");
 
   g_return_if_fail(ctx);
-  g_return_if_fail(ctx->threat_list_box);
 
   g_mutex_lock(&ctx->threats_mutex);
-  GtkWidget *threat_list_box = ctx->threat_list_box;
-  if (threat_list_box && GTK_IS_WIDGET(threat_list_box))
-  {
-    gtk_list_box_remove_all(GTK_LIST_BOX(threat_list_box)); // First clear all the action rows in the list view
-
-    ctx->threat_list_box = NULL;
-
-    g_clear_pointer(&ctx->threat_list_box, gtk_widget_unparent); // Then unparent the list view
-  }
+  threat_page_clear(ctx->threat_page);
 
   if (ctx->threat_paths)
   {
@@ -287,7 +264,6 @@ clear_threat_paths(ScanContext *ctx)
     ctx->threat_paths = NULL;
   }
 
-  ctx->threat_list_box = NULL; // Reset the list view pointer
   g_mutex_unlock(&ctx->threats_mutex);
 }
 
@@ -332,13 +308,7 @@ scan_ui_callback(gpointer user_data)
 
   char *status_text = g_strdup_printf(gettext("%d files scanned\n%d threats found"), total_files, total_threats);
   
-  if (ctx->scan_status_page && GTK_IS_WIDGET(ctx->scan_status_page))
-  {
-    adw_status_page_set_description(
-      ADW_STATUS_PAGE(ctx->scan_status_page), 
-      status_text
-    );
-  }
+  scanning_page_set_progress(ctx->scanning_page, status_text);
 
   g_free(status_text);
 
@@ -357,51 +327,15 @@ scan_complete_callback(gpointer user_data)
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
-  if (get_cancel_scan(ctx)) // Check if the scan has been cancelled
-  {
-    adw_status_page_set_description(
-      ADW_STATUS_PAGE(ctx->scan_status_page),
-      gettext("User cancelled the scan")
-    );
-  }
+  bool has_threat = (ctx->total_threats > 0);
+  const char *is_canceled = get_cancel_scan(ctx) ? gettext("User cancelled the scan") : NULL;
+  const char *icon_name = is_success ? "status-ok-symbolic" : "status-warning-symbolic";
 
-  if (ctx->cancel_navigation_page && GTK_IS_WIDGET(ctx->cancel_navigation_page) &&
-      ctx->navigation_view && GTK_IS_WIDGET(ctx->navigation_view) && 
-      adw_navigation_view_get_visible_page(ADW_NAVIGATION_VIEW(ctx->navigation_view)) == ctx->cancel_navigation_page) // If the current page is the cancel page, pop it
-  {
-    g_print("[INFO] Scan process done, popping the cancel page\n");
-    adw_navigation_view_pop(ADW_NAVIGATION_VIEW(ctx->navigation_view));
-  }
+  scanning_page_set_final_result(ctx->scanning_page, has_threat, data->message, is_canceled, icon_name);
 
-  if (ctx->total_threats > 0) // If threats found, output the list view
+  if (has_threat) // If threats found, push the page to the threat page
   {
-    output_threat_path(ctx);
-    
-    if (ctx->threat_button && GTK_IS_WIDGET(ctx->threat_button)) // If the threat found button is visible, show it
-    {
-      gtk_widget_set_sensitive(ctx->threat_button, TRUE);
-      gtk_widget_set_visible(ctx->threat_button, TRUE);
-    }
-
-    if (ctx->threat_navigation_page && GTK_IS_WIDGET(ctx->threat_navigation_page) &&
-        ctx->navigation_view && GTK_IS_WIDGET(ctx->navigation_view))
-    {
-      adw_navigation_view_push(ADW_NAVIGATION_VIEW(ctx->navigation_view), ctx->threat_navigation_page);
-    }
-  }
-
-  if (ctx->scan_status_page && GTK_IS_WIDGET(ctx->scan_status_page)) // Set the title of the status page
-  {
-    adw_status_page_set_title(
-      ADW_STATUS_PAGE(ctx->scan_status_page),
-      data->message
-    );
-  }
-
-  if (ctx->close_button && GTK_IS_WIDGET(ctx->close_button)) // Show close button if scan is complete
-  {
-    gtk_widget_set_visible(ctx->close_button, TRUE);
-    gtk_widget_set_sensitive(ctx->close_button, TRUE);
+    wuming_window_push_page_by_tag(ctx->window, "threat_nav_page");
   }
 
   return G_SOURCE_REMOVE;
@@ -490,50 +424,16 @@ scan_thread(gpointer data)
 
 /* Clear the list view and force close the dialog */
 static void
-clear_box_list_and_force_close(ScanContext *ctx)
+clear_box_list_and_close(ScanContext *ctx)
 {
   clear_threat_paths(ctx); // Clear the list view
 
-  adw_dialog_force_close(ctx->scan_dialog);
+  wuming_window_pop_page(ctx->window); // Pop the scanning page
   scan_context_unref(ctx); // unref at here to avoid fucked up the `ScanContext` before getting the `threat_list_box`
 }
 
-/* Attempts to cancel the scan */
-static void
-cancel_scan_attempt(ScanContext *ctx)
-{
-  gboolean is_completed = FALSE;
-  get_completion_state(ctx, &is_completed, NULL);
-
-	/* Check whether the current page is the main page */
-	AdwNavigationPage *current_page = adw_navigation_view_get_visible_page(ADW_NAVIGATION_VIEW(ctx->navigation_view)); // Get the current page
-	const gboolean is_main_page = (current_page != ctx->cancel_navigation_page && current_page != ctx->threat_navigation_page);
-
-  /* Only push the cancel page if the scan is not completed */
-  if (!is_completed) adw_navigation_view_push(ADW_NAVIGATION_VIEW(ctx->navigation_view), ctx->cancel_navigation_page);
-	/* Only close the dialog if the current page is the main page */
-  else if (is_main_page) clear_box_list_and_force_close(ctx); // If the current page is the main page, clear the list view and force close the dialog
-}
-
-/* Comfirm the cancelation of the scan */
-static void
-confirm_cancel_scan(ScanContext *ctx)
-{
-  set_cancel_scan(ctx);
-  adw_navigation_view_pop(ADW_NAVIGATION_VIEW(ctx->navigation_view));
-}
-
 void
-start_scan(AdwDialog *dialog,
-             GtkWidget *navigation_view,
-             GtkWidget *scan_status,
-             GtkWidget *close_button,
-             AdwNavigationPage *threat_navigation_page,
-             GtkWidget *threat_status,
-             GtkWidget *threat_button,
-             AdwNavigationPage *cancel_navigation_page,
-             GtkWidget *cancel_button,
-             char *path)
+start_scan(WumingWindow *window, ScanningPage *scanning_page, ThreatPage *threat_page, const char *path)
 {
   ScanContext *ctx = scan_context_new();
 
@@ -543,24 +443,15 @@ start_scan(AdwDialog *dialog,
   ctx->total_files = 0;
   ctx->total_threats = 0;
   ctx->threat_paths = NULL;
-  ctx->scan_dialog = dialog;
-  ctx->scan_dialog_handler_id = 
-          g_signal_connect_swapped(ctx->scan_dialog, "close-attempt", G_CALLBACK(cancel_scan_attempt), ctx); // Connect the close-attempt signal to the cancel_scan_attempt function
-  ctx->navigation_view = navigation_view;
-  ctx->scan_status_page = scan_status;
-  ctx->close_button = close_button;
-  ctx->close_button_handler_id = 
-          g_signal_connect_swapped(GTK_BUTTON(ctx->close_button), "clicked", G_CALLBACK(clear_box_list_and_force_close), ctx); // Connect the close button to the clear_box_list_and_force_close function
-  ctx->threat_navigation_page = threat_navigation_page;
-  ctx->threat_status_page = threat_status;
-  ctx->threat_button = threat_button;
-  ctx->cancel_navigation_page = cancel_navigation_page;
-  ctx->cancel_button = cancel_button;
-  ctx->cancel_button_handler_id = 
-          g_signal_connect_swapped(GTK_BUTTON(ctx->cancel_button), "clicked", G_CALLBACK(confirm_cancel_scan), ctx); // Connect the cancel button to the confirm_cancel_scan function
+  ctx->window = window;
+  ctx->scanning_page = scanning_page;
+  ctx->threat_page = threat_page;
   ctx->path = path;
   ctx->ref_count = G_ATOMIC_REF_COUNT_INIT;
   g_mutex_unlock(&ctx->mutex);
+
+  scanning_page_set_close_signal (scanning_page, (GCallback) clear_box_list_and_close, ctx);
+  scanning_page_set_cancel_signal (scanning_page, (GCallback) set_cancel_scan, ctx);
 
   /* Start scan thread */
   g_thread_new("scan-thread", scan_thread, ctx);

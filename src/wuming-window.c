@@ -25,6 +25,8 @@
 #include "update-signature-page.h"
 #include "scan-page.h"
 #include "updating-page.h"
+#include "scanning-page.h"
+#include "threat-page.h"
 
 struct _WumingWindow
 {
@@ -54,6 +56,14 @@ struct _WumingWindow
     /* Updating Navigation Page */
     AdwNavigationPage   *updating_nav_page;
     UpdatingPage        *updating_page;
+
+    /* Scanning Navigation Page */
+    AdwNavigationPage   *scanning_nav_page;
+    ScanningPage        *scanning_page;
+
+    /* Threat Navigation Page */
+    AdwNavigationPage   *threat_nav_page;
+    ThreatPage          *threat_page;
 };
 
 G_DEFINE_FINAL_TYPE (WumingWindow, wuming_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -84,6 +94,20 @@ GtkWidget *
 wuming_window_get_updating_page (WumingWindow *self)
 {
     return GTK_WIDGET (self->updating_page);
+}
+
+/* Get `ScanningPage` */
+GtkWidget *
+wuming_window_get_scanning_page (WumingWindow *self)
+{
+    return GTK_WIDGET (self->scanning_page);
+}
+
+/* Get `ThreatPage` */
+GtkWidget *
+wuming_window_get_threat_page (WumingWindow *self)
+{
+    return GTK_WIDGET (self->threat_page);
 }
 
 /* Compare current page tag with the given tag */
@@ -147,9 +171,19 @@ wuming_window_class_init (WumingWindowClass *klass)
     gtk_widget_class_bind_template_child (widget_class, WumingWindow, updating_nav_page);
     gtk_widget_class_bind_template_child (widget_class, WumingWindow, updating_page);
 
+    /* Scanning Navigation Page */
+    gtk_widget_class_bind_template_child (widget_class, WumingWindow, scanning_nav_page);
+    gtk_widget_class_bind_template_child (widget_class, WumingWindow, scanning_page);
+
+    /* Threat Navigation Page */
+    gtk_widget_class_bind_template_child (widget_class, WumingWindow, threat_nav_page);
+    gtk_widget_class_bind_template_child (widget_class, WumingWindow, threat_page);
+
     g_type_ensure (SCAN_TYPE_PAGE);
-    g_type_ensure(UPDATE_SIGNATURE_TYPE_PAGE);
-    g_type_ensure(UPDATING_TYPE_PAGE);
+    g_type_ensure (SCANNING_TYPE_PAGE);
+    g_type_ensure (THREAT_TYPE_PAGE);
+    g_type_ensure (UPDATE_SIGNATURE_TYPE_PAGE);
+    g_type_ensure (UPDATING_TYPE_PAGE);
 }
 
 static void
@@ -183,7 +217,7 @@ wuming_window_init (WumingWindow *self)
     is_signature_uptodate (result);
 
     /* Merge Window Elements */
-    update_signature_page_show_isuptodate(self->update_signature_page, result);
+    update_signature_page_show_isuptodate (self->update_signature_page, result);
     update_signature_page_show_servicestat (self->update_signature_page);
     g_free (result);
 

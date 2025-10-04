@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.0"/>
+
+  <template class="ScanningPage" parent="GtkWidget">
+    <child>
+      <object class="AdwToolbarView" id="toolbar_view">
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <child type="start">
+              <object class="GtkButton" id="cancel_button">
+                <property name="can-shrink">true</property>
+                <property name="label" translatable="yes">Cancel</property>
+                <style>
+                  <class name="destructive-action"/>
+                </style>
+              </object>
+            </child>
+          </object>
+        </child>
+        <property name="content">
+          <object class="AdwStatusPage" id="status_page">
+            <child>
+              <object class="GtkBox">
+                <property name="valign">center</property>
+                <property name="halign">center</property>
+                <property name="homogeneous">true</property>
+                <property name="spacing">10</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="GtkButton" id="threat_button">
+                    <property name="width-request">100</property>
+                    <property name="height-request">40</property>
+                    <property name="visible">false</property>
+                    <property name="label" translatable="yes">Show threats</property>
+                    <property name="action-name">navigation.push</property>
+                    <property name="action-target">'threat_nav_page'</property>
+                    <style>
+                      <class name="pill"/>
+                      <class name="warning"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="close_button">
+                    <property name="width-request">100</property>
+                    <property name="height-request">40</property>
+                    <property name="visible">false</property>
+                    <property name="label" translatable="yes">Close</property>
+                    <style>
+                      <class name="pill"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
+      </object>
+    </child>
+  </template>
+</interface>
