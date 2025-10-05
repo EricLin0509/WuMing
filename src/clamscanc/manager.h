@@ -133,9 +133,6 @@ void add_task(TaskQueue *dest, Task source);
 */
 size_t get_task(Task *dest, TaskQueue *source);
 
-/* Turn user input path into absolute path */
-char *get_absolute_path(const char *orignal_path);
-
 /* Check if the given path is a directory */
 bool is_directory(const char *path);
 
@@ -153,19 +150,16 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions);
   * @param mission_callback
   * the function to be executed in the child process
   * @param mission_callback_args
-  * the arguments to be passed to the `mission_callback` [OPTIONAL]]
-  *
-  * @param error_callback
-  * the function to be executed if an error occurs when spawning a process [OPTIONAL]
-  * @param error_callback_args
-  * the arguments to be passed to the `error_callback` [OPTIONAL]
+  * the arguments to be passed to the `mission_callback` [OPTIONAL]
+  * 
+  * @return
+  * `true` if the process is spawned successfully, `false` otherwise
   * 
   * @warning
-  * This function will also try to register the signal handler which store in the `observer` structure
+  * This function will also try to register the signal handler which store in the `observer` struct
 */
-void spawn_new_process(Observer *observer,
-                     void (*mission_callback)(void *args), void *mission_callback_args, 
-                     void (*error_callback)(void *args), void *error_callback_args);
+bool spawn_new_process(Observer *observer,
+                     void (*mission_callback)(void *args), void *mission_callback_args);
 
 /* Scan a file */
 void process_file(const char *path, ScanResult *result, struct cl_engine *engine, struct cl_scan_options *scanoptions);

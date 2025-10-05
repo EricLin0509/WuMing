@@ -95,12 +95,6 @@ static void resource_cleanup(void) {
     }
 }
 
-/* Error callback function when failed to create processes */
-static void create_process_error(void *args) {
-    fprintf(stderr, "[ERROR] create_process_error: Failed to spawn process!\n");
-    set_status(&shm->current_status, STATUS_FORCE_QUIT); // Force quit the scan
-}
-
 /* Signal handler for terminating the scan */
 void shutdown_handler(int sig) {
     if (getpid() != parent_pid) return; // Only the parent process can handle the signal
@@ -131,7 +125,7 @@ static void trverse_directory(char *path, TaskQueue *dir_tasks, TaskQueue *file_
 
     struct dirent *entry; // Initialize a directory entry
     while ((entry = readdir(dir))) {
-        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue; // Skip current and parent directory
+        if (memcmp(entry->d_name, ".", 1) == 0 || memcmp(entry->d_name, "..", 2) == 0) continue; // Skip current and parent directory
 
         char fullpath[PATH_MAX]; // Initialize a full path
         snprintf(fullpath, PATH_MAX, "%s/%s", path, entry->d_name); // Build the full path
@@ -226,7 +220,7 @@ int main(int argc, const char *argv[]) {
     }
     printf("[INFO] Engine prepared Successfully.\n");
 
-    char *real_path = get_absolute_path(argv[1]); // Get the absolute path of the directory to scan
+    char *real_path = realpath(argv[1], NULL); // Get the absolute path of the directory to scan
     if (!is_directory(real_path)) { // If the path is not a directory, scan it directly
         printf("[INFO] User pass a file path, try scanning it directly...\n");
         if (!is_regular_file(real_path)) {
@@ -253,19 +247,21 @@ int main(int argc, const char *argv[]) {
     register_signal_handler(SIGINT, shutdown_handler);
     register_signal_handler(SIGTERM, shutdown_handler);
 
-    // Add initial tasks to the task queue
-    printf("[INFO] Start adding initial tasks to the task queue...\n");
+    /* Spawn the producer and worker processes */
+    bool spawn_result = false;
     init_observer(&shm->producer_observer, num_producers, SIGUSR1, exit_signal);
-    spawn_new_process(&shm->producer_observer,
-                            producer_main, (void*)&shm->dir_tasks,
-                            create_process_error, (void*)&shm->producer_observer);
-
-    // Create worker processes
-    printf("[INFO] Start creating worker processes...\n");
     init_observer(&shm->worker_observer, num_workers, SIGUSR2, exit_signal);
-    spawn_new_process(&shm->worker_observer,
-                            worker_main, (void*)&shm->file_tasks,
-                            create_process_error, (void*)&shm->worker_observer);
+
+    spawn_result |= spawn_new_process(&shm->producer_observer,
+                            producer_main, (void*)&shm->dir_tasks);
+
+    spawn_result |= spawn_new_process(&shm->worker_observer,
+                            worker_main, (void*)&shm->file_tasks);
+
+    if (!spawn_result) {
+        fprintf(stderr, "[ERROR] Failed to spawn processes, aborting...\n");
+        set_status(&shm->current_status, STATUS_FORCE_QUIT);
+    }
 
     // Wait for all child processes to exit
     watchdog_main(&shm->producer_observer, &shm->current_status, STATUS_PRODUCER_DONE);

@@ -184,16 +184,6 @@ size_t get_task(Task *dest, TaskQueue *source) {
     return tasks_to_get;
 }
 
-/* Turn user input path into absolute path */
-char *get_absolute_path(const char *orignal_path) {
-    char *absolute_path = realpath(orignal_path, NULL);
-    if (absolute_path == NULL) {
-        fprintf(stderr, "[ERROR] get_absolute_path: Failed to get absolute path of %s: %s\n", orignal_path, strerror(errno));
-        return NULL;
-    }
-    return absolute_path;
-}
-
 /* Get file stat */
 static inline bool get_file_stat(const char *path, struct stat *statbuf) {
 	if (lstat(path, statbuf) != 0) {
@@ -272,28 +262,25 @@ struct cl_engine *init_engine(struct cl_scan_options *scanoptions) {
   * the function to be executed in the child process
   * @param mission_callback_args
   * the arguments to be passed to the `mission_callback` [OPTIONAL]
-  *
-  * @param error_callback
-  * the function to be executed if an error occurs when spawning a process [OPTIONAL]
-  * @param error_callback_args
-  * the arguments to be passed to the `error_callback` [OPTIONAL]
+  * 
+  * @return
+  * `true` if the process is spawned successfully, `false` otherwise
   * 
   * @warning
-  * This function will also try to register the signal handler which store in the `observer` structure
+  * This function will also try to register the signal handler which store in the `observer` struct
 */
-void spawn_new_process(Observer *observer,
-                     void (*mission_callback)(void *args), void *mission_callback_args, 
-                     void (*error_callback)(void *args), void *error_callback_args) {
+bool spawn_new_process(Observer *observer,
+                     void (*mission_callback)(void *args), void *mission_callback_args) {
     if (mission_callback == NULL || observer == NULL) {
         fprintf(stderr, "[ERROR] spawn_new_process: Invalid arguments mission_callback=%p observer=%p\n", mission_callback, observer);
-        goto error_callback_call;
+        return false;
     }
 
-    signal(observer->exit_condition_signal, SIG_IGN); // Ignore the exit condition signal in the parent process
+    register_signal_handler(observer->exit_condition_signal, SIG_IGN); // Ignore the exit condition signal in the parent process
 
     if (observer->num_of_processes == 0 || observer->num_of_processes > MAX_PROCESSES) {
         fprintf(stderr, "[ERROR] spawn_new_process: Invalid number of processes: %zu of %d\n", observer->num_of_processes, MAX_PROCESSES);
-        goto error_callback_call;
+        return false;
     }
 
     /* Spawn the processes */
@@ -302,7 +289,7 @@ void spawn_new_process(Observer *observer,
         *current_pid_ptr = fork(); // Fork a new process
         if (*current_pid_ptr == -1) { // Failed to fork
             fprintf(stderr, "[ERROR] spawn_new_process: Failed to fork process: %s\n", strerror(errno));
-            goto error_callback_call;
+            return false;
         }
 
         if (*current_pid_ptr == 0) { // Child process (run the function)
@@ -312,10 +299,7 @@ void spawn_new_process(Observer *observer,
         }
     }
 
-    return;
-
-error_callback_call:
-    if (error_callback != NULL) error_callback(error_callback_args); // Execute the error function if an error occurs
+    return true;
 }
 
 /* Process scan result */
