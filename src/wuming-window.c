@@ -130,6 +130,11 @@ wuming_window_is_current_page_tag (WumingWindow *self, const char *tag)
 static void
 wuming_window_dispose (GObject *object)
 {
+    WumingWindow *self = WUMING_WINDOW (object);
+
+    GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
+    g_clear_pointer (&navigation_view, gtk_widget_unparent);
+
     G_OBJECT_CLASS (wuming_window_parent_class)->dispose (object);
 }
 
@@ -144,6 +149,9 @@ wuming_window_class_init (WumingWindowClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+    object_class->dispose = wuming_window_dispose;
+    object_class->finalize = wuming_window_finalize;
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/wuming-window.ui");
 
