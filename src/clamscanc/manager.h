@@ -71,9 +71,19 @@ typedef struct {
 	Task tasks[MAX_TASKS]; // The task queue
 } TaskQueue;
 
+/* Scan result */
+typedef struct {
+	_Atomic size_t total_directories; // Total number of directories scanned
+	_Atomic size_t total_files; // Total number of files scanned
+	_Atomic size_t total_errors; // Total number of errors occurred during scanning
+	_Atomic size_t total_found; // Total number of viruses found during scanning
+} ScanResult;
+
 /* The shared data */
 typedef struct {
 	_Atomic CurrentStatus current_status; // Current status of the scanning process
+
+	ScanResult scan_result; // The scanning result
 
 	Observer producer_observer; // Observer for producer process
 	TaskQueue dir_tasks; // Task queue for traversing directories
@@ -81,6 +91,12 @@ typedef struct {
 	Observer worker_observer; // Observer for worker processes
 	TaskQueue file_tasks; // Task queue for scanning files
 } SharedData;
+
+/* Initialize the scan result */
+void init_scan_result(ScanResult *result);
+
+/* Print the summary of the scanning result */
+void print_summary(ScanResult *result);
 
 /* Build task from path */
 Task build_task(TaskType type, char *path);
@@ -152,6 +168,6 @@ void spawn_new_process(Observer *observer,
                      void (*error_callback)(void *args), void *error_callback_args);
 
 /* Scan a file */
-void process_file(const char *path, struct cl_engine *engine, struct cl_scan_options *scanoptions);
+void process_file(const char *path, ScanResult *result, struct cl_engine *engine, struct cl_scan_options *scanoptions);
 
 #endif // MANAGER_H

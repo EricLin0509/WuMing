@@ -44,6 +44,22 @@
 #define BASE_TIMEOUT_MS 50 // Base timeout for waiting for the semaphore
 #define CALCULATE_WAIT_MS(current_timeout_ms) (current_timeout_ms + (rand() % JITTER_RANGE)) // Calculate the dynamic timeout for waiting for the semaphore
 
+/* Initialize the scan result */
+void init_scan_result(ScanResult *result) {
+    atomic_init(&result->total_directories, 0);
+    atomic_init(&result->total_files, 0);
+    atomic_init(&result->total_errors, 0);
+    atomic_init(&result->total_found, 0);
+}
+
+/* Print the summary of the scanning result */
+void print_summary(ScanResult *result) {
+    printf("\n----------- SCAN SUMMARY -----------\n");
+    printf("Scanned files: %zu\n", atomic_load(&result->total_files));
+    printf("Found viruses: %zu\n", atomic_load(&result->total_found));
+    printf("Errors: %zu\n", atomic_load(&result->total_errors));
+}
+
 /* Build task from path */
 Task build_task(TaskType type, char *path) {
     Task task;
@@ -303,23 +319,27 @@ error_callback_call:
 }
 
 /* Process scan result */
-static void process_scan_result(const char *path, cl_error_t result, const char *virname) {
-	switch (result) {
+static void process_scan_result(const char *path, ScanResult *result, cl_error_t error, const char *virname) {
+	switch (error) {
 		case CL_CLEAN:
 			printf("%s: OK\n", path);
 			break;
 		case CL_VIRUS:
+            atomic_fetch_add(&result->total_found, 1); // Increment the total found count
 			printf("%s: %s FOUND\n", path, virname);
 			break;
 		default:
-			printf("%s: SCAN ERROR: %s\n", path, cl_strerror(result));
-			break;
-	}	
+            atomic_fetch_add(&result->total_errors, 1); // Increment the total error count
+			printf("%s: SCAN ERROR: %s\n", path, cl_strerror(error));
+			return; // Stop incrementing the total scanned count
+	}
+
+    atomic_fetch_add(&result->total_files, 1); // Increment the total scanned count
 }
 
 /* Scan a file */
-void process_file(const char *path, struct cl_engine *engine, struct cl_scan_options *scanoptions) {
-	cl_error_t result;
+void process_file(const char *path, ScanResult *result, struct cl_engine *engine, struct cl_scan_options *scanoptions) {
+	cl_error_t error;
     int fd = open(path, FILE_OPEN_FLAGS); // Open the file
     if (fd == -1) {
         fprintf(stderr, "[ERROR] process_file: Failed to open %s: %s\n", path, strerror(errno));
@@ -328,8 +348,8 @@ void process_file(const char *path, struct cl_engine *engine, struct cl_scan_opt
     
     const char *virname = NULL;
     unsigned long scanned = 0;
-    result = cl_scandesc(fd, NULL, &virname, &scanned, engine, scanoptions); // Scan the file
+    error = cl_scandesc(fd, NULL, &virname, &scanned, engine, scanoptions); // Scan the file
     close(fd);
 
-    process_scan_result(path, result, virname);
+    process_scan_result(path, result, error, virname);
 }

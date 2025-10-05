@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -Werror -g -lclamav
-BIN=clamscanp
-SRC=clamscanp.c manager.c watchdog.c
+BIN=clamscanc
+SRC=clamscanc.c manager.c watchdog.c
 
 all: $(BIN)
 

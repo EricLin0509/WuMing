@@ -1,4 +1,4 @@
-/* clamscanp.c
+/* clamscanc.c
  *
  * Copyright 2025 EricLin
  *
@@ -20,25 +20,8 @@
 
 /* This program is similar to `clamscan` from ClamAV, but with some performance improvements */
 /*
-  * This use process pool to implement parallel scanning, which can significantly improve the scanning speed.
+  * This use process pool to implement concurrent scanning, which can significantly improve the scanning speed.
   * Use shared memory to share the engine between processes, which can reduce the memory usage.
-*/
-
-/* Architecture Overview */
-/* Example: Two subprocesses for scanning files */
-/*
-
-                    Main Process (Parent Process) ------------------> Subprocess 1 (Child Process) -> Submit tasks to the task queue (this will ensure won't block the scanning process)
-        /                                                                       \
-       /                                                                          \
-      /                                                                             \
-Subprocess 2 (Child Process)             Subprocess 3 (Child Process)
-                |                                                                     |
-                |                                                                     |
-                | Get tasks                                                     | Get tasks
-                |                                                                     |
-                |                                                                     |
-        Scanning files                                                Scanning files
 */
 
 /*
@@ -54,7 +37,7 @@ Subprocess 2 (Child Process)             Subprocess 3 (Child Process)
 
 #include "manager.h"
 
-#define CLAMP(x, low, high) ((x) < (low)? (low) : ((x) > (high)? (high) : (x))) // Use for clamping the number of processes
+#define CLAMP(x, low, high) ((x) < (low) ? (low) : ((x) > (high) ? (high) : (x))) // Use for clamping the number of processes
 
 /* Use global variables making it easier to pass data between processes */
 static struct cl_scan_options options; // Options for scanning
@@ -74,6 +57,9 @@ static bool init_resources(char *path) {
         return false;
     }
     memset(shm, 0, shm_size);
+
+    /* Initialize the `ScanResult` */
+    init_scan_result(&shm->scan_result);
 
     /* Initialize the `CurrentStatus` */
     init_status(&shm->current_status);
@@ -218,7 +204,7 @@ static void worker_main(void *args) {
             if (task[i].type != SCAN_FILE) continue; // Skip invalid tasks type
             atomic_fetch_add(&queue->in_progress, 1); // Increment the number of tasks in progress
 
-            process_file(task[i].path, engine, &options); // Scan the file
+            process_file(task[i].path, &shm->scan_result, engine, &options); // Scan the file
 
             atomic_fetch_sub(&queue->in_progress, 1); // Decrement the number of tasks in progress
         }
@@ -248,7 +234,9 @@ int main(int argc, const char *argv[]) {
             resource_cleanup();
             return EXIT_FAILURE;
         } 
-        process_file(real_path, engine, &options);
+        ScanResult result;
+        init_scan_result(&result);
+        process_file(real_path, &result, engine, &options);
         resource_cleanup();
         return EXIT_SUCCESS;
     }
@@ -283,7 +271,7 @@ int main(int argc, const char *argv[]) {
     watchdog_main(&shm->producer_observer, &shm->current_status, STATUS_PRODUCER_DONE);
     watchdog_main(&shm->worker_observer, &shm->current_status, STATUS_ALL_TASKS_DONE);
     
-    printf("[INFO] Scan completed successfully.\n");
+    print_summary(&shm->scan_result); // Print the summary of the scan result
 
     resource_cleanup();
 
