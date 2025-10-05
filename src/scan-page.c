@@ -164,10 +164,20 @@ folder_chooser (GSimpleAction *action,
 
 /*GObject Essential Functions */
 
+static const GActionEntry scan_actions[] = {
+    { "scan-file", file_chooser },
+    { "scan-folder", folder_chooser },
+};
+
 static void
 scan_page_dispose(GObject *gobject)
 {
   ScanPage *self = SCAN_PAGE (gobject);
+  GApplication *app = g_application_get_default();
+
+  g_action_map_remove_action_entries (G_ACTION_MAP (app),
+	                                 scan_actions,
+	                                 G_N_ELEMENTS (scan_actions));
 
   g_clear_pointer (&self->clamp, gtk_widget_unparent);
 
@@ -177,6 +187,13 @@ scan_page_dispose(GObject *gobject)
 static void
 scan_page_finalize(GObject *gobject)
 {
+  ScanPage *self = SCAN_PAGE (gobject);
+
+  /* Reset all child widgets */
+  self->clamp = NULL;
+  self->scan_a_file_button = NULL;
+  self->scan_a_folder_button = NULL;
+
   G_OBJECT_CLASS(scan_page_parent_class)->finalize(gobject);
 }
 
@@ -203,11 +220,6 @@ scan_page_new(void)
 {
   return g_object_new (SCAN_TYPE_PAGE, NULL);
 }
-
-static const GActionEntry scan_actions[] = {
-    { "scan-file", file_chooser },
-    { "scan-folder", folder_chooser },
-};
 
 static void
 scan_page_init (ScanPage *self)

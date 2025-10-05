@@ -87,6 +87,15 @@ updating_page_dispose(GObject *object)
 static void
 updating_page_finalize(GObject *object)
 {
+    UpdatingPage *self = UPDATING_PAGE(object);
+
+    /* Reset all child widgets */
+    self->toolbar_view = NULL;
+    self->cancel_button = NULL;
+    self->status_page = NULL;
+    self->close_button = NULL;
+    self->spinner = NULL;
+
     G_OBJECT_CLASS(updating_page_parent_class)->finalize(object);
 }
 

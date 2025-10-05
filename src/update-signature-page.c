@@ -115,10 +115,19 @@ update_signature_cb (GSimpleAction *action,
 
 /*GObject Essential Functions */
 
+static const GActionEntry update_actions[] = {
+  { "update", update_signature_cb }
+};
+
 static void
 update_signature_page_dispose(GObject *gobject)
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE (gobject);
+  GApplication *app = g_application_get_default();
+
+  g_action_map_remove_action_entries (G_ACTION_MAP (app),
+	                                 update_actions,
+	                                 G_N_ELEMENTS (update_actions));
 
   g_clear_pointer(&self->clamp, gtk_widget_unparent);
 
@@ -128,6 +137,14 @@ update_signature_page_dispose(GObject *gobject)
 static void
 update_signature_page_finalize(GObject *gobject)
 {
+  UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE (gobject);
+
+  /* Reset all child widgets */
+  self->clamp = NULL;
+  self->status_row = NULL;
+  self->update_button = NULL;
+  self->service_row = NULL;
+
   G_OBJECT_CLASS(update_signature_page_parent_class)->finalize(gobject);
 }
 
@@ -155,10 +172,6 @@ update_signature_page_new (void)
 {
   return g_object_new (UPDATE_SIGNATURE_TYPE_PAGE, NULL);
 }
-
-static const GActionEntry update_actions[] = {
-  { "update", update_signature_cb }
-};
 
 static void
 update_signature_page_init (UpdateSignaturePage *self)

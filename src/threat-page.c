@@ -73,6 +73,12 @@ threat_page_dispose (GObject *object)
 static void
 threat_page_finalize (GObject *object)
 {
+    ThreatPage *self = THREAT_PAGE (object);
+
+    /* Reset all child widgets */
+    self->toolbar_view = NULL;
+    self->threat_list = NULL;
+
     G_OBJECT_CLASS (threat_page_parent_class)->finalize(object);
 }
 

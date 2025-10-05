@@ -141,6 +141,16 @@ scanning_page_dispose(GObject *object)
 static void
 scanning_page_finalize(GObject *object)
 {
+    ScanningPage *self = SCANNING_PAGE(object);
+
+    /* Reset all child widgets */
+    self->toolbar_view = NULL;
+    self->cancel_button = NULL;
+    self->status_page = NULL;
+    self->threat_button = NULL;
+    self->close_button = NULL;
+    self->spinner = NULL;
+
     G_OBJECT_CLASS(scanning_page_parent_class)->finalize(object);
 }
 

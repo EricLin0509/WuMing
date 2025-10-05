@@ -141,6 +141,23 @@ wuming_window_dispose (GObject *object)
 static void
 wuming_window_finalize (GObject *object)
 {
+    WumingWindow *self = WUMING_WINDOW (object);
+
+    /* Reset all child widgets */
+    self->navigation_view = NULL;
+    self->main_nav_page = NULL;
+    self->view_stack = NULL;
+    self->security_overview_page = NULL;
+    self->scan_page = NULL;
+    self->update_signature_page = NULL;
+    self->check_history_page = NULL;
+    self->updating_nav_page = NULL;
+    self->updating_page = NULL;
+    self->scanning_nav_page = NULL;
+    self->scanning_page = NULL;
+    self->threat_nav_page = NULL;
+    self->threat_page = NULL;
+
     G_OBJECT_CLASS (wuming_window_parent_class)->finalize (object);
 }
 
