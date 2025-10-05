@@ -248,14 +248,14 @@ int main(int argc, const char *argv[]) {
     register_signal_handler(SIGTERM, shutdown_handler);
 
     /* Spawn the producer and worker processes */
-    bool spawn_result = false;
+    bool spawn_result = true;
     init_observer(&shm->producer_observer, num_producers, SIGUSR1, exit_signal);
     init_observer(&shm->worker_observer, num_workers, SIGUSR2, exit_signal);
 
-    spawn_result |= spawn_new_process(&shm->producer_observer,
+    spawn_result &= spawn_new_process(&shm->producer_observer,
                             producer_main, (void*)&shm->dir_tasks);
 
-    spawn_result |= spawn_new_process(&shm->worker_observer,
+    spawn_result &= spawn_new_process(&shm->worker_observer,
                             worker_main, (void*)&shm->file_tasks);
 
     if (!spawn_result) {

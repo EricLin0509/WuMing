@@ -56,7 +56,7 @@ void init_scan_result(ScanResult *result) {
 void print_summary(ScanResult *result) {
     printf("\n----------- SCAN SUMMARY -----------\n");
     printf("Scanned files: %zu\n", atomic_load(&result->total_files));
-    printf("Found viruses: %zu\n", atomic_load(&result->total_found));
+    printf("Infected files: %zu\n", atomic_load(&result->total_found));
     printf("Errors: %zu\n", atomic_load(&result->total_errors));
 }
 
