@@ -111,6 +111,7 @@ static void exit_signal(int sig) {
 /* The exit condition for the producer process */
 static inline void is_producer_done(TaskQueue *dir_tasks) {
     if (is_task_queue_empty_assumption(dir_tasks)) {
+        notify_watchdog(&shm->producer_observer); // Notify the watchdog that the producer is done
         set_status(&shm->current_status, STATUS_PRODUCER_DONE); // Set the status to producer done
     }
 }
@@ -174,6 +175,7 @@ static void producer_main(void *args) {
 static inline void is_all_task_done(TaskQueue *file_tasks) {
     if (get_status(&shm->current_status) == STATUS_PRODUCER_DONE) { // First check if the producer is done
         if (is_task_queue_empty_assumption(file_tasks)) { // Then check if the task queue is empty and all tasks are done
+            notify_watchdog(&shm->worker_observer); // Notify the watchdog that all tasks are done
             set_status(&shm->current_status, STATUS_ALL_TASKS_DONE); // Set the status to all tasks done
         }
     }

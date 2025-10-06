@@ -47,12 +47,16 @@ typedef enum {
 /*
   * `num_of_processes` is the number of processes to be created
   * `pids` is an array of process IDs
+  * `pipe_fd` is the pipe file descriptor for watchdog to communicate with the parent process
   * `exit_condition_signal` is the signal to be sent to the processes to exit
   * `condition_signal_handler` is the signal handler for the exit condition signal
 */
 typedef struct {
     size_t num_of_processes;
     pid_t *pids;
+
+	/* The exit control components */
+	int pipe_fd[2];
     int exit_condition_signal;
     signal_handler condition_signal_handler;
 } Observer;
@@ -90,6 +94,14 @@ void destroy_observer(Observer *observer);
   * The signal handler for the signal
 */
 void register_signal_handler(int signal, signal_handler handler);
+
+/* Notify the watchdog that the child process has finished */
+/*
+  * @param observer
+  * The observer object to send the notification
+  * @warning This function should be called in the child process (producer or worker process)
+*/
+void notify_watchdog(Observer *observer);
 
 /* The main function for watchdog */
 /*

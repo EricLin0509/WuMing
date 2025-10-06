@@ -21,15 +21,21 @@
 /* This is the watchdog implementation for clamscanp */
 
 #include <stdio.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <poll.h>
 
 #include "watchdog.h"
 
+#define NOTIFY_MSG "done" // the message to be sent to the watchdog
+#define NOTIFY_MSG_SIZE (sizeof(NOTIFY_MSG) - 1) // the size of the message to be sent to the watchdog
 #define SIGACTION_FLAGS (SA_RESTART | SA_NOCLDSTOP) // restart interrupted system calls
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b)) // macro to get the minimum value between two values
 
 /* Initialize the current status of the scanning process */
 void init_status(_Atomic CurrentStatus *status) {
@@ -60,6 +66,7 @@ void set_status(_Atomic CurrentStatus *status, CurrentStatus new_status) {
 void init_observer(Observer *dest, size_t num_of_processes, int exit_condition_signal, signal_handler condition_signal_handler) {
 	dest->pids = calloc(num_of_processes, sizeof(pid_t));
 	dest->num_of_processes = num_of_processes;
+	pipe(dest->pipe_fd);
 	
 	if (exit_condition_signal > 0 && condition_signal_handler != NULL) {
 		dest->exit_condition_signal = exit_condition_signal;
@@ -103,6 +110,20 @@ void register_signal_handler(int signal, signal_handler handler) {
 	}
 }
 
+/* Notify the watchdog that the child process has finished */
+/*
+  * @param observer
+  * The observer object to send the notification
+  * @warning This function should be called in the child process (producer or worker process)
+*/
+void notify_watchdog(Observer *observer) {
+	if (observer == NULL || observer->pipe_fd[1] == -1) return; // Skip invalid parameters
+
+	close(observer->pipe_fd[0]); // close the read end of the pipe
+	write(observer->pipe_fd[1], NOTIFY_MSG, NOTIFY_MSG_SIZE); // send the message to the watchdog
+	close(observer->pipe_fd[1]); // close the write end of the pipe
+}
+
 /* Wait for the processes in the observer */
 /*
   * @param observer
@@ -124,6 +145,18 @@ static bool wait_for_processes(Observer *observer, int options) {
 
 	return true; // all the processes have been waited for
 }
+
+/* Get message from the pipe */
+static bool get_message_from_pipe(int *pipe_fd) {
+	close(pipe_fd[1]); // close the write end of the pipe
+	char msg[NOTIFY_MSG_SIZE + 1];
+	int read_size = read(pipe_fd[0], msg, NOTIFY_MSG_SIZE);
+	close(pipe_fd[0]); // close the read end of the pipe
+
+	if (read_size != NOTIFY_MSG_SIZE) return false; // failed to read the message from the pipe
+
+	return memcmp(msg, NOTIFY_MSG, NOTIFY_MSG_SIZE) == 0; // check if the message is correct
+} 
 
 /* Send the signal to the target process to exit */
 static void send_signal_to_all_processes(Observer *observer) {
@@ -149,14 +182,22 @@ static void send_signal_to_all_processes(Observer *observer) {
 void watchdog_main(Observer *observer, _Atomic CurrentStatus *current_status, CurrentStatus target_status) {
 	if (observer == NULL || current_status == NULL) return; // Skip invalid parameters
 	
+	close(observer->pipe_fd[1]); // close the write end of the pipe
+	struct pollfd pollfds = {
+		.fd = observer->pipe_fd[0], // the file descriptor to be polled
+		.events = POLLIN, // the events to be polled for
+	};
+
 	CurrentStatus status_copy;
 	while ((status_copy = get_status(current_status)) < target_status) { // wait for the process to set the target status (finished)
-		if (!wait_for_processes(observer, WNOHANG)) {
-			set_status(current_status, STATUS_FORCE_QUIT); // failed to wait for the child process, force quit
-			break; // exit the main loop to force quit the program
-		}
+		int is_ready = poll(&pollfds, 1, 100);
 
-		usleep(100000); // wait for 100ms
+		if (is_ready > 0 && pollfds.revents & POLLIN) {
+			if (get_message_from_pipe(observer->pipe_fd)) {
+				set_status(current_status, target_status); // Fallback set the status to the target status if the message is received
+				break; // exit the loop if the message is received
+			}
+		}
 	}
 
 	send_signal_to_all_processes(observer); // send the exit signal to all the child processes
