@@ -163,9 +163,9 @@ size_t get_task(Task *dest, TaskQueue *source) {
     }
 
     for (size_t i = 0; i < tasks_to_get; i++) {
-        // Try to decrement the `full` semaphore, if failed, decrement `task_to_get` and exit the loop
+        // Try to decrement the `full` semaphore, if failed, exit the loop
         if (sem_trywait(&source->full) != 0) {
-            tasks_to_get = i;
+            tasks_to_get = i; // Update the number of tasks to get
             break;
         }
 
@@ -175,12 +175,11 @@ size_t get_task(Task *dest, TaskQueue *source) {
         source->front = (source->front + 1) & MASK; // Update the front pointer
 
         atomic_fetch_sub(&source->task_count, 1); // Decrement the task count
+
+        sem_post(&source->empty); // Signal the empty semaphore
     }
     sem_post(&source->mutex); // Unlock the queue
 
-    for (size_t i = 0; i < tasks_to_get; i++) { // Post the `empty` semaphore for each task retrieved
-        sem_post(&source->empty);
-    }
     return tasks_to_get;
 }
 
