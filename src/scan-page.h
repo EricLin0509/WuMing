@@ -28,6 +28,9 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (ScanPage, scan_page, SCAN, PAGE, GtkWidget)
 
+void
+scan_page_set_last_scan_time(ScanPage *self);
+
 GtkWidget *
 scan_page_new(void);
 

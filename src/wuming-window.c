@@ -246,5 +246,7 @@ wuming_window_init (WumingWindow *self)
     update_signature_page_show_servicestat (self->update_signature_page);
     g_free (result);
 
+    scan_page_set_last_scan_time (self->scan_page);
+
     g_object_unref (settings); // Free the GSettings object
 }

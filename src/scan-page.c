@@ -38,12 +38,40 @@ struct _ScanPage {
 
 G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
 
+void
+scan_page_set_last_scan_time(ScanPage *self)
+{
+  GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
+
+  GSettings *setting = g_settings_new ("com.ericlin.wuming");
+
+  g_autofree gchar *timestamp = g_settings_get_string (setting, "last-scan-time");
+  g_autofree gchar *description = g_strdup_printf (gettext("Last Scan Time: %s"), timestamp);
+
+  adw_status_page_set_description (ADW_STATUS_PAGE (status_page), description);
+  g_object_unref (setting);
+}
+
+static void
+save_last_scan_time (ScanPage *self)
+{
+  GSettings *setting = g_settings_new ("com.ericlin.wuming");
+  GDateTime *now = g_date_time_new_now_local();
+  g_autofree gchar *timestamp = g_date_time_format(now, "%Y.%m.%d %H:%M:%S"); // Format: YYYY.MM.DD HH:MM:SS
+  g_settings_set_string (setting, "last-scan-time", timestamp);
+  g_date_time_unref (now);
+  g_object_unref (setting);
+}
+
 static void
 reset_and_start_scan (ScanPage *self, char *path)
 {
   WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
   ScanningPage *scanning_page = SCANNING_PAGE (wuming_window_get_scanning_page (window));
   ThreatPage *threat_page = THREAT_PAGE (wuming_window_get_threat_page (window));
+
+  save_last_scan_time (self);
+  scan_page_set_last_scan_time (self);
 
   // Reset widget and start scanning
   scanning_page_reset (scanning_page);

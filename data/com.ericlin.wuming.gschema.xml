@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="wuming">
 	<schema id="com.ericlin.wuming" path="/com/ericlin/wuming/">
-		  <key name="width" type="i">
-	    <default>400</default>
-	  </key>
-	  <key name="height" type="i">
-	    <default>600</default>
-	  </key>
-	  <key name="is-maximized" type="b">
-	    <default>false</default>
-	  </key>
-	  <key name="is-fullscreen" type="b">
-	    <default>false</default>
-	  </key>
+	  	<key name="width" type="i">
+			<default>400</default>
+	  	</key>
+	  	<key name="height" type="i">
+			<default>600</default>
+		</key>
+		<key name="is-maximized" type="b">
+			<default>false</default>
+		</key>
+		<key name="is-fullscreen" type="b">
+	    	<default>false</default>
+		</key>
+		<key name="last-scan-time" type="s">
+	    	<default>"1970-01-01"</default>
+	  	</key>
 	</schema>
 </schemalist>
