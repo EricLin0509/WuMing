@@ -16,26 +16,22 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
- */
+*/
 
-/* This is the watchdog implementation for clamscanp */
-
-#include <stdio.h>
 #include <string.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <errno.h>
-#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <poll.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "watchdog.h"
 
 #define NOTIFY_MSG "done" // the message to be sent to the watchdog
 #define NOTIFY_MSG_SIZE (sizeof(NOTIFY_MSG) - 1) // the size of the message to be sent to the watchdog
 #define SIGACTION_FLAGS (SA_RESTART | SA_NOCLDSTOP) // restart interrupted system calls
-
-#define MIN(a, b) ((a) < (b) ? (a) : (b)) // macro to get the minimum value between two values
 
 /* Initialize the current status of the scanning process */
 void init_status(_Atomic CurrentStatus *status) {
@@ -50,42 +46,6 @@ CurrentStatus get_status(_Atomic CurrentStatus *status) {
 /* Set the current status of the scanning process */
 void set_status(_Atomic CurrentStatus *status, CurrentStatus new_status) {
 	atomic_store(status, new_status);
-}
-
-/* Initialize the observer object */
-/*
-  * @param dest
-  * The observer object to be initialized
-  * @param num_of_processes
-  * The number of processes to be created
-  * @param exit_condition_signal
-  * The signal to be sent to the processes to exit [OPTIONAL]
-  * @param condition_signal_handler
-  * The signal handler for the exit condition signal [OPTIONAL]
-*/
-void init_observer(Observer *dest, size_t num_of_processes, int exit_condition_signal, signal_handler condition_signal_handler) {
-	dest->pids = calloc(num_of_processes, sizeof(pid_t));
-	dest->num_of_processes = num_of_processes;
-	pipe(dest->pipe_fd);
-	
-	if (exit_condition_signal > 0 && condition_signal_handler != NULL) {
-		dest->exit_condition_signal = exit_condition_signal;
-		dest->condition_signal_handler = condition_signal_handler;
-	}
-}
-
-/* Destroy the observer object */
-void destroy_observer(Observer *observer) {
-	if (observer == NULL) return; // Skip invalid parameters
-
-	if (observer->pids != NULL) { // Only free the memory if it is not NULL
-		free(observer->pids);
-		observer->pids = NULL;
-	}
-
-	observer->num_of_processes = 0;
-	observer->exit_condition_signal = 0;
-	observer->condition_signal_handler = NULL;
 }
 
 /* Register the signal handler for the exit condition signal */
@@ -110,18 +70,112 @@ void register_signal_handler(int signal, signal_handler handler) {
 	}
 }
 
+/* Initialize the observer */
+bool observer_init(Observer *observer, size_t num_of_processes, int exit_condition_signal, signal_handler condition_signal_handler) {
+    if (observer == NULL || num_of_processes > MAX_PROCESSES || num_of_processes == 0) {
+        fprintf(stderr, "[ERROR] observer_init: Invalid observer or number of processes\n");
+        return false;
+    }
+
+    if (pipe(observer->pipe_fd) == -1) {
+        fprintf(stderr, "[ERROR] observer_init: Failed to create pipe\n");
+        return false;
+    }
+
+    observer->pids = calloc(num_of_processes, sizeof(pid_t));
+
+    if (observer->pids == NULL) {
+        fprintf(stderr, "[ERROR] observer_init: Failed to allocate memory for pids\n");
+        return false;
+    }
+
+    observer->num_of_processes = num_of_processes;
+    atomic_init(&observer->active_processes, num_of_processes);
+
+    if (condition_signal_handler != NULL && exit_condition_signal != 0) {
+        observer->exit_condition_signal = exit_condition_signal;
+        observer->condition_signal_handler = condition_signal_handler;
+    }
+
+    return true;
+}
+
+/* Clear the observer */
+void observer_clear(Observer *observer) {
+    if (observer == NULL) return;
+
+    free(observer->pids);
+    observer->pids = NULL;
+    observer->num_of_processes = 0;
+    observer->active_processes = 0;
+    observer->exit_condition_signal = 0;
+    observer->condition_signal_handler = NULL;
+}
+
+/* Spawn a new process */
+/*
+  * @param observer
+  * the observer to be used for spawning the processes
+  * 
+  * @param mission_callback
+  * the function to be executed in the child process
+  * @param mission_callback_args
+  * the arguments to be passed to the `mission_callback` [OPTIONAL]
+  * 
+  * @return
+  * `true` if the process is spawned successfully, `false` otherwise
+  * 
+  * @warning
+  * This function will also try to register the signal handler which store in the `observer` struct
+*/
+bool spawn_new_process(Observer *observer,
+                     mission_callback mission_callback, void *mission_callback_args) {
+    if (mission_callback == NULL || observer == NULL) {
+        fprintf(stderr, "[ERROR] spawn_new_process: Invalid arguments mission_callback=%p observer=%p\n", mission_callback, observer);
+        return false;
+    }
+
+    register_signal_handler(observer->exit_condition_signal, SIG_IGN); // Ignore the exit condition signal in the parent process
+
+    if (observer->num_of_processes == 0 || observer->num_of_processes > MAX_PROCESSES) {
+        fprintf(stderr, "[ERROR] spawn_new_process: Invalid number of processes: %zu of %d\n", observer->num_of_processes, MAX_PROCESSES);
+        return false;
+    }
+
+    /* Spawn the processes */
+    for (size_t i = 0; i < observer->num_of_processes; i++) {
+        pid_t *current_pid_ptr = observer->pids + i; // Get the current pid pointer
+        *current_pid_ptr = fork(); // Fork a new process
+        if (*current_pid_ptr == -1) { // Failed to fork
+            fprintf(stderr, "[ERROR] spawn_new_process: Failed to fork process: %s\n", strerror(errno));
+            return false;
+        }
+
+        if (*current_pid_ptr == 0) { // Child process (run the function)
+            register_signal_handler(observer->exit_condition_signal, observer->condition_signal_handler); // Register the signal handler for the exit condition signal
+            mission_callback(mission_callback_args);
+            _exit(0); // Exit the child process
+        }
+    }
+
+    return true;
+}
+
 /* Notify the watchdog that the child process has finished */
 /*
   * @param observer
   * The observer object to send the notification
   * @warning This function should be called in the child process (producer or worker process)
+  * @note This function will decrease the `active_processes` counter in the observer object, the message only send to the watchdog when the `active_processes` counter is 0
 */
 void notify_watchdog(Observer *observer) {
 	if (observer == NULL || observer->pipe_fd[1] == -1) return; // Skip invalid parameters
 
-	close(observer->pipe_fd[0]); // close the read end of the pipe
-	write(observer->pipe_fd[1], NOTIFY_MSG, NOTIFY_MSG_SIZE); // send the message to the watchdog
-	close(observer->pipe_fd[1]); // close the write end of the pipe
+    if (atomic_fetch_sub(&observer->active_processes, 1) == 0) { // No more active processes, send the message to the watchdog
+        close(observer->pipe_fd[0]); // close the read end of the pipe
+	    write(observer->pipe_fd[1], NOTIFY_MSG, NOTIFY_MSG_SIZE); // send the message to the watchdog
+	    close(observer->pipe_fd[1]); // close the write end of the pipe
+    }
 }
 
 /* Wait for the processes in the observer */
@@ -175,33 +229,31 @@ static void send_signal_to_all_processes(Observer *observer) {
   * @param observer
   * The observer object to be check
   * @param current_status
-  * The current status of the scanning process
-  * @param target_status
-  * The target status to exit the main loop if `current_status` is greater or equal to this value
+  * The current status of the scanning process, if `STATUS_FORCE_QUIT` is set, the scanning process will be terminated immediately
 */
 void watchdog_main(Observer *observer, _Atomic CurrentStatus *current_status, CurrentStatus target_status) {
-	if (observer == NULL || current_status == NULL) return; // Skip invalid parameters
-	
-	close(observer->pipe_fd[1]); // close the write end of the pipe
-	struct pollfd pollfds = {
-		.fd = observer->pipe_fd[0], // the file descriptor to be polled
-		.events = POLLIN, // the events to be polled for
-	};
+    if (observer == NULL || current_status == NULL) return; // Skip invalid parameters
 
-	CurrentStatus status_copy;
-	while ((status_copy = get_status(current_status)) < target_status) { // wait for the process to set the target status (finished)
-		int is_ready = poll(&pollfds, 1, 100);
+    struct pollfd fds = {
+        .fd = observer->pipe_fd[0],
+       .events = POLLIN,
+    };
 
-		if (is_ready > 0 && pollfds.revents & POLLIN) {
-			if (get_message_from_pipe(observer->pipe_fd)) {
-				set_status(current_status, target_status); // Fallback set the status to the target status if the message is received
-				break; // exit the loop if the message is received
-			}
-		}
-	}
+    int timeout = 100; // 100ms timeout for the poll function
 
-	send_signal_to_all_processes(observer); // send the exit signal to all the child processes
-	if (!wait_for_processes(observer, 0)) { // ensure all the child processes have been exited
-		set_status(current_status, STATUS_FORCE_QUIT); // failed to wait for the child process, force quit
-	}
+    while (get_status(current_status) < target_status) {
+        int poll_result = poll(&fds, 1, timeout);
+
+        if (poll_result == -1 && errno != EINTR) {
+            fprintf(stderr, "[ERROR] watchdog_main: Failed to poll the pipe: %s\n", strerror(errno));
+            close(observer->pipe_fd[0]); // close the read end of the pipe
+            close(observer->pipe_fd[1]); // close the write end of the pipe
+            break;
+        }
+        else if (poll_result == 0) continue; // Timeout, continue the loop
+        else if (poll_result > 0 && get_message_from_pipe(observer->pipe_fd)) break; // Message received, break the loop
+    }
+
+    send_signal_to_all_processes(observer); // Send the exit condition signal to all the child processes
+    wait_for_processes(observer, 0); // Wait for all the child processes to exit
 }

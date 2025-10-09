@@ -16,113 +16,129 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
- */
-
-/* This program is similar to `clamscan` from ClamAV, but with some performance improvements */
-/*
-  * This use process pool to implement parallel scanning, which can significantly improve the scanning speed.
-  * Use shared memory to share the engine between processes, which can reduce the memory usage.
 */
 
 #ifndef MANAGER_H
 #define MANAGER_H
 
 #include <stdbool.h>
+#include <stdatomic.h>
 #include <semaphore.h>
 #include <clamav.h>
-#include <stdatomic.h>
 
 #include "watchdog.h"
 
-#define PATH_MAX 4096 // maximum length of path
-#define MAX_PROCESSES 64 // maximum number of processes can be used for scanning
+#ifdef __linux__
+#define MAX_PATH 4096
+#elif defined(__APPLE__) || defined(__MACH__)
+#define MAX_PATH 1024
+#else
+#define MAX_PATH 255
+#endif
 
-#define MAX_TASKS 4096 // maximum number of tasks can be added to the task queue
-#define MASK (MAX_TASKS - 1) // mask to get the index of the task queue
-#define MAX_GET_TASKS 20 // maximum number of tasks can be retrieved at once from the task queue
+#define MAX_PROCESSES 64
 
-_Static_assert((MAX_TASKS & MASK) == 0, "MAX_TASKS must be a power of two"); // MAX_TASKS must be a power of two
+#define QUEUE_SIZE 4096
+#define MASK (QUEUE_SIZE - 1)
+#define MAX_GET_TASKS 20
 
-/* Task type to indicate what kind of task to perform */
-typedef enum {
-    SCAN_DIR,
-    SCAN_FILE
-} TaskType; 
+_Static_assert((QUEUE_SIZE & (MASK)) == 0, "QUEUE_SIZE must be power of 2");
 
-/* A task to be performed */
+/* ClamAV Essentials */
 typedef struct {
-    TaskType type;
-    char path[PATH_MAX];
+	struct cl_engine *engine;
+	struct cl_scan_options scan_options;
+} ClamavEssentials;
+
+/* Task types */
+typedef enum {
+	TASK_SCAN_DIR,
+	TASK_SCAN_FILE
+} TaskType;
+
+/* Task structure */
+typedef struct {
+	TaskType type;
+	char path[MAX_PATH];
 } Task;
 
 /* Task queue */
+/*
+  * `mutex` is a semaphore used to protect the TaskQueue
+  * `empty` is a semaphore used to indicate how many empty slots are in the TaskQueue
+  * `full` is a semaphore used to indicate how many tasks are in the TaskQueue
+*/
 typedef struct {
-	/* Semaphores to control access to the task queue */
-	sem_t mutex; // Controls access to the task queue
+	sem_t mutex;
+	sem_t empty;
+	sem_t full;
 
-	sem_t empty; // Consumer waits when queue is empty
-	sem_t full; // Producer waits when queue is full
-
-	/* Data fields */
-	int front; // Queue front index
-	int rear; // Queue rear index
-	_Atomic size_t in_progress; // Number of tasks in progress
-	_Atomic size_t task_count; // Number of tasks in the queue
-	Task tasks[MAX_TASKS]; // The task queue
+	Task tasks[QUEUE_SIZE];
+	_Atomic size_t tasks_count;
+	size_t front;
+	size_t rear;
 } TaskQueue;
 
-/* Scan result */
+/* Shared memory */
 typedef struct {
-	_Atomic size_t total_directories; // Total number of directories scanned
-	_Atomic size_t total_files; // Total number of files scanned
-	_Atomic size_t total_errors; // Total number of errors occurred during scanning
-	_Atomic size_t total_found; // Total number of viruses found during scanning
-} ScanResult;
+	ClamavEssentials essentials;
 
-/* The shared data */
-typedef struct {
-	_Atomic CurrentStatus current_status; // Current status of the scanning process
+  _Atomic CurrentStatus current_status;
 
-	ScanResult scan_result; // The scanning result
+  Observer producer_observer;
+	TaskQueue dir_tasks;
 
-	Observer producer_observer; // Observer for producer process
-	TaskQueue dir_tasks; // Task queue for traversing directories
+  Observer worker_observer;
+	TaskQueue file_tasks;
+} SharedMemory;
 
-	Observer worker_observer; // Observer for worker processes
-	TaskQueue file_tasks; // Task queue for scanning files
-} SharedData;
+/* Check if the given path is a directory */
+bool is_directory(const char *path);
 
-/* Initialize the scan result */
-void init_scan_result(ScanResult *result);
+/* Check if the given path is a regular file */
+bool is_regular_file(const char *path);
 
-/* Print the summary of the scanning result */
-void print_summary(ScanResult *result);
+/* Build a task from the given path */
+Task build_task(TaskType type, const char *path);
 
-/* Build task from path */
-Task build_task(TaskType type, char *path);
+/* Initialize the ClamAV Essentials */
+/*
+  * @param essentials
+  * The ClamAV Essentials to be initialized
+  * 
+  * @return
+  * `true` if the initialization is successful, `false` otherwise.
+*/
+bool clamav_essentials_init(ClamavEssentials *essentials);
 
-/* Initialize the task queue */
-void init_task_queue(TaskQueue *queue);
+/* Clear the ClamAV Essentials */
+void clamav_essentials_clear(ClamavEssentials *essentials);
 
-/* Clear the task queue */
-void clear_task_queue(TaskQueue *queue);
+/* Initialize the TaskQueue */
+void task_queue_init(TaskQueue *queue);
+
+/* Clear the TaskQueue */
+void task_queue_clear(TaskQueue *queue);
 
 /* Check whether the task queue is empty, assume the queue is not empty if failed to get the lock */
 bool is_task_queue_empty_assumption(TaskQueue *queue);
 
-/* Add a task to the task queue */
+/* Add a task to the TaskQueue */
 /*
-  * dest: the task queue to be added
-  * source: the task to be added
+  * @param queue
+  * The TaskQueue to which the task is added
+  * 
+  * @param task
+  * The task to be added to the TaskQueue
 */
-void add_task(TaskQueue *dest, Task source);
+void task_queue_add(TaskQueue *queue, Task task);
 
-/* Get a task from the task queue */
+/* Get a group of tasks from the task queue */
 /*
-  * @param dest
+  * @param queue
   * the tasks to be retrieved
   *
-  * @param source
+  * @param tasks
   * the task queue to be retrieved from
   *
   * @return
@@ -131,37 +147,35 @@ void add_task(TaskQueue *dest, Task source);
   * @warning
   * This function use non-blocking semaphore to avoid busy waiting, so it may need loops to wait for the task to be available
 */
-size_t get_task(Task *dest, TaskQueue *source);
+size_t task_queue_get(TaskQueue *queue, Task *tasks);
 
-/* Check if the given path is a directory */
-bool is_directory(const char *path);
-
-/* Check if the given path is a regular file */
-bool is_regular_file(const char *path);
-
-/* Initialize the ClamAV engine */
-struct cl_engine *init_engine(struct cl_scan_options *scanoptions);
-
-/* Spawn a new process */
+/* Initialize the shared memory */
 /*
-  * @param observer
-  * the observer to be used for spawning the processes
-  * 
-  * @param mission_callback
-  * the function to be executed in the child process
-  * @param mission_callback_args
-  * the arguments to be passed to the `mission_callback` [OPTIONAL]
-  * 
-  * @return
-  * `true` if the process is spawned successfully, `false` otherwise
+  * @param shared_memory
+  * The shared memory to be initialized
   * 
   * @warning
-  * This function will also try to register the signal handler which store in the `observer` struct
+  * This function will use `mmap` to allocate the shared memory
 */
-bool spawn_new_process(Observer *observer,
-                     void (*mission_callback)(void *args), void *mission_callback_args);
+bool shared_memory_init(SharedMemory **shared_memory);
 
-/* Scan a file */
-void process_file(const char *path, ScanResult *result, struct cl_engine *engine, struct cl_scan_options *scanoptions);
+/* Clear the shared memory */
+void shared_memory_clear(SharedMemory **shared_memory);
 
-#endif // MANAGER_H
+/* Process a file */
+void process_file(const char *path, ClamavEssentials *essentials);
+
+/* Process a directory */
+/*
+  * @param path
+  * The directory to be processed
+  * 
+  * @param dir_tasks
+  * The TaskQueue to which the directory tasks are added
+  * 
+  * @param file_tasks
+  * The TaskQueue to which the file tasks are added
+*/
+void traverse_directory(const char *path, TaskQueue *dir_tasks, TaskQueue *file_tasks);
+
+#endif /* MANAGER_H */
