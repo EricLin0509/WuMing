@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.0"/>
+
+  <template class="SecurityOverviewPage" parent="GtkWidget">
+    <child>
+      <object class="AdwBreakpointBin" id="break_point">
+        <property name="width-request">300</property>
+        <property name="height-request">90</property>
+        <property name="child">
+          <object class="AdwClamp" id="clamp">
+            <property name="maximum-size">600</property>
+            <property name="tightening-threshold">300</property>
+            <property name="child">
+              <object class="GtkBox" id="box_main">
+                <property name="orientation">horizontal</property>
+                <property name="spacing">20</property>
+                <property name="homogeneous">true</property>
+                <child>
+                  <object class="GtkButton" id="scan_overview_button">
+                    <property name="child">
+                      <object class="AdwButtonContent">
+                        <property name="can-shrink">true</property>
+                        <property name="label" translatable="yes">Last Scan Date</property>
+                        <property name="icon-name">status-ok-symbolic</property>
+                        <property name="use-underline">True</property>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="signature_overview_button">
+                    <property name="child">
+                      <object class="AdwButtonContent">
+                        <property name="can-shrink">true</property>
+                        <property name="label" translatable="yes">Current Signature Status</property>
+                        <property name="icon-name">status-ok-symbolic</property>
+                        <property name="use-underline">True</property>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+              </object>
+            </property>
+          </object>
+        </property>
+        <child>
+          <object class="AdwBreakpoint">
+            <condition>max-width: 400px</condition>
+            <setter object="box_main" property="orientation">vertical</setter>
+            <setter object="box_main" property="spacing">10</setter>
+            <setter object="clamp" property="tightening-threshold">150</setter>
+            <setter object="scan_overview_button" property="height-request">40</setter>
+            <setter object="signature_overview_button" property="height-request">40</setter>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

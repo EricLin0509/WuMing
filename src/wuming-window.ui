@@ -62,8 +62,11 @@
                         <property name="name" translatable="yes">Security Overview</property>
                         <property name="icon-name">security-medium-symbolic</property>
                         <property name="child">
-                          <object class="AdwStatusPage" id="security_overview_page">
-                            <property name="title" translatable="yes">Coming Soon...</property>
+                          <object class="AdwStatusPage">
+                            <property name="title" translatable="yes">Security Overview</property>
+                            <child>
+                              <object class="SecurityOverviewPage" id="security_overview_page"/>
+                            </child>
                           </object>
                         </property>
                       </object>

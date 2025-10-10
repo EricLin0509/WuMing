@@ -27,6 +27,7 @@
 #include "updating-page.h"
 #include "scanning-page.h"
 #include "threat-page.h"
+#include "security-overview-page.h"
 
 struct _WumingWindow
 {
@@ -42,7 +43,7 @@ struct _WumingWindow
 	AdwViewStack        *view_stack; // ViewStack
 
     /* Security Overview Page */
-    AdwStatusPage       *security_overview_page;
+    SecurityOverviewPage       *security_overview_page;
 
     /* Scan Page */
     ScanPage            *scan_page;
@@ -204,6 +205,7 @@ wuming_window_class_init (WumingWindowClass *klass)
     gtk_widget_class_bind_template_child (widget_class, WumingWindow, threat_nav_page);
     gtk_widget_class_bind_template_child (widget_class, WumingWindow, threat_page);
 
+    g_type_ensure (SECURITY_OVERVIEW_TYPE_PAGE);
     g_type_ensure (SCAN_TYPE_PAGE);
     g_type_ensure (SCANNING_TYPE_PAGE);
     g_type_ensure (THREAT_TYPE_PAGE);

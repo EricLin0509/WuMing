@@ -7,6 +7,7 @@ wuming_sources = [
   'scan-page.c',
   'scanning-page.c',
   'threat-page.c',
+  'security-overview-page.c',
 ]
 
 wuming_deps = [
