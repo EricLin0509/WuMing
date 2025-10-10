@@ -214,11 +214,9 @@ wuming_window_class_init (WumingWindowClass *klass)
 }
 
 static void
-wuming_window_init (WumingWindow *self)
+wuming_window_init_settings (WumingWindow *self)
 {
-	gtk_widget_init_template (GTK_WIDGET (self));
-
-    /* GSettings Stuff */
+    /* Setting the window size */
     GSettings *settings = g_settings_new ("com.ericlin.wuming");
 
     g_settings_bind (settings, "width",
@@ -237,18 +235,26 @@ wuming_window_init (WumingWindow *self)
                      self, "fullscreened",
                      G_SETTINGS_BIND_DEFAULT);
 
+    scan_page_set_last_scan_time (self->scan_page, settings, NULL);
 
-    /* Scan the Database First */
+    g_object_unref (settings); // Free the GSettings object
+}
+
+static void
+wuming_window_init (WumingWindow *self)
+{
+	gtk_widget_init_template (GTK_WIDGET (self));
+
+    /* Initialize the settings */
+    wuming_window_init_settings (self);
+
+    /* Scan the Database */
     scan_result *result = g_new0 (scan_result, 1);
     scan_signature_date (result);
     is_signature_uptodate (result);
 
-    /* Merge Window Elements */
+    /* Update the Signature Page */
     update_signature_page_show_isuptodate (self->update_signature_page, result);
     update_signature_page_show_servicestat (self->update_signature_page);
     g_free (result);
-
-    scan_page_set_last_scan_time (self->scan_page);
-
-    g_object_unref (settings); // Free the GSettings object
 }

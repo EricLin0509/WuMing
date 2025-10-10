@@ -7,7 +7,7 @@
     <child>
       <object class="AdwBreakpointBin" id="break_point">
         <property name="width-request">300</property>
-        <property name="height-request">90</property>
+        <property name="height-request">80</property>
         <property name="child">
           <object class="AdwClamp" id="clamp">
             <property name="maximum-size">600</property>
@@ -51,8 +51,6 @@
             <setter object="box_main" property="orientation">vertical</setter>
             <setter object="box_main" property="spacing">10</setter>
             <setter object="clamp" property="tightening-threshold">150</setter>
-            <setter object="scan_overview_button" property="height-request">40</setter>
-            <setter object="signature_overview_button" property="height-request">40</setter>
           </object>
         </child>
       </object>

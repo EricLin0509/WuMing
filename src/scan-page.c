@@ -38,29 +38,78 @@ struct _ScanPage {
 
 G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
 
+
+/* Set the last scan time to the status page */
+/*
+  * @param self
+  * `ScanPage` object
+  * 
+  * @param setting [nullable]
+  * `GSettings` object to save last scan time, if this is NULL, it will create a new one.
+  * 
+  * @param timestamp [nullable]
+  * Timestamp string to set as last scan time, if this is NULL, it will use the `GSSettings` object to get the last scan time.
+  * 
+  * @note
+  * if `timestamp` is provided, the `setting` parameter will be ignored.
+  * 
+  * @warning
+  * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
+*/
 void
-scan_page_set_last_scan_time(ScanPage *self)
+scan_page_set_last_scan_time(ScanPage *self, GSettings *setting, const gchar *timestamp)
 {
+  g_return_if_fail (SCAN_PAGE (self));
+
+  gboolean has_timestamp = (timestamp != NULL);
+  gboolean is_null = (setting == NULL);
+
   GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
 
-  GSettings *setting = g_settings_new ("com.ericlin.wuming");
+  g_autofree gchar *description = NULL;
+  if (has_timestamp) // Has timestamp, use it directly
+  {
+    description = g_strdup_printf (gettext("Last Scan Time: %s"), timestamp); // Use the provided timestamp
+  }
+  else // No timestamp, get from GSettings
+  {
+    GSettings *setting_choice = is_null ? g_settings_new ("com.ericlin.wuming") : setting;
 
-  g_autofree gchar *timestamp = g_settings_get_string (setting, "last-scan-time");
-  g_autofree gchar *description = g_strdup_printf (gettext("Last Scan Time: %s"), timestamp);
+    g_autofree gchar *stored_timestamp = g_settings_get_string (setting_choice, "last-scan-time");
+    description = g_strdup_printf (gettext("Last Scan Time: %s"), stored_timestamp); // No timestamp, get from GSettings
+
+    if (is_null) g_object_unref (setting_choice); // Only unref if it is created here
+  }
 
   adw_status_page_set_description (ADW_STATUS_PAGE (status_page), description);
-  g_object_unref (setting);
 }
 
-static void
-save_last_scan_time (ScanPage *self)
+/* Save last scan time to GSettings */
+/*
+  * @param setting
+  * `GSettings` object to save last scan time, if this is NULL, it will create a new one.
+  * 
+  * @param need_timestamp [optional]
+  * If this is true, it will generate a new timestamp and save it to GSettings. otherwise return NULL
+  * 
+  * @warning
+  * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
+*/
+static gchar *
+save_last_scan_time (GSettings *setting, gboolean need_timestamp)
 {
-  GSettings *setting = g_settings_new ("com.ericlin.wuming");
+  gboolean is_null = (setting == NULL);
+
+  GSettings *setting_choice = is_null ? g_settings_new ("com.ericlin.wuming") : setting;
+
   GDateTime *now = g_date_time_new_now_local();
   g_autofree gchar *timestamp = g_date_time_format(now, "%Y.%m.%d %H:%M:%S"); // Format: YYYY.MM.DD HH:MM:SS
-  g_settings_set_string (setting, "last-scan-time", timestamp);
+  g_settings_set_string (setting_choice, "last-scan-time", timestamp);
   g_date_time_unref (now);
-  g_object_unref (setting);
+
+  if (is_null) g_object_unref (setting_choice);
+
+  return need_timestamp ? g_steal_pointer(&timestamp) : NULL;
 }
 
 static void
@@ -70,8 +119,8 @@ reset_and_start_scan (ScanPage *self, char *path)
   ScanningPage *scanning_page = SCANNING_PAGE (wuming_window_get_scanning_page (window));
   ThreatPage *threat_page = THREAT_PAGE (wuming_window_get_threat_page (window));
 
-  save_last_scan_time (self);
-  scan_page_set_last_scan_time (self);
+  g_autofree gchar *timestamp = save_last_scan_time (NULL, TRUE);
+  scan_page_set_last_scan_time (self, NULL, timestamp);
 
   // Reset widget and start scanning
   scanning_page_reset (scanning_page);

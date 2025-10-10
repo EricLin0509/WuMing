@@ -28,8 +28,25 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (ScanPage, scan_page, SCAN, PAGE, GtkWidget)
 
+/* Set the last scan time to the status page */
+/*
+  * @param self
+  * `ScanPage` object
+  * 
+  * @param setting [nullable]
+  * `GSettings` object to save last scan time, if this is NULL, it will create a new one.
+  * 
+  * @param timestamp [nullable]
+  * Timestamp string to set as last scan time, if this is NULL, it will use the `GSSettings` object to get the last scan time.
+  * 
+  * @note
+  * if `timestamp` is provided, the `setting` parameter will be ignored.
+  * 
+  * @warning
+  * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
+*/
 void
-scan_page_set_last_scan_time(ScanPage *self);
+scan_page_set_last_scan_time(ScanPage *self, GSettings *setting, const gchar *timestamp);
 
 GtkWidget *
 scan_page_new(void);
