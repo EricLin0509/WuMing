@@ -235,7 +235,8 @@ wuming_window_init_settings (WumingWindow *self)
                      self, "fullscreened",
                      G_SETTINGS_BIND_DEFAULT);
 
-    scan_page_set_last_scan_time (self->scan_page, settings, NULL);
+    scan_page_show_last_scan_time (self->scan_page, settings, NULL);
+    scan_page_show_last_scan_time_status (self->scan_page, settings, TRUE);
 
     g_object_unref (settings); // Free the GSettings object
 }
