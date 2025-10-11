@@ -31,7 +31,7 @@ struct _ScanPage {
   GtkWidget          parent_instance;
 
   /*Child*/
-  GtkWidget          *clamp;
+  GtkWidget          *break_point;
   GtkButton          *scan_a_file_button;
   GtkButton          *scan_a_folder_button;
 };
@@ -341,7 +341,7 @@ scan_page_dispose(GObject *gobject)
 	                                 scan_actions,
 	                                 G_N_ELEMENTS (scan_actions));
 
-  g_clear_pointer (&self->clamp, gtk_widget_unparent);
+  g_clear_pointer (&self->break_point, gtk_widget_unparent);
 
   G_OBJECT_CLASS(scan_page_parent_class)->dispose(gobject);
 }
@@ -352,7 +352,7 @@ scan_page_finalize(GObject *gobject)
   ScanPage *self = SCAN_PAGE (gobject);
 
   /* Reset all child widgets */
-  self->clamp = NULL;
+  self->break_point = NULL;
   self->scan_a_file_button = NULL;
   self->scan_a_folder_button = NULL;
 
@@ -372,7 +372,7 @@ scan_page_class_init (ScanPageClass *klass)
 
   gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/scan-page.ui");
 
-  gtk_widget_class_bind_template_child (widget_class, ScanPage, clamp);
+  gtk_widget_class_bind_template_child (widget_class, ScanPage, break_point);
   gtk_widget_class_bind_template_child (widget_class, ScanPage, scan_a_file_button);
   gtk_widget_class_bind_template_child (widget_class, ScanPage, scan_a_folder_button);
 }
