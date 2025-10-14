@@ -178,28 +178,6 @@ void notify_watchdog(Observer *observer) {
     }
 }
 
-/* Wait for the processes in the observer */
-/*
-  * @param observer
-  * The observer to be waited for
-  * @param options
-  * Use for `waitpid()` options [OPTIONAL]
-  * @return
-  * `true` if all the processes in the can be waited for, `false` otherwise
-*/
-static bool wait_for_processes(Observer *observer, int options) {
-	if (observer == NULL || observer->pids == NULL) return false; // Skip invalid parameters
-
-	for (size_t i = 0; i < observer->num_of_processes; i++) {
-		if (waitpid(observer->pids[i], NULL, options) < 0) {
-			fprintf(stderr, "[ERROR] wait_for_processes: Failed to wait for the child process %d\n", observer->pids[i]);
-			return false; // failed to wait for the child process
-		}
-	}
-
-	return true; // all the processes have been waited for
-}
-
 /* Get message from the pipe */
 static bool get_message_from_pipe(int *pipe_fd) {
 	close(pipe_fd[1]); // close the write end of the pipe
@@ -217,9 +195,15 @@ static void send_signal_to_all_processes(Observer *observer) {
 	if (observer == NULL || observer->exit_condition_signal <= 0) return; // No need to send the signal if there is no exit condition signal
 
 	for (size_t i = 0; i < observer->num_of_processes; i++) {
-		if (kill(observer->pids[i], observer->exit_condition_signal) < 0) {
-			fprintf(stderr, "[ERROR] send_exit_signal: Failed to send the exit signal to the process %d\n", observer->pids[i]);
-		}
+		if (observer->pids[i] == 0) continue; // Skip the invaild pid (0)
+
+        kill(observer->pids[i], observer->exit_condition_signal); // Send the exit condition signal to the child process
+        if (waitpid(observer->pids[i], NULL, WNOHANG) == 0) {
+            i -= 1; // The child process is still running, keep this index for the next iteration
+            continue;
+        }
+
+        observer->pids[i] = 0; // Set the pid to 0 to indicate that the child process has been terminated
 	}
 }
 
@@ -255,5 +239,4 @@ void watchdog_main(Observer *observer, _Atomic CurrentStatus *current_status, Cu
     }
 
     send_signal_to_all_processes(observer); // Send the exit condition signal to all the child processes
-    wait_for_processes(observer, 0); // Wait for all the child processes to exit
 }
