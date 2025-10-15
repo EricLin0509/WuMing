@@ -32,15 +32,18 @@
 #include "../updating-page.h"
 #include "../update-signature-page.h"
 
+#define SIGNATURE_PATTERN "ClamAV-VDB:\\s*([0-9]{2})\\s+([A-Za-z]{3})\\s+([0-9]{4})\\s+([0-9]{2})-([0-9]{2})" // Format: `DD MMM YYYY HH-MM`
+
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
 #define PKEXEC_PATH "/usr/bin/pkexec"
 
 typedef struct {
-    char *result_ref;
+    char *date_string;
     int year;
     int month;
     int day;
-    int time;
+    int hour;
+    int minute;
     char month_str[4];
 } DatabaseFileParams;
 
@@ -117,10 +120,10 @@ parse_cvd_header(const char *filepath)
 
   int discriptor = -1;
   char *file_mapped = MAP_FAILED;
-  struct stat st;
+  struct stat st = (struct stat){0};
 
-  const char header_prefix[] = "ClamAV-VDB:";
-  const size_t prefix_len = sizeof(header_prefix) - 1;
+  GRegex *regex = g_regex_new (SIGNATURE_PATTERN, G_REGEX_DEFAULT, G_REGEX_MATCH_DEFAULT, NULL);
+  GMatchInfo *match_info = NULL;
   char *result = NULL;
 
   if ((discriptor = open(filepath, O_RDONLY)) == -1)
@@ -144,46 +147,27 @@ parse_cvd_header(const char *filepath)
 
   file_mapped = mmap (NULL, cvd_header_size, PROT_READ, MAP_PRIVATE, discriptor, 0);
   if (file_mapped == MAP_FAILED)
-    {
-      g_warning ("mmap failed: %s\n", strerror(errno));
-      goto clean_up;
-    }
-
-  char *header_start = memmem(file_mapped, cvd_header_size, header_prefix, prefix_len);
-  if (!header_start)
-    {
-      g_warning("CVD header not found\n");
-      goto clean_up;
-    }
-
-  if ((header_start + prefix_len) > (file_mapped + cvd_header_size))
   {
-    g_warning("Header prefix out of bounds\n");
+    g_critical ("mmap failed: %s\n", strerror(errno));
     goto clean_up;
   }
 
-  char *date_start = header_start + prefix_len;
-  const char *buffer_end = file_mapped + cvd_header_size; // the Buffer end
-  while (date_start < buffer_end && *date_start == ' ') date_start++;
-
-  const size_t max_date_len = 20; // Maximum date length is 20 characters
-  if (date_start + max_date_len > buffer_end) // Check if date is out of bounds
+  if (!g_regex_match (regex, file_mapped, 0, &match_info))
   {
-    g_warning("Date field exceeds header boundary");
+    g_critical ("Failed to parse: '%s'", file_mapped);
     goto clean_up;
   }
 
-
-  char *date_end = memchr(date_start, '-',  buffer_end - date_start);
-  if (!date_end || date_end >= buffer_end) // Check if date terminator is found
-  {
-    g_warning("Invalid date terminator");
-    goto clean_up;
-  }
-
-  if (date_end) result = g_strndup(date_start, date_end - date_start);
+  result = g_strdup_printf ("%s %s %s %s-%s",
+      g_match_info_fetch(match_info, 1), // Day
+      g_match_info_fetch(match_info, 2), // Month
+      g_match_info_fetch(match_info, 3), // Year
+      g_match_info_fetch(match_info, 4), // Hour
+      g_match_info_fetch(match_info, 5)); // Minute
 
 clean_up:
+  if (match_info) g_match_info_free(match_info);
+  if (regex) g_regex_unref(regex);
   if (file_mapped != MAP_FAILED) munmap(file_mapped, cvd_header_size);
   if (discriptor != -1) close(discriptor);
   return result;
@@ -220,24 +204,24 @@ static gboolean
 parse_database_file(DatabaseFileParams *params, const char *database_dir, const char *filename)
 {
     char* filepath = build_database_path(database_dir, filename);
-    params->result_ref = parse_cvd_header(filepath);
+    params->date_string = parse_cvd_header(filepath);
     g_free(filepath);
 
-    if (!params->result_ref) return FALSE;
+    if (!params->date_string) return FALSE;
 
-    if (sscanf(params->result_ref, "%d %3s %d %d",
-               &params->day, params->month_str, &params->year, &params->time) != 4)
+    if (sscanf(params->date_string, "%d %3s %d %d-%d",
+               &params->day, params->month_str, &params->year, &params->hour, &params->minute) != 5)
     {
-        g_warning("Failed to parse: '%s'", params->result_ref);
+        g_warning("Failed to parse: '%s'", params->date_string);
         g_warning("Invalid date format in %s", filename);
-        g_free(params->result_ref);
-        params->result_ref = NULL;
+        g_free(params->date_string);
+        params->date_string = NULL;
         return FALSE;
     }
 
     params->month = month_str_to_num(params->month_str);
-    g_free(params->result_ref);
-    params->result_ref = NULL;
+    g_free(params->date_string);
+    params->date_string = NULL;
     return TRUE;
 }
 
@@ -260,10 +244,11 @@ update_scan_result(scan_result *result, int cvd_days, int cld_days,
   }
 
   DatabaseFileParams* latest = (cvd_days >= cld_days) ? cvd : cld;
-  result->year   = latest->year;
-  result->month  = latest->month;
-  result->day    = latest->day;
-  result->time   = latest->time;
+  result->year = latest->year;
+  result->month = latest->month;
+  result->day = latest->day;
+  result->hour = latest->hour;
+  result->minute = latest->minute;
 }
 
 /*Scan the signature date*/
@@ -314,7 +299,7 @@ is_signature_uptodate(scan_result *result)
   /* Get day diff */
   int day_diff = date_to_days(current_time.tm_year + 1900, current_time.tm_mon + 1, current_time.tm_mday) -
                  date_to_days(result->year, result->month, result->day);
-  g_print("[INFO] day diff: %d\n", day_diff);
+  g_print("[INFO] Signature day diff: %d\n", day_diff);
 
   if (day_diff > 1) return; // Signature is not up to date
   result->status |= SIGNATURE_STATUS_UPTODATE;

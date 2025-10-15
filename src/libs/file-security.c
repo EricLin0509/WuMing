@@ -141,7 +141,7 @@ file_security_context_clear(FileSecurityContext *context)
 static gboolean
 check_protected_dirs(const gchar *path)
 {
-    GRegex *regex = g_regex_new(PROTECTED_DIRS_PATTERN, 0, 0, NULL);
+    GRegex *regex = g_regex_new(PROTECTED_DIRS_PATTERN, G_REGEX_DEFAULT, G_REGEX_MATCH_DEFAULT, NULL);
     gboolean matched = g_regex_match(regex, path, 0, NULL);
     g_regex_unref(regex);
     return matched;

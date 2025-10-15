@@ -37,7 +37,8 @@ typedef struct scan_result {
     int year;
     int month;
     int day;
-    int time;
+    int hour;
+    int minute;
     unsigned short status;
 } scan_result;
 

@@ -37,7 +37,7 @@
             <child>
               <object class="AdwActionRow" id="service_row">
                 <property name="height-request">60</property>
-                <property name="title" translatable="yes">Freshclam service status</property>
+                <property name="title" translatable="yes">Freshclam Service Status</property>
               </object>
             </child>
           </object>

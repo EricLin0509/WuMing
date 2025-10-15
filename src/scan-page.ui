@@ -10,7 +10,7 @@
         <property name="height-request">120</property>
         <property name="child">
           <object class="AdwClamp" id="clamp">
-            <property name="maximum-size">500</property>
+            <property name="maximum-size">450</property>
             <property name="tightening-threshold">300</property>
             <property name="child">
               <object class="GtkBox" id="box_main">
@@ -62,8 +62,8 @@
         <child>
           <object class="AdwBreakpoint">
             <condition>max-width: 450px</condition>
-            <setter object="clamp" property="maximum-size">300</setter>
-            <setter object="clamp" property="tightening-threshold">150</setter>
+            <setter object="clamp" property="maximum-size">200</setter>
+            <setter object="clamp" property="tightening-threshold">100</setter>
             <setter object="box_main" property="orientation">vertical</setter>
             <setter object="box_main" property="margin-bottom">0</setter>
             <setter object="box_main" property="spacing">10</setter>
