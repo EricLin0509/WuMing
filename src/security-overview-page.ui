@@ -24,7 +24,7 @@
                     <property name="child">
                       <object class="AdwButtonContent">
                         <property name="can-shrink">true</property>
-                        <property name="label" translatable="yes">Last Scan Date</property>
+                        <property name="label" translatable="yes">Last Scan Time</property>
                         <property name="icon-name">status-ok-symbolic</property>
                         <property name="use-underline">True</property>
                       </object>

@@ -1,4 +1,4 @@
-# Chinese translations for PACKAGE package.
+# English translations for PACKAGE package.
 # Copyright (C) 2025 THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 #  <ericlin050914@gmail.com>, 2025.
@@ -7,36 +7,37 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-15 19:05+0800\n"
-"PO-Revision-Date: 2025-08-07 20:36+0800\n"
+"POT-Creation-Date: 2025-10-15 19:01+0800\n"
+"PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
-"Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
-"Language: zh_CN\n"
+"Language-Team: English\n"
+"Language: en_US\n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Type: text/plain; charset=ASCII\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #: data/com.ericlin.wuming.desktop.in:2
 #: data/com.ericlin.wuming.metainfo.xml.in:7 src/wuming-window.ui:7
 #: src/wuming-window.ui:25
 msgid "WuMing"
-msgstr "无名"
+msgstr "WuMing"
 
 #: data/com.ericlin.wuming.desktop.in:3
 msgid "Malware Scanner"
-msgstr "病毒扫描器"
+msgstr "Malware Scanner"
 
 #: data/com.ericlin.wuming.desktop.in:9
 msgid "clamav;anti-virus;"
-msgstr "clamav;杀毒"
+msgstr "clamav;anti-virus;"
 
 #: data/com.ericlin.wuming.metainfo.xml.in:8
 msgid "A ClamAV GUI frontend"
-msgstr "一个 ClamAV 图形前端"
+msgstr "A ClamAV GUI frontend"
 
 #: data/com.ericlin.wuming.metainfo.xml.in:10
 msgid "A simple ClamAV GUI frontend written in C using GTK4/LibAdwaita"
-msgstr "使用 GTK4/LibAdwaita 开发的简洁 ClamAV 图形界面"
+msgstr "A simple ClamAV GUI frontend written in C using GTK4/LibAdwaita"
 
 #: data/com.ericlin.wuming.metainfo.xml.in:14
 msgid "EricLin"
@@ -45,248 +46,260 @@ msgstr "EricLin"
 #: data/com.ericlin.wuming.metainfo.xml.in:52
 #: data/com.ericlin.wuming.metainfo.xml.in:56
 msgid "A caption"
-msgstr "说明文字"
+msgstr "A caption"
 
 #: src/shortcuts-dialog.ui:6
+#, fuzzy
 msgid "General"
-msgstr "常规"
+msgstr "General"
 
 #: src/shortcuts-dialog.ui:9
 msgctxt "shortcut window"
 msgid "Show Shortcuts"
-msgstr "显示快捷键"
+msgstr "Show Shortcuts"
 
 #: src/shortcuts-dialog.ui:15
 msgctxt "shortcut window"
 msgid "Quit"
-msgstr "退出程序"
+msgstr "Quit"
 
 #: src/shortcuts-dialog.ui:23 src/wuming-window.ui:78 src/wuming-window.ui:79
 #: src/wuming-window.ui:83 src/wuming-window.ui:141
 msgid "Scan"
-msgstr "扫描"
+msgstr "Scan"
 
 #: src/shortcuts-dialog.ui:26
+#, fuzzy
 msgctxt "shortcut window"
 msgid "Scan file"
-msgstr "扫描文件"
+msgstr "Scan file"
 
 #: src/shortcuts-dialog.ui:32
+#, fuzzy
 msgctxt "shortcut window"
 msgid "Scan folder"
-msgstr "扫描文件夹"
+msgstr "Scan folder"
 
 #: src/shortcuts-dialog.ui:40 src/wuming-window.ui:95 src/wuming-window.ui:96
 msgid "Update Signature"
-msgstr "更新病毒库"
+msgstr "Update Signature"
 
 #: src/shortcuts-dialog.ui:43
+#, fuzzy
 msgctxt "shortcut window"
 msgid "Update Signature"
-msgstr "更新病毒库"
+msgstr "Update Signature"
 
 #: src/wuming-window.ui:42
 msgid "Main Menu"
-msgstr "主菜单"
+msgstr "Main Menu"
 
 #: src/wuming-window.ui:61 src/wuming-window.ui:62 src/wuming-window.ui:66
 msgid "Security Overview"
-msgstr "安全概览"
+msgstr "Security Overview"
 
 #: src/wuming-window.ui:111 src/wuming-window.ui:112
 msgid "Check History"
-msgstr "查看历史"
+msgstr "Check History"
 
 #: src/wuming-window.ui:116
 msgid "Coming Soon..."
-msgstr "即将推出..."
+msgstr "Coming Soon..."
 
 #: src/wuming-window.ui:130 src/update-signature-page.ui:29
 msgid "Update"
-msgstr "更新"
+msgstr "Update"
 
 #: src/wuming-window.ui:152
 msgid "Threats"
-msgstr "威胁"
+msgstr "Threats"
 
 #: src/wuming-window.ui:166
 msgid "_Preferences"
-msgstr "偏好设置"
+msgstr "Preferences"
 
 #: src/wuming-window.ui:170
 msgid "_Keyboard Shortcuts"
-msgstr "快捷键"
+msgstr "Keyboard Shortcuts"
 
 #: src/wuming-window.ui:174
 msgid "_About WuMing"
-msgstr "关于无名"
+msgstr "About WuMing"
 
 #: src/security-overview-page.ui:27
-msgid "Last Scan Time"
-msgstr "上次扫描时间"
+msgid "Last Scan Date"
+msgstr ""
 
 #: src/security-overview-page.ui:39 src/update-signature-page.ui:19
 msgid "Current Signature Status"
-msgstr "当前病毒库状态"
+msgstr "Current Signature Status"
 
 #: src/scan-page.c:72 src/scan-page.c:79
 #, c-format
 msgid "Last Scan Time: %s"
-msgstr "上次扫描时间：%s"
+msgstr ""
 
 #: src/scan-page.c:154 src/scan-page.c:163
+#, fuzzy
 msgid "Scan Has Expired"
-msgstr "扫描已过期"
+msgstr "Scan Failed"
 
 #: src/scan-page.c:154 src/scan-page.c:163
 msgid "Scan Has Not Expired"
-msgstr "扫描尚未过期"
+msgstr ""
 
 #: src/scan-page.ui:30
 msgid "Scan file"
-msgstr "扫描文件"
+msgstr "Scan file"
 
 #: src/scan-page.ui:47
 msgid "Scan folder"
-msgstr "扫描文件夹"
+msgstr "Scan folder"
 
 #: src/scanning-page.c:49
 msgid "Scanning..."
-msgstr "扫描中..."
+msgstr "Scanning..."
 
 #: src/scanning-page.c:50
 msgid "Preparing..."
-msgstr "准备中..."
+msgstr "Preparing..."
 
 #: src/scanning-page.ui:14 src/updating-page.ui:14
 msgid "Cancel"
-msgstr "取消"
+msgstr "Cancel"
 
 #: src/scanning-page.ui:36
 msgid "Show threats"
-msgstr "显示威胁"
+msgstr "Show threats"
 
 #: src/scanning-page.ui:50 src/updating-page.ui:31
 msgid "Close"
-msgstr "关闭"
+msgstr "Close"
 
 #: src/update-signature-page.c:55
+#, fuzzy
 msgid "Signature Is Outdated"
-msgstr "病毒库已过期"
+msgstr "Signature is outdated"
 
 #: src/update-signature-page.c:56 src/update-signature-page.c:68
-#, c-format
+#, fuzzy, c-format
 msgid "Current signature date: %d.%d.%d %d:%d"
-msgstr "当前病毒库日期：%d.%d.%d %d:%d"
+msgstr "Current signature date: %d.%d.%d %d"
 
 #: src/update-signature-page.c:57
 msgid "Outdated!"
-msgstr "已过期"
+msgstr "Outdated!"
 
 #: src/update-signature-page.c:61
+#, fuzzy
 msgid "No Signature Found"
-msgstr "未发现病毒库"
+msgstr "No Signature Found"
 
 #: src/update-signature-page.c:62
+#, fuzzy
 msgid ""
 "Warning: No signature found\n"
 "Please update the signature now!"
 msgstr ""
-"警告：未找到病毒库！\n"
-"请立即更新病毒库！"
+"Warning: No signature found\n"
+"Please update the signature now!"
 
 #: src/update-signature-page.c:63
+#, fuzzy
 msgid "No signature"
-msgstr "没有病毒库"
+msgstr "No signature"
 
 #: src/update-signature-page.c:67
+#, fuzzy
 msgid "Signature Is Up To Date"
-msgstr "病毒库已是最新"
+msgstr "Signature Is Up To Date"
 
 #: src/update-signature-page.c:69
 msgid "Is Up To Date"
-msgstr "已是最新"
+msgstr "Is Up To Date"
 
 #: src/update-signature-page.c:73 src/update-signature-page.c:75
+#, fuzzy
 msgid "Unknown Signature Status"
-msgstr "未知病毒库状态"
+msgstr "Unknown Signature Status"
 
 #: src/update-signature-page.c:74
-#, c-format
+#, fuzzy, c-format
 msgid "Signature status: %d"
-msgstr "病毒库状态：%d"
+msgstr "Unknown signature status: %d"
 
 #: src/update-signature-page.c:91
 msgid "Enabled"
-msgstr "已启用"
+msgstr "Enabled"
 
 #: src/update-signature-page.c:92
 msgid "Disabled"
-msgstr "已禁用"
+msgstr "Disabled"
 
 #: src/update-signature-page.c:93
 msgid "Failed to check!"
-msgstr "检查失败！"
+msgstr "Failed to check!"
 
 #: src/update-signature-page.ui:40
+#, fuzzy
 msgid "Freshclam Service Status"
-msgstr "Freshclam 服务状态"
+msgstr "Freshclam service status"
 
 #: src/updating-page.c:44
 msgid "Updating..."
-msgstr "更新中..."
+msgstr "Updating..."
 
 #: src/updating-page.c:45
 msgid "This might take a while"
-msgstr "这可能需要一些时间"
+msgstr ""
 
 #: src/libs/delete-file.c:115
 msgid "Maybe a system file, delete it with caution!"
-msgstr "可能是系统文件，慎重删除！"
+msgstr "Maybe a system file, delete it with caution!"
 
 #: src/libs/delete-file.c:116
 msgid "Normal file"
-msgstr "常规文件"
+msgstr "Normal file"
 
 #: src/libs/delete-file.c:130
 msgid "Blocked by policy, try removing it manually!"
-msgstr "被策略阻止，请手动删除！"
+msgstr "Blocked by policy, try removing it manually!"
 
 #: src/libs/delete-file.c:141
 msgid "Directory modified, try removing it manually!"
-msgstr "文件可能已被篡改，请手动删除！"
+msgstr "Directory modified, try removing it manually!"
 
 #: src/libs/delete-file.c:144
 msgid "File may compromised, try removing it manually!"
-msgstr "文件可能已被篡改，请手动删除！"
+msgstr "File may compromised, try removing it manually!"
 
 #: src/libs/delete-file.c:147
 msgid "Directory not found!"
-msgstr "目录不存在"
+msgstr "Directory not found!"
 
 #: src/libs/delete-file.c:150
 msgid "File not found!"
-msgstr "文件不存在"
+msgstr "File not found!"
 
 #: src/libs/delete-file.c:153
 msgid "Invalid path!"
-msgstr "无效路径"
+msgstr "Invalid path!"
 
 #: src/libs/delete-file.c:156
 msgid "Permission denied!"
-msgstr "拒绝访问"
+msgstr "Permission denied!"
 
 #: src/libs/delete-file.c:159
 msgid "Unknown error!"
-msgstr "未知错误"
+msgstr "Unknown error!"
 
 #: src/libs/scan.c:191
 msgid "Delete"
-msgstr "删除"
+msgstr "Delete"
 
 #: src/libs/scan.c:224
 msgid "Failed to set file properties"
-msgstr "设置文件属性失败"
+msgstr "Failed to set file properties"
 
 #: src/libs/scan.c:309
 #, c-format
@@ -294,29 +307,61 @@ msgid ""
 "%d files scanned\n"
 "%d threats found"
 msgstr ""
-"%d 个文件已扫描\n"
-"发现 %d 个威胁"
+"%d files scanned\n"
+"%d threats found"
 
 #: src/libs/scan.c:331
 msgid "User cancelled the scan"
-msgstr "用户取消了扫描"
+msgstr "User cancelled the scan"
 
 #: src/libs/scan.c:408
 msgid "Scan Canceled"
-msgstr "扫描被取消"
+msgstr "Scan Canceled"
 
 #: src/libs/scan.c:412
 msgid "Scan Complete"
-msgstr "扫描完成"
+msgstr "Scan Complete"
 
 #: src/libs/scan.c:416
 msgid "Scan Failed"
-msgstr "扫描失败"
+msgstr "Scan Failed"
 
 #: src/libs/update-signature.c:435
 msgid "Update Complete"
-msgstr "更新完成"
+msgstr "Update Complete"
 
 #: src/libs/update-signature.c:435
 msgid "Update Failed"
-msgstr "更新失败"
+msgstr "Update Failed"
+
+#~ msgid "Found Threats"
+#~ msgstr "Found Threats"
+
+#~ msgid "Cancel Scan Process?"
+#~ msgstr "Cancel Scan Process?"
+
+#~ msgid "This will stop the current scan process. Are you sure?"
+#~ msgstr "This will stop the current scan process. Are you sure?"
+
+#~ msgid "Cancel Scan Process"
+#~ msgstr "Cancel Scan Process"
+
+#~ msgid "Asking for permission..."
+#~ msgstr "Asking for permission..."
+
+#~ msgid "User dismissed the request"
+#~ msgstr "User dismissed the request"
+
+#, fuzzy
+#~ msgid "Update started"
+#~ msgstr "Update started"
+
+#~ msgid "Downloading signature database"
+#~ msgstr "Downloading signature database"
+
+#, fuzzy
+#~ msgid "Testing signature database"
+#~ msgstr "Testing signature database"
+
+#~ msgid "Signature database updated"
+#~ msgstr "Signature database updated"

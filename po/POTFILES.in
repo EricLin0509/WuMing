@@ -7,10 +7,16 @@ src/shortcuts-dialog.ui
 src/main.c
 src/wuming-window.c
 src/wuming-window.ui
+src/security-overview-page.c
+src/security-overview-page.ui
 src/scan-page.c
 src/scan-page.ui
+src/scanning-page.c
+src/scanning-page.ui
 src/update-signature-page.c
 src/update-signature-page.ui
+src/updating-page.c
+src/updating-page.ui
 src/libs/delete-file.c
 src/libs/scan.c
 src/libs/update-signature.c

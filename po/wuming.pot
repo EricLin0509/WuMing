@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-09-28 14:49+0800\n"
+"POT-Creation-Date: 2025-10-15 19:05+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,7 +18,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #: data/com.ericlin.wuming.desktop.in:2
-#: data/com.ericlin.wuming.metainfo.xml.in:7 src/wuming-window.ui:6
+#: data/com.ericlin.wuming.metainfo.xml.in:7 src/wuming-window.ui:7
+#: src/wuming-window.ui:25
 msgid "WuMing"
 msgstr ""
 
@@ -61,8 +62,8 @@ msgctxt "shortcut window"
 msgid "Quit"
 msgstr ""
 
-#: src/shortcuts-dialog.ui:23 src/wuming-window.ui:60 src/wuming-window.ui:61
-#: src/wuming-window.ui:65 src/scan-page.c:225
+#: src/shortcuts-dialog.ui:23 src/wuming-window.ui:78 src/wuming-window.ui:79
+#: src/wuming-window.ui:83 src/wuming-window.ui:141
 msgid "Scan"
 msgstr ""
 
@@ -76,8 +77,7 @@ msgctxt "shortcut window"
 msgid "Scan folder"
 msgstr ""
 
-#: src/shortcuts-dialog.ui:40 src/wuming-window.ui:76 src/wuming-window.ui:77
-#: src/update-signature-page.c:140
+#: src/shortcuts-dialog.ui:40 src/wuming-window.ui:95 src/wuming-window.ui:96
 msgid "Update Signature"
 msgstr ""
 
@@ -86,156 +86,157 @@ msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr ""
 
-#: src/wuming-window.ui:30
+#: src/wuming-window.ui:42
 msgid "Main Menu"
 msgstr ""
 
-#: src/wuming-window.ui:47 src/wuming-window.ui:48
+#: src/wuming-window.ui:61 src/wuming-window.ui:62 src/wuming-window.ui:66
 msgid "Security Overview"
 msgstr ""
 
-#: src/wuming-window.ui:52 src/wuming-window.ui:96
-msgid "Coming Soon..."
-msgstr ""
-
-#: src/wuming-window.ui:91 src/wuming-window.ui:92
+#: src/wuming-window.ui:111 src/wuming-window.ui:112
 msgid "Check History"
 msgstr ""
 
-#: src/wuming-window.ui:109
-msgid "_Preferences"
+#: src/wuming-window.ui:116
+msgid "Coming Soon..."
 msgstr ""
 
-#: src/wuming-window.ui:113
-msgid "_Keyboard Shortcuts"
+#: src/wuming-window.ui:130 src/update-signature-page.ui:29
+msgid "Update"
 msgstr ""
 
-#: src/wuming-window.ui:117
-msgid "_About WuMing"
-msgstr ""
-
-#: src/scan-page.c:56
-msgid "Scanning..."
-msgstr ""
-
-#: src/scan-page.c:57
-msgid "Preparing..."
-msgstr ""
-
-#: src/scan-page.c:216
-msgid "Show threats"
-msgstr ""
-
-#: src/scan-page.c:220 src/update-signature-page.c:154
-msgid "Close"
-msgstr ""
-
-#: src/scan-page.c:236
-msgid "Found Threats"
-msgstr ""
-
-#: src/scan-page.c:240
+#: src/wuming-window.ui:152
 msgid "Threats"
 msgstr ""
 
-#: src/scan-page.c:251
-msgid "Cancel Scan Process?"
+#: src/wuming-window.ui:166
+msgid "_Preferences"
 msgstr ""
 
-#: src/scan-page.c:252
-msgid "This will stop the current scan process. Are you sure?"
+#: src/wuming-window.ui:170
+msgid "_Keyboard Shortcuts"
 msgstr ""
 
-#: src/scan-page.c:254
-msgid "Cancel"
+#: src/wuming-window.ui:174
+msgid "_About WuMing"
 msgstr ""
 
-#: src/scan-page.c:262
-msgid "Cancel Scan Process"
+#: src/security-overview-page.ui:27
+msgid "Last Scan Time"
 msgstr ""
 
-#: src/scan-page.ui:20
+#: src/security-overview-page.ui:39 src/update-signature-page.ui:19
+msgid "Current Signature Status"
+msgstr ""
+
+#: src/scan-page.c:72 src/scan-page.c:79
+#, c-format
+msgid "Last Scan Time: %s"
+msgstr ""
+
+#: src/scan-page.c:154 src/scan-page.c:163
+msgid "Scan Has Expired"
+msgstr ""
+
+#: src/scan-page.c:154 src/scan-page.c:163
+msgid "Scan Has Not Expired"
+msgstr ""
+
+#: src/scan-page.ui:30
 msgid "Scan file"
 msgstr ""
 
-#: src/scan-page.ui:37
+#: src/scan-page.ui:47
 msgid "Scan folder"
 msgstr ""
 
-#: src/update-signature-page.c:58
+#: src/scanning-page.c:49
+msgid "Scanning..."
+msgstr ""
+
+#: src/scanning-page.c:50
+msgid "Preparing..."
+msgstr ""
+
+#: src/scanning-page.ui:14 src/updating-page.ui:14
+msgid "Cancel"
+msgstr ""
+
+#: src/scanning-page.ui:36
+msgid "Show threats"
+msgstr ""
+
+#: src/scanning-page.ui:50 src/updating-page.ui:31
+msgid "Close"
+msgstr ""
+
+#: src/update-signature-page.c:55
 msgid "Signature Is Outdated"
 msgstr ""
 
-#: src/update-signature-page.c:59 src/update-signature-page.c:71
+#: src/update-signature-page.c:56 src/update-signature-page.c:68
 #, c-format
-msgid "Current signature date: %d.%d.%d %d"
+msgid "Current signature date: %d.%d.%d %d:%d"
 msgstr ""
 
-#: src/update-signature-page.c:60
+#: src/update-signature-page.c:57
 msgid "Outdated!"
 msgstr ""
 
-#: src/update-signature-page.c:64
+#: src/update-signature-page.c:61
 msgid "No Signature Found"
 msgstr ""
 
-#: src/update-signature-page.c:65
+#: src/update-signature-page.c:62
 msgid ""
 "Warning: No signature found\n"
 "Please update the signature now!"
 msgstr ""
 
-#: src/update-signature-page.c:66
+#: src/update-signature-page.c:63
 msgid "No signature"
 msgstr ""
 
-#: src/update-signature-page.c:70
+#: src/update-signature-page.c:67
 msgid "Signature Is Up To Date"
 msgstr ""
 
-#: src/update-signature-page.c:72
+#: src/update-signature-page.c:69
 msgid "Is Up To Date"
 msgstr ""
 
-#: src/update-signature-page.c:76 src/update-signature-page.c:78
+#: src/update-signature-page.c:73 src/update-signature-page.c:75
 msgid "Unknown Signature Status"
 msgstr ""
 
-#: src/update-signature-page.c:77
+#: src/update-signature-page.c:74
 #, c-format
-msgid "Unknown signature status: %d"
+msgid "Signature status: %d"
 msgstr ""
 
-#: src/update-signature-page.c:94
+#: src/update-signature-page.c:91
 msgid "Enabled"
 msgstr ""
 
-#: src/update-signature-page.c:95
+#: src/update-signature-page.c:92
 msgid "Disabled"
 msgstr ""
 
-#: src/update-signature-page.c:96
+#: src/update-signature-page.c:93
 msgid "Failed to check!"
 msgstr ""
 
-#: src/update-signature-page.c:102
+#: src/update-signature-page.ui:40
+msgid "Freshclam Service Status"
+msgstr ""
+
+#: src/updating-page.c:44
 msgid "Updating..."
 msgstr ""
 
-#: src/update-signature-page.c:103
-msgid "Asking for permission..."
-msgstr ""
-
-#: src/update-signature-page.ui:19
-msgid "Current Signature Status"
-msgstr ""
-
-#: src/update-signature-page.ui:28
-msgid "Update"
-msgstr ""
-
-#: src/update-signature-page.ui:39
-msgid "Freshclam service status"
+#: src/updating-page.c:45
+msgid "This might take a while"
 msgstr ""
 
 #: src/libs/delete-file.c:115
@@ -278,61 +279,41 @@ msgstr ""
 msgid "Unknown error!"
 msgstr ""
 
-#: src/libs/scan.c:197
+#: src/libs/scan.c:191
 msgid "Delete"
 msgstr ""
 
-#: src/libs/scan.c:227
+#: src/libs/scan.c:224
 msgid "Failed to set file properties"
 msgstr ""
 
-#: src/libs/scan.c:333
+#: src/libs/scan.c:309
 #, c-format
 msgid ""
 "%d files scanned\n"
 "%d threats found"
 msgstr ""
 
-#: src/libs/scan.c:364
+#: src/libs/scan.c:331
 msgid "User cancelled the scan"
 msgstr ""
 
-#: src/libs/scan.c:474
+#: src/libs/scan.c:408
 msgid "Scan Canceled"
 msgstr ""
 
-#: src/libs/scan.c:478
+#: src/libs/scan.c:412
 msgid "Scan Complete"
 msgstr ""
 
-#: src/libs/scan.c:482
+#: src/libs/scan.c:416
 msgid "Scan Failed"
 msgstr ""
 
-#: src/libs/update-signature.c:414
-msgid "User dismissed the request"
-msgstr ""
-
-#: src/libs/update-signature.c:415
-msgid "Update started"
-msgstr ""
-
-#: src/libs/update-signature.c:416
-msgid "Downloading signature database"
-msgstr ""
-
-#: src/libs/update-signature.c:417
-msgid "Testing signature database"
-msgstr ""
-
-#: src/libs/update-signature.c:418
-msgid "Signature database updated"
-msgstr ""
-
-#: src/libs/update-signature.c:529
+#: src/libs/update-signature.c:435
 msgid "Update Complete"
 msgstr ""
 
-#: src/libs/update-signature.c:529
+#: src/libs/update-signature.c:435
 msgid "Update Failed"
 msgstr ""
