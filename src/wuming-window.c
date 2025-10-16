@@ -235,8 +235,12 @@ wuming_window_init_settings (WumingWindow *self)
                      self, "fullscreened",
                      G_SETTINGS_BIND_DEFAULT);
 
-    scan_page_show_last_scan_time (self->scan_page, settings, NULL);
-    scan_page_show_last_scan_time_status (self->scan_page, settings, TRUE);
+    g_autofree gchar *last_scan_time = g_settings_get_string (settings, "last-scan-time");
+    gboolean is_expired = is_scan_time_expired(last_scan_time);
+    scan_page_show_last_scan_time (self->scan_page, NULL, last_scan_time);
+    scan_page_show_last_scan_time_status (self->scan_page, NULL, is_expired);
+
+    security_overview_page_show_last_scan_time_status (self->security_overview_page, NULL, is_expired);
 
     g_object_unref (settings); // Free the GSettings object
 }
@@ -257,5 +261,8 @@ wuming_window_init (WumingWindow *self)
     /* Update the Signature Page */
     update_signature_page_show_isuptodate (self->update_signature_page, result);
     update_signature_page_show_servicestat (self->update_signature_page);
+    security_overview_page_show_signature_status (self->security_overview_page, result);
+
+    security_overview_page_show_health_level (self->security_overview_page);
     g_free (result);
 }

@@ -15,8 +15,8 @@
             <property name="child">
               <object class="GtkBox" id="box_main">
                 <property name="orientation">horizontal</property>
-                <property name="height-request">80</property>
-                <property name="margin-bottom">40</property>
+                <property name="height-request">70</property>
+                <property name="margin-bottom">50</property>
                 <property name="spacing">20</property>
                 <property name="homogeneous">true</property>
                 <child>
@@ -33,6 +33,7 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="signature_overview_button">
+                    <property name="action-name">app.update</property>
                     <property name="child">
                       <object class="AdwButtonContent">
                         <property name="can-shrink">true</property>

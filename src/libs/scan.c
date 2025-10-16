@@ -34,6 +34,47 @@
 
 #define CLAMSCAN_PATH "/usr/bin/clamscan"
 
+/* Check if the last scan time is expired or not */
+/*
+  * @note
+  * If the current time is earlier than the last scan time plus a week, it will return true.
+*/
+gboolean
+is_scan_time_expired (const char *timestamp)
+{
+  struct tm tm = {0};
+  int year, month, day, hour, min, sec;
+  time_t scan_time, now;
+  double diff_seconds;
+
+  /* Parse timestamp */
+  if (sscanf(timestamp, "%d.%d.%d %d:%d:%d",
+             &year, &month, &day, &hour, &min, &sec) != 6)
+  {
+    return FALSE; // Format error
+  }
+
+  /* Store timestamp to tm struct */
+  tm.tm_year = year - 1900;
+  tm.tm_mon = month - 1;
+  tm.tm_mday = day;
+  tm.tm_hour = hour;
+  tm.tm_min = min;
+  tm.tm_sec = sec;
+  tm.tm_isdst = -1;
+
+  if ((scan_time = mktime(&tm)) == (time_t)-1)
+  {
+    return FALSE; // Invaild time value
+  }
+
+  time(&now);
+
+  diff_seconds = difftime(now, scan_time);
+
+  return diff_seconds > 604800; // 7 days
+}
+
 typedef struct {
   /* Protected by mutex */
   GMutex mutex; // Only protect initialization, "completed", "success" and "cancellable" fields
@@ -329,7 +370,7 @@ scan_complete_callback(gpointer user_data)
 
   bool has_threat = (ctx->total_threats > 0);
   const char *is_canceled = get_cancel_scan(ctx) ? gettext("User cancelled the scan") : NULL;
-  const char *icon_name = is_success ? "status-ok-symbolic" : "status-warning-symbolic";
+  const char *icon_name = has_threat ? "status-warning-symbolic" : (is_success ? "status-ok-symbolic" : "status-error-symbolic");
 
   scanning_page_set_final_result(ctx->scanning_page, has_threat, data->message, is_canceled, icon_name);
 

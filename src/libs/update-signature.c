@@ -394,7 +394,7 @@ update_complete_callback(gpointer user_data)
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
-  const char *icon_name = is_success ? "status-ok-symbolic" : "status-warning-symbolic";
+  const char *icon_name = is_success ? "status-ok-symbolic" : "status-error-symbolic";
 
   updating_page_set_final_result(ctx->updating_page, data->message, icon_name);
 

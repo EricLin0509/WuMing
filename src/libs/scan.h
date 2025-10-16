@@ -26,5 +26,13 @@ typedef struct _WumingWindow WumingWindow;
 typedef struct _ScanningPage ScanningPage;
 typedef struct _ThreatPage ThreatPage;
 
+/* Check if the last scan time is expired or not */
+/*
+  * @note
+  * If the current time is earlier than the last scan time plus a week, it will return true.
+*/
+gboolean
+is_scan_time_expired (const char *timestamp);
+
 void
 start_scan(WumingWindow *window, ScanningPage *scanning_page, ThreatPage *threat_page, const char *path);

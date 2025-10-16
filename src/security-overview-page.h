@@ -22,11 +22,46 @@
 
 #include <adwaita.h>
 
+#include "libs/scan.h"
+#include "libs/update-signature.h"
+
 G_BEGIN_DECLS
 
 #define SECURITY_OVERVIEW_TYPE_PAGE (security_overview_page_get_type ())
 
 G_DECLARE_FINAL_TYPE (SecurityOverviewPage, security_overview_page, SECURITY_OVERVIEW, PAGE, GtkWidget)
+
+
+/* Show the last scan time status on the security overview page. */
+/*
+  * @param self
+  * `SecurityOverviewPage` object.
+    * @param setting [OPTIONAL]
+  * `GSettings` object to save last scan time, if is NULL, it will ignore it and use `is_expired` directly.
+  * 
+  * @param is_expired [OPTIONAL]
+  * Whether the last scan time is expired or not.
+  * 
+  * @note
+  * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
+*/
+void
+security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, GSettings *setting, gboolean is_expired);
+
+/* Show the signature status on the security overview page. */
+/*
+  * @param self
+  * `SecurityOverviewPage` object.
+  * 
+  * @param result
+  * `scan_result` object to get signature status.
+*/
+void
+security_overview_page_show_signature_status (SecurityOverviewPage *self, const scan_result *result);
+
+/* Show the health level on the security overview page. */
+void
+security_overview_page_show_health_level (SecurityOverviewPage *self);
 
 GtkWidget *
 security_overview_page_new (void);

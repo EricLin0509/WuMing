@@ -20,12 +20,12 @@
 
 #include <glib/gi18n.h>
 
+#include "libs/scan.h"
+
 #include "scan-page.h"
 #include "wuming-window.h"
 #include "scanning-page.h"
 #include "threat-page.h"
-
-#include "libs/scan.h"
 
 struct _ScanPage {
   GtkWidget          parent_instance;
@@ -82,47 +82,6 @@ scan_page_show_last_scan_time (ScanPage *self, GSettings *setting, const gchar *
   }
 
   adw_status_page_set_description (ADW_STATUS_PAGE (status_page), description);
-}
-
-/* Check if the last scan time is expired or not */
-/*
-  * @note
-  * If the current time is earlier than the last scan time plus a week, it will return true.
-*/
-static gboolean
-is_scan_time_expired (const char *timestamp)
-{
-  struct tm tm = {0};
-  int year, month, day, hour, min, sec;
-  time_t scan_time, now;
-  double diff_seconds;
-
-  /* Parse timestamp */
-  if (sscanf(timestamp, "%d.%d.%d %d:%d:%d",
-             &year, &month, &day, &hour, &min, &sec) != 6)
-  {
-    return FALSE; // Format error
-  }
-
-  /* Store timestamp to tm struct */
-  tm.tm_year = year - 1900;
-  tm.tm_mon = month - 1;
-  tm.tm_mday = day;
-  tm.tm_hour = hour;
-  tm.tm_min = min;
-  tm.tm_sec = sec;
-  tm.tm_isdst = -1;
-
-  if ((scan_time = mktime(&tm)) == (time_t)-1)
-  {
-    return FALSE; // Invaild time value
-  }
-
-  time(&now);
-
-  diff_seconds = difftime(now, scan_time);
-
-  return diff_seconds > 604800; // 7 days
 }
 
 /* Show whether the last scan time is expired or not */

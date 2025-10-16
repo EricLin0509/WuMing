@@ -57,7 +57,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const scan_resu
       row_subtitle = g_strdup_printf (gettext("Outdated!"));
       break;
     case 1: // No signature found
-      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-warning-symbolic");
+      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-error-symbolic");
       signature_msg = g_strdup_printf (gettext("No Signature Found"));
       date_msg = g_strdup_printf (gettext("Warning: No signature found\nPlease update the signature now!"));
       row_subtitle = g_strdup_printf (gettext("No signature"));
@@ -69,7 +69,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const scan_resu
       row_subtitle = g_strdup_printf (gettext("Is Up To Date"));
       break;
     default: // Bit mask is invalid (because these two bit mask cannot be set at the same time)
-      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-warning-symbolic");
+      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-error-symbolic");
       signature_msg = g_strdup_printf (gettext("Unknown Signature Status"));
       date_msg = g_strdup_printf (gettext("Signature status: %d"), result->status);
       row_subtitle = g_strdup_printf (gettext("Unknown Signature Status"));
