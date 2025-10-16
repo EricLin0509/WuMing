@@ -90,7 +90,6 @@ bool observer_init(Observer *observer, size_t num_of_processes, int exit_conditi
     }
 
     observer->num_of_processes = num_of_processes;
-    atomic_init(&observer->active_processes, num_of_processes);
 
     if (condition_signal_handler != NULL && exit_condition_signal != 0) {
         observer->exit_condition_signal = exit_condition_signal;
@@ -107,7 +106,6 @@ void observer_clear(Observer *observer) {
     free(observer->pids);
     observer->pids = NULL;
     observer->num_of_processes = 0;
-    observer->active_processes = 0;
     observer->exit_condition_signal = 0;
     observer->condition_signal_handler = NULL;
 }
@@ -171,11 +169,9 @@ bool spawn_new_process(Observer *observer,
 void notify_watchdog(Observer *observer) {
 	if (observer == NULL || observer->pipe_fd[1] == -1) return; // Skip invalid parameters
 
-    if (atomic_fetch_sub(&observer->active_processes, 1) == 0) { // No more active processes, send the message to the watchdog
-        close(observer->pipe_fd[0]); // close the read end of the pipe
-	    write(observer->pipe_fd[1], NOTIFY_MSG, NOTIFY_MSG_SIZE); // send the message to the watchdog
-	    close(observer->pipe_fd[1]); // close the write end of the pipe
-    }
+    close(observer->pipe_fd[0]); // close the read end of the pipe
+    write(observer->pipe_fd[1], NOTIFY_MSG, NOTIFY_MSG_SIZE); // send the message to the watchdog
+    close(observer->pipe_fd[1]); // close the write end of the pipe
 }
 
 /* Get message from the pipe */

@@ -64,10 +64,12 @@ static void producer_main(void *args) {
             continue; // If there is no task to get, continue
         }
 
+        atomic_fetch_add(&queue->in_progress, 1);
         for (size_t i = 0; i < tasks_to_get; i++) {
             if (task[i].type != TASK_SCAN_DIR) continue; // Skip invalid tasks type
             traverse_directory(task[i].path, &shm->dir_tasks, &shm->file_tasks); // Traverse the directory and add tasks to the task queue
         }
+        atomic_fetch_sub(&queue->in_progress, 1);
     }
 }
 
@@ -97,10 +99,12 @@ static void worker_main(void *args) {
             continue; // If there is no task to get, continue
         }
 
+        atomic_fetch_add(&queue->in_progress, 1);
         for (size_t i = 0; i < tasks_to_get; i++) {
             if (task[i].type != TASK_SCAN_FILE) continue; // Skip invalid tasks type
             process_file(task[i].path, &shm->essentials); // Scan the file
         }
+        atomic_fetch_sub(&queue->in_progress, 1);
     }
 }
 

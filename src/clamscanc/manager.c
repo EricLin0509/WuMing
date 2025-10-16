@@ -162,6 +162,7 @@ void task_queue_init(TaskQueue *queue) {
     /* Initialize the tasks */
     memset(queue->tasks, 0, sizeof(queue->tasks));
     atomic_init(&queue->tasks_count, 0);
+    atomic_init(&queue->in_progress, 0);
     queue->front = 0;
     queue->rear = 0;
 }
@@ -178,12 +179,15 @@ void task_queue_clear(TaskQueue *queue) {
 bool is_task_queue_empty_assumption(TaskQueue *queue) {
     if (queue == NULL) return true;
 
-    if (sem_trywait(&queue->mutex) == 0) {
-        bool is_empty = (atomic_load(&queue->tasks_count) == 0); // Check if the task count is zero
-        sem_post(&queue->mutex);
-        return is_empty;
-    }
-    return false; // Failed to get the lock, assume the queue is not empty
+    if (sem_trywait(&queue->mutex) == -1 && errno == EAGAIN) return false; // Failed to get the lock, assume the queue is not empty
+
+    bool is_empty = true;
+    is_empty &= (atomic_load(&queue->tasks_count)) == 0;
+    is_empty &= (atomic_load(&queue->in_progress)) == 0;
+
+    sem_post(&queue->mutex); // Release the lock
+
+    return is_empty;
 }
 
 /* Add a task to the TaskQueue */

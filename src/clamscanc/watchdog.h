@@ -72,7 +72,6 @@ void register_signal_handler(int signal, signal_handler handler);
 */
 typedef struct {
     size_t num_of_processes;
-    _Atomic size_t active_processes;
     pid_t *pids;
 
     /* The exit control components */

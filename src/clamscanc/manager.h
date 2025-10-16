@@ -75,6 +75,7 @@ typedef struct {
 
 	Task tasks[QUEUE_SIZE];
 	_Atomic size_t tasks_count;
+	_Atomic size_t in_progress;
 	size_t front;
 	size_t rear;
 } TaskQueue;
