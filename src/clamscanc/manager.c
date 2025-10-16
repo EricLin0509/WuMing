@@ -372,8 +372,8 @@ void traverse_directory(const char *path, TaskQueue *dir_tasks, TaskQueue *file_
 
     struct dirent *entry;
     while ((entry = readdir(dir))) { // Traverse the directory
-        if (memcmp(entry->d_name, ".", MIN(strlen(entry->d_name), 1)) == 0 ||
-            memcmp(entry->d_name, "..", MIN(strlen(entry->d_name), 2)) == 0) continue; // Skip the current and parent directory
+        if (memcmp(entry->d_name, ".", MIN(strlen(entry->d_name), 2)) == 0 ||
+            memcmp(entry->d_name, "..", MIN(strlen(entry->d_name), 3)) == 0) continue; // Skip the current and parent directory
 
         char fullpath[MAX_PATH]; // Initialize a full path
         snprintf(fullpath, MAX_PATH, "%s/%s", path, entry->d_name); // Build the full path
