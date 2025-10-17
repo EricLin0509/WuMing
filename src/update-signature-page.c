@@ -25,6 +25,7 @@
 #include "updating-page.h"
 
 #include "libs/systemd-control.h"
+#include "libs/update-signature.h"
 
 struct _UpdateSignaturePage {
   GtkWidget          parent_instance;
@@ -39,7 +40,7 @@ struct _UpdateSignaturePage {
 G_DEFINE_FINAL_TYPE (UpdateSignaturePage, update_signature_page, GTK_TYPE_WIDGET)
 
 void
-update_signature_page_show_isuptodate(UpdateSignaturePage *self, const scan_result *result)
+update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature_status *result)
 {
   GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
 
@@ -47,13 +48,18 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const scan_resu
   g_autofree char *date_msg = NULL; // The description message for `AdwStatusPage`
   g_autofree char *row_subtitle = NULL; // The subtitle message for `AdwActionRow`
 
+  int year, month, day, hour, minute;
+  signature_status_get_date(result, &year, &month, &day, &hour, &minute);
+
+  unsigned short status = signature_status_get_status(result);
+
   /* Using bit mask to check the status */
-  switch (result->status)
+  switch (status)
   {
     case 0: // Signature is oudated
       adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-warning-symbolic");
       signature_msg = g_strdup_printf (gettext("Signature Is Outdated"));
-      date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), result->year, result->month, result->day, result->hour, result->minute);
+      date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), year, month, day, hour, minute);
       row_subtitle = g_strdup_printf (gettext("Outdated!"));
       break;
     case 1: // No signature found
@@ -65,13 +71,13 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const scan_resu
     case 16: // Signature is up-to-date
       adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-ok-symbolic");
       signature_msg = g_strdup_printf (gettext("Signature Is Up To Date"));
-      date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), result->year, result->month, result->day, result->hour, result->minute);
+      date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), year, month, day, hour, minute);
       row_subtitle = g_strdup_printf (gettext("Is Up To Date"));
       break;
     default: // Bit mask is invalid (because these two bit mask cannot be set at the same time)
       adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-error-symbolic");
       signature_msg = g_strdup_printf (gettext("Unknown Signature Status"));
-      date_msg = g_strdup_printf (gettext("Signature status: %d"), result->status);
+      date_msg = g_strdup_printf (gettext("Signature status: %d"), status);
       row_subtitle = g_strdup_printf (gettext("Unknown Signature Status"));
       break;
   }

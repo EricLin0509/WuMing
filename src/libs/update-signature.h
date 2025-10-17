@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
- */
+*/
 
 #pragma once
 
@@ -25,28 +25,6 @@
 typedef struct _WumingWindow WumingWindow;
 typedef struct _UpdateSignaturePage UpdateSignaturePage;
 typedef struct _UpdatingPage UpdatingPage;
-
-/* BIT Mask for indicating signature status */
-/*
-    @warning These bit masks cannot be set at the same time
-*/
-#define SIGNATURE_STATUS_UPTODATE 0x10 // Signature is up-to-date
-#define SIGNATURE_STATUS_NOT_FOUND 1 // No signature found
-
-typedef struct scan_result {
-    int year;
-    int month;
-    int day;
-    int hour;
-    int minute;
-    unsigned short status;
-} scan_result;
-
-void
-scan_signature_date(scan_result *result);
-
-void
-is_signature_uptodate(scan_result *result);
 
 void
 start_update(WumingWindow *window, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page);

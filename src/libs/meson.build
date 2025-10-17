@@ -4,6 +4,8 @@ wuming_sources += [
  'libs/file-security.c',
  'libs/delete-file.c',
  'libs/subprocess-components.c',
+ 'libs/signature-status.c',
  'libs/update-signature.c',
+ 'libs/check-scan-time.c',
  'libs/scan.c',
 ]

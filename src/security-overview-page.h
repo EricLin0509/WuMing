@@ -22,8 +22,8 @@
 
 #include <adwaita.h>
 
-#include "libs/scan.h"
-#include "libs/update-signature.h"
+#include "libs/check-scan-time.h"
+#include "libs/signature-status.h"
 
 G_BEGIN_DECLS
 
@@ -57,7 +57,7 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, G
   * `scan_result` object to get signature status.
 */
 void
-security_overview_page_show_signature_status (SecurityOverviewPage *self, const scan_result *result);
+security_overview_page_show_signature_status (SecurityOverviewPage *self, const signature_status *result);
 
 /* Show the health level on the security overview page. */
 void

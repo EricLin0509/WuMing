@@ -236,7 +236,7 @@ wuming_window_init_settings (WumingWindow *self)
                      G_SETTINGS_BIND_DEFAULT);
 
     g_autofree gchar *last_scan_time = g_settings_get_string (settings, "last-scan-time");
-    gboolean is_expired = is_scan_time_expired(last_scan_time);
+    gboolean is_expired = is_scan_time_expired(last_scan_time, NULL);
     scan_page_show_last_scan_time (self->scan_page, NULL, last_scan_time);
     scan_page_show_last_scan_time_status (self->scan_page, NULL, is_expired);
 
@@ -254,15 +254,14 @@ wuming_window_init (WumingWindow *self)
     wuming_window_init_settings (self);
 
     /* Scan the Database */
-    scan_result *result = g_new0 (scan_result, 1);
-    scan_signature_date (result);
-    is_signature_uptodate (result);
+    signature_status *result = signature_status_new ();
 
     /* Update the Signature Page */
     update_signature_page_show_isuptodate (self->update_signature_page, result);
     update_signature_page_show_servicestat (self->update_signature_page);
     security_overview_page_show_signature_status (self->security_overview_page, result);
 
+    signature_status_clear (&result);
+
     security_overview_page_show_health_level (self->security_overview_page);
-    g_free (result);
 }

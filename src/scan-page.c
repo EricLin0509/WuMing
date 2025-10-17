@@ -20,6 +20,7 @@
 
 #include <glib/gi18n.h>
 
+#include "libs/check-scan-time.h"
 #include "libs/scan.h"
 
 #include "scan-page.h"
@@ -115,9 +116,7 @@ scan_page_show_last_scan_time_status (ScanPage *self, GSettings *setting, gboole
   }
   else // Has `GSettings`, use it to get the last scan time and check if it is expired
   {
-    g_autofree gchar *stored_timestamp = g_settings_get_string (setting, "last-scan-time");
-
-    gboolean is_older_than_a_week = is_scan_time_expired (stored_timestamp);
+    gboolean is_older_than_a_week = is_scan_time_expired (NULL, setting);
 
     title = is_older_than_a_week ? gettext("Scan Has Expired") : gettext("Scan Has Not Expired");
     icon_name = is_older_than_a_week ? "status-warning-symbolic" : "status-ok-symbolic";

@@ -71,14 +71,12 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, G
     }
     else // Has `GSettings`, use it to get the last scan time and check if it is expired
     {
-        g_autofree gchar *stored_timestamp = g_settings_get_string (setting, "last-scan-time");
-
-        gboolean is_older_than_a_week = is_scan_time_expired (stored_timestamp);
+        gboolean is_older_than_a_week = is_scan_time_expired (NULL, setting);
 
         label = is_older_than_a_week ? gettext ("Scan Has Expired") : gettext ("Scan Has Not Expired");
         icon_name = is_older_than_a_week ? "status-warning-symbolic" : "status-ok-symbolic";
         style = is_older_than_a_week ? "warning" : "success";
-        if (!is_expired) self->health_level |= LAST_SCAN_TIME_VALID;
+        if (!is_older_than_a_week) self->health_level |= LAST_SCAN_TIME_VALID;
     }
 
     adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);
@@ -95,7 +93,7 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, G
   * `scan_result` object to get signature status.
 */
 void
-security_overview_page_show_signature_status (SecurityOverviewPage *self, const scan_result *result)
+security_overview_page_show_signature_status (SecurityOverviewPage *self, const signature_status *result)
 {
     g_return_if_fail(self != NULL);
 
@@ -105,7 +103,7 @@ security_overview_page_show_signature_status (SecurityOverviewPage *self, const 
     gchar *icon_name = NULL;
     gchar *style = NULL;
 
-    switch(result->status)
+    switch(signature_status_get_status(result))
     {
         case 0: // Signature is oudated
             label = gettext ("Signature Is Outdated");

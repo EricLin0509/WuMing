@@ -1,4 +1,4 @@
-/* update-signature-page.c
+/* check-scan-time.h
  *
  * Copyright 2025 EricLin
  *
@@ -16,27 +16,25 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
- */
+*/
 
 #pragma once
 
-#include <adwaita.h>
+#include <gio/gio.h>
 
-#include "libs/signature-status.h"
-
-G_BEGIN_DECLS
-
-#define UPDATE_SIGNATURE_TYPE_PAGE (update_signature_page_get_type())
-
-G_DECLARE_FINAL_TYPE (UpdateSignaturePage, update_signature_page, UPDATE_SIGNATURE, PAGE, GtkWidget)
-
-GtkWidget *
-update_signature_page_new(void);
-
-void
-update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature_status *result);
-
-void
-update_signature_page_show_servicestat(UpdateSignaturePage *self);
-
-G_END_DECLS
+/* Check if the last scan time is expired or not */
+/*
+  * @param timestamp
+  * The timestamp of the last scan time.
+  * 
+  * @param setting
+  * The GSettings object that stores the last scan time.
+  * 
+  * @warning
+  * If the timestamp is not null, `setting` parameter will be ignored.
+  * 
+  * @return
+  * If the current time is earlier than the last scan time plus a week, it will return true.
+*/
+gboolean
+is_scan_time_expired (const char *timestamp, GSettings *setting);
