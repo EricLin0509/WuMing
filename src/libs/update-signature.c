@@ -19,11 +19,8 @@
  */
 
 #include <glib/gi18n.h>
-#include <clamav.h>
-#include <limits.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <sys/mman.h>
 
 #include "subprocess-components.h"
 #include "update-signature.h"

@@ -20,14 +20,10 @@
 
 #include <glib.h>
 #include <clamav.h>
-#include <limits.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/mman.h>
 
 #include "signature-status.h"
-
-#define SIGNATURE_PATTERN "ClamAV-VDB:\\s*([0-9]{2})\\s+([A-Za-z]{3})\\s+([0-9]{4})\\s+([0-9]{2})-([0-9]{2})" // Format: `DD MMM YYYY HH-MM`
 
 typedef struct signature_status {
     int year;
@@ -114,63 +110,29 @@ date_to_days(int year, int month, int day)
     return year_days + month_days + day;
 }
 
-static char*
-parse_cvd_header(const char *filepath)
+static char *
+parse_cvd_header_time(const char *filepath)
 {
-    const size_t cvd_header_size = 128; // Only read the first 128 bytes to get the header
-
-    int discriptor = -1;
-    char *file_mapped = MAP_FAILED;
-    struct stat st = (struct stat){0};
-
-    GRegex *regex = g_regex_new (SIGNATURE_PATTERN, G_REGEX_DEFAULT, G_REGEX_MATCH_DEFAULT, NULL);
-    GMatchInfo *match_info = NULL;
     char *result = NULL;
+    struct cl_cvd *signature;
 
-    if ((discriptor = open(filepath, O_RDONLY)) == -1)
+    if (access(filepath, R_OK) != 0)
     {
-        g_warning("%s not found: %s\n", filepath, strerror(errno));
+        g_warning("No access to %s: %s", filepath, strerror(errno));
         return NULL;
     }
 
-    if (fstat (discriptor, &st) == -1)
+    if ((signature = cl_cvdhead(filepath)) == NULL)
     {
-        g_warning("Can't get the file size\n");
-        goto clean_up;
+        g_warning("Failed to read CVD header from %s", filepath);
+        return NULL;
     }
 
-    /* Check file size */
-    if (st.st_size < (off_t)(cvd_header_size + 512)) // 128 bytes header + 512 bytes sha256 sum
-    {
-        g_warning("%s is invalid signature, file size %ld < 640 bytes\n", filepath, (long)st.st_size);
-        goto clean_up;
-    }
+    result = g_strdup(signature->time);
 
-    file_mapped = mmap (NULL, cvd_header_size, PROT_READ, MAP_PRIVATE, discriptor, 0);
-    if (file_mapped == MAP_FAILED)
-    {
-        g_critical ("mmap failed: %s\n", strerror(errno));
-        goto clean_up;
-    }
+    cl_cvdfree(signature);
+    signature = NULL;
 
-    if (!g_regex_match (regex, file_mapped, 0, &match_info))
-    {
-        g_critical ("Failed to parse: '%s'", file_mapped);
-        goto clean_up;
-    }
-
-    result = g_strdup_printf ("%s %s %s %s-%s",
-        g_match_info_fetch(match_info, 1), // Day
-        g_match_info_fetch(match_info, 2), // Month
-        g_match_info_fetch(match_info, 3), // Year
-        g_match_info_fetch(match_info, 4), // Hour
-        g_match_info_fetch(match_info, 5)); // Minute
-
-clean_up:
-    if (match_info) g_match_info_free(match_info);
-    if (regex) g_regex_unref(regex);
-    if (file_mapped != MAP_FAILED) munmap(file_mapped, cvd_header_size);
-    if (discriptor != -1) close(discriptor);
     return result;
 }
 
@@ -205,7 +167,7 @@ static gboolean
 parse_database_file(database_file_params *params, const char *database_dir, const char *filename)
 {
     char* filepath = build_database_path(database_dir, filename);
-    params->date_string = parse_cvd_header(filepath);
+    params->date_string = parse_cvd_header_time(filepath);
     g_free(filepath);
 
     if (!params->date_string) return FALSE;
