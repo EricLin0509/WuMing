@@ -29,10 +29,6 @@
 #include "update-signature.h"
 #include "signature-status.h"
 
-#include "../wuming-window.h"
-#include "../updating-page.h"
-#include "../update-signature-page.h"
-
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
 #define PKEXEC_PATH "/usr/bin/pkexec"
 
@@ -45,6 +41,7 @@ typedef struct {
 
   /*No need to protect these fields because they always same after initialize*/
   WumingWindow *window;
+  SecurityOverviewPage *security_overview_page;
   UpdateSignaturePage *update_signature_page;
   UpdatingPage *updating_page;
 
@@ -135,6 +132,8 @@ update_complete_callback(gpointer user_data)
     signature_status *result = signature_status_new();
 
     update_signature_page_show_isuptodate(ctx->update_signature_page, result);
+    security_overview_page_show_signature_status(ctx->security_overview_page, result);
+    security_overview_page_show_health_level(ctx->security_overview_page);
 
     signature_status_clear(&result);
   }
@@ -171,7 +170,7 @@ update_thread(gpointer data)
 }
 
 void
-start_update(WumingWindow *window, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page)
+start_update(WumingWindow *window, SecurityOverviewPage *security_overview_page, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page)
 {
   UpdateContext *ctx = update_context_new();
 
@@ -179,6 +178,7 @@ start_update(WumingWindow *window, UpdateSignaturePage *update_signature_page, U
   ctx->completed = FALSE;
   ctx->success = FALSE;
   ctx->window = window;
+  ctx->security_overview_page = security_overview_page;
   ctx->update_signature_page = update_signature_page;
   ctx->updating_page = updating_page;
   ctx->ref_count = G_ATOMIC_REF_COUNT_INIT;

@@ -40,6 +40,10 @@ wuming_window_pop_page (WumingWindow *self);
 const char *
 wuming_window_get_current_page_tag (WumingWindow *self);
 
+/* Get `SecurityOverviewPage` */
+GtkWidget *
+wuming_window_get_security_overview_page (WumingWindow *self);
+
 /* Get `UpdatingPage` */
 GtkWidget *
 wuming_window_get_updating_page (WumingWindow *self);

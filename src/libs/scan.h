@@ -22,9 +22,9 @@
 
 #include <adwaita.h>
 
-typedef struct _WumingWindow WumingWindow;
-typedef struct _ScanningPage ScanningPage;
-typedef struct _ThreatPage ThreatPage;
+#include "../wuming-window.h"
+#include "../scanning-page.h"
+#include "../threat-page.h"
 
 void
 start_scan(WumingWindow *window, ScanningPage *scanning_page, ThreatPage *threat_page, const char *path);

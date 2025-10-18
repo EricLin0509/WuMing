@@ -114,6 +114,7 @@ security_overview_page_show_signature_status (SecurityOverviewPage *self, const 
             label = gettext ("No Signature Found");
             icon_name = "status-error-symbolic";
             style = "error";
+            break;
         case 16: // Signature is up-to-date
             label = gettext ("Signature Is Up To Date");
             icon_name = "status-ok-symbolic";
@@ -124,6 +125,7 @@ security_overview_page_show_signature_status (SecurityOverviewPage *self, const 
             label = gettext ("Unknown Signature Status");
             icon_name = "status-error-symbolic";
             style = "error";
+            break;
     }
 
     adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);
@@ -149,11 +151,13 @@ security_overview_page_show_health_level (SecurityOverviewPage *self)
             title = gettext ("Poor Status");
             message = gettext ("Please take action immediately");
             icon_name = "status-error-symbolic";
-        case 1: // Only last scan time is valid
+            break;
+        case 1: // Only last scan time is valid, signature has issue
             title = gettext ("Need Attention");
-            message = gettext("Signature Is Outdated");
+            message = gettext("Something wrong with the signature");
             icon_name = "status-warning-symbolic";
-        case 16: // Only signature is valid
+            break;
+        case 16: // Only signature is valid, last scan time has issue
             title = gettext ("Need Attention");
             message = gettext ("Scan Has Expired");
             icon_name = "status-warning-symbolic";
@@ -167,6 +171,7 @@ security_overview_page_show_health_level (SecurityOverviewPage *self)
             title = gettext ("Unknown Health Level");
             message = gettext ("Please check the logs for more information");
             icon_name = "status-error-symbolic";
+            break;
     }
 
     adw_status_page_set_title (ADW_STATUS_PAGE (status_page), title);
@@ -197,6 +202,8 @@ security_overview_page_finalize (GObject *object)
     self->break_point = NULL;
     self->scan_overview_button = NULL;
     self->signature_overview_button = NULL;
+
+    self->health_level = 0;
 
     G_OBJECT_CLASS (security_overview_page_parent_class)->finalize (object);
 }

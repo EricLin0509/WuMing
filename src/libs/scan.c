@@ -28,10 +28,6 @@
 
 #include "delete-file.h"
 
-#include "../wuming-window.h"
-#include "../scanning-page.h"
-#include "../threat-page.h"
-
 #define CLAMSCAN_PATH "/usr/bin/clamscan"
 
 typedef struct {

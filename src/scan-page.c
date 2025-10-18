@@ -25,6 +25,7 @@
 
 #include "scan-page.h"
 #include "wuming-window.h"
+#include "security-overview-page.h"
 #include "scanning-page.h"
 #include "threat-page.h"
 
@@ -158,12 +159,15 @@ static void
 reset_and_start_scan (ScanPage *self, char *path)
 {
   WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
+  SecurityOverviewPage *security_overview_page = SECURITY_OVERVIEW_PAGE (wuming_window_get_security_overview_page (window));
   ScanningPage *scanning_page = SCANNING_PAGE (wuming_window_get_scanning_page (window));
   ThreatPage *threat_page = THREAT_PAGE (wuming_window_get_threat_page (window));
 
   g_autofree gchar *timestamp = save_last_scan_time (NULL, TRUE);
   scan_page_show_last_scan_time (self, NULL, timestamp);
   scan_page_show_last_scan_time_status (self, NULL, FALSE);
+  security_overview_page_show_last_scan_time_status (security_overview_page, NULL, FALSE);
+  security_overview_page_show_health_level (security_overview_page);
 
   /* Reset widget and start scanning */
   scanning_page_reset (scanning_page);

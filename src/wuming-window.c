@@ -90,6 +90,13 @@ wuming_window_get_current_page_tag (WumingWindow *self)
     return adw_navigation_view_get_visible_page_tag (self->navigation_view);
 }
 
+/* Get `SecurityOverviewPage` */
+GtkWidget *
+wuming_window_get_security_overview_page (WumingWindow *self)
+{
+    return GTK_WIDGET (self->security_overview_page);
+}
+
 /* Get `UpdatingPage` */
 GtkWidget *
 wuming_window_get_updating_page (WumingWindow *self)

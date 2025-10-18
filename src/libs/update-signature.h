@@ -22,9 +22,10 @@
 
 #include <adwaita.h>
 
-typedef struct _WumingWindow WumingWindow;
-typedef struct _UpdateSignaturePage UpdateSignaturePage;
-typedef struct _UpdatingPage UpdatingPage;
+#include "../wuming-window.h"
+#include "../security-overview-page.h"
+#include "../updating-page.h"
+#include "../update-signature-page.h"
 
 void
-start_update(WumingWindow *window, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page);
+start_update(WumingWindow *window, SecurityOverviewPage *security_overview_page, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page);

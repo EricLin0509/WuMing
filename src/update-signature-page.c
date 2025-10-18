@@ -106,6 +106,7 @@ update_signature_cb (GSimpleAction *action,
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE(user_data);
   WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
+  SecurityOverviewPage *security_overview_page = SECURITY_OVERVIEW_PAGE (wuming_window_get_security_overview_page (window));
   UpdatingPage *updating_page = UPDATING_PAGE (wuming_window_get_updating_page (window));
 
   if (wuming_window_is_current_page_tag (window, "updating_nav_page")) return; // No need to update signature if is in updating page
@@ -116,7 +117,7 @@ update_signature_cb (GSimpleAction *action,
 
   wuming_window_push_page_by_tag (window, "updating_nav_page");
 
-  start_update(window, self, updating_page);
+  start_update(window, security_overview_page, self, updating_page);
 }
 
 /*GObject Essential Functions */
