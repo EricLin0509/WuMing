@@ -30,6 +30,13 @@
 
 #include "signature-status.h"
 
+#ifndef O_PATH // Compatibility for some Linux distributions
+#define O_PATH 010000000
+#endif
+
+#define DIRECTORY_OPEN_FLAGS (O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+#define FILE_OPEN_FLAGS (O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+
 #define CLAMAV_CVD_PATH "/var/lib/clamav"
 
 #define HEADER_COLON_COUNT 8 // The header format is `ClamAV-VDB:time:version:sigs:fl:md5:dsig:builder:stime`, so there are 8 colons
@@ -52,6 +59,15 @@ typedef struct {
     int minute;
     char month_str[4];
 } database_file_params;
+
+/* Clear the file descriptor */
+static inline void
+clear_fd(int fd)
+{
+    if (fd == -1) return;
+    close(fd);
+    fd = -1;
+}
 
 /* Change month format to number */
 static int
@@ -121,47 +137,54 @@ date_to_days(int year, int month, int day)
 /* Parse the CVD header time */
 /*
   * @note
-  * Due to the header format is `ClamAV-VDB:time:version:sigs:fl:md5:dsig:builder:stime`, we can parse the header by using sliding window
+  * Due to the header format is `ClamAV-VDB:time:version:sigs:fl:md5:dsig:builder:stime`, we can parse the header by using sliding window algorithm.
 */
 static char *
-parse_cvd_header_time(const char *filepath)
+parse_cvd_header_time(int dirfd, const char *filename)
 {
-    g_return_val_if_fail(filepath != NULL, NULL);
+    g_return_val_if_fail(dirfd != -1 && filename != NULL, NULL);
 
     char *result = NULL;
 
-    if (access(filepath, R_OK) != 0)
+    int filefd = openat(dirfd, filename, FILE_OPEN_FLAGS);
+    if (filefd == -1)
     {
-        g_warning("No access to %s: %s", filepath, strerror(errno));
-        return NULL;
-    }
-
-    int descriptor = open(filepath, O_RDONLY);
-
-    if (descriptor == -1)
-    {
-        g_critical("Failed to open %s: %s", filepath, strerror(errno));
+        if (errno == ENOENT) g_warning("File not found: %s", filename); // File not found
+        else g_critical("Failed to open %s: %s", filename, strerror(errno));
         return NULL;
     }
 
     struct stat file_stat;
-    if (fstat(descriptor, &file_stat) == -1)
+    if (fstat(filefd, &file_stat) == -1) // Get the file stat
     {
-        g_critical("Failed to stat %s: %s", filepath, strerror(errno));
-        close(descriptor);
+        g_critical("Failed to stat %s: %s", filename, strerror(errno));
+        clear_fd(filefd);
+        return NULL;
+    }
+
+    if (!S_ISREG(file_stat.st_mode)) // Check whether it is a regular file
+    {
+        g_critical("Not a regular file: %s", filename);
+        clear_fd(filefd);
         return NULL;
     }
 
     const size_t file_size = (size_t)file_stat.st_size;
-
-    char *header = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, descriptor, 0);
-    if (header == MAP_FAILED)
+    if (file_size < 48) // Check whether the file size is valid
     {
-        g_critical("Failed to mmap %s: %s", filepath, strerror(errno));
-        close(descriptor);
+        g_critical("Invalid file size: %s, size: %zu", filename, file_size);
+        clear_fd(filefd);
         return NULL;
     }
-    close(descriptor);
+
+    char *header = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, filefd, 0);
+    if (header == MAP_FAILED)
+    {
+        g_critical("Failed to mmap %s: %s", filename, strerror(errno));
+        clear_fd(filefd);
+        return NULL;
+    }
+    clear_fd(filefd);
 
     /* Parse the header */
     int colons_pos[HEADER_COLON_COUNT] = {-1, -1, -1, -1, -1, -1, -1, -1}; // Position of the colons in the header
@@ -174,7 +197,7 @@ parse_cvd_header_time(const char *filepath)
 
     if (colon_count < HEADER_COLON_COUNT)
     {
-        g_critical("Invalid header: %s", filepath);
+        g_critical("Invalid header: %s", filename);
         munmap(header, file_size);
         return NULL;
     }
@@ -191,45 +214,14 @@ parse_cvd_header_time(const char *filepath)
     return result;
 }
 
-/*Check Database dir*/
-static gboolean
-check_database_dir(const char *database_dir)
-{
-    if (!database_dir)
-    {
-        g_warning ("%s is not vaild dictionary\n", database_dir);
-        return FALSE;
-    }
-
-    if (strlen(database_dir) > (PATH_MAX - 50))
-    {
-        g_warning("Database path length exceeds system limit\n");
-        return FALSE;
-    }
-
-  return TRUE;
-}
-
-/*Build database path*/
-static char*
-build_database_path(const char *database_dir, const char *filename)
-{
-    g_return_val_if_fail(database_dir != NULL && filename != NULL, NULL);
-
-    return g_strdup_printf("%s/%s", database_dir, filename);
-}
-
 /*Get database date*/
 static gboolean
-parse_database_file(database_file_params *params, const char *database_dir, const char *filename)
+parse_database_file(database_file_params *params, int dirfd, const char *filename)
 {
-    g_return_val_if_fail(params != NULL && database_dir != NULL && filename != NULL, FALSE);
+    g_return_val_if_fail(params != NULL && dirfd != -1 && filename != NULL, FALSE);
 
-    char* filepath = build_database_path(database_dir, filename);
-    params->date_string = parse_cvd_header_time(filepath);
-    g_free(filepath);
-
-    if (!params->date_string) return FALSE;
+    params->date_string = parse_cvd_header_time(dirfd, filename);
+    if (params->date_string == NULL) return FALSE;
 
     if (sscanf(params->date_string, "%d %3s %d %d-%d",
                &params->day, params->month_str, &params->year, &params->hour, &params->minute) != 5)
@@ -282,24 +274,31 @@ scan_signature_date(signature_status *result)
     gboolean has_daily = FALSE;
 
     const char *database_dir = CLAMAV_CVD_PATH;
-    if (!check_database_dir (database_dir)) return;
+    int dirfd = open(database_dir, DIRECTORY_OPEN_FLAGS);
+    if (dirfd == -1)
+    {
+        g_critical("Failed to open %s: %s", database_dir, strerror(errno));
+        return;
+    }
 
     /*First try daily.cvd*/
     database_file_params *cvd_date = g_new0(database_file_params, 1);
-    has_daily = parse_database_file (cvd_date, database_dir, "daily.cvd");
+    has_daily = parse_database_file (cvd_date, dirfd, "daily.cvd");
 
     /*Try daily.cld*/
     database_file_params *cld_date = g_new0(database_file_params, 1);
-    has_daily |= parse_database_file (cld_date, database_dir, "daily.cld");
+    has_daily |= parse_database_file (cld_date, dirfd, "daily.cld");
 
     /*If no daily database found, try main.cvd*/
-    if (!has_daily && !parse_database_file (cvd_date, database_dir, "main.cvd"))
+    if (!has_daily && !parse_database_file (cvd_date, dirfd, "main.cvd"))
     {
+        clear_fd(dirfd);
         result->status |= SIGNATURE_STATUS_NOT_FOUND;
         g_free (cvd_date);
         g_free (cld_date);
         return;
     }
+    clear_fd(dirfd);
 
     int cvd_days = date_to_days(cvd_date->year, cvd_date->month, cvd_date->day);
     int cld_days = date_to_days(cld_date->year, cld_date->month, cld_date->day);
