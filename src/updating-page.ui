@@ -7,17 +7,7 @@
     <child>
       <object class="AdwToolbarView" id="toolbar_view">
         <child type="top">
-          <object class="AdwHeaderBar">
-            <child type="start">
-              <object class="GtkButton" id="cancel_button">
-                <property name="can-shrink">true</property>
-                <property name="label" translatable="yes">Cancel</property>
-                <style>
-                  <class name="destructive-action"/>
-                </style>
-              </object>
-            </child>
-          </object>
+          <object class="AdwHeaderBar"/>
         </child>
         <property name="content">
           <object class="AdwStatusPage" id="status_page">

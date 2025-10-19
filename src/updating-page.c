@@ -27,7 +27,6 @@ struct _UpdatingPage {
 
     /* Child */
     AdwToolbarView *toolbar_view;
-    GtkButton *cancel_button;
     AdwStatusPage *status_page;
     GtkButton *close_button;
 
@@ -44,10 +43,6 @@ updating_page_reset (UpdatingPage *self)
     adw_status_page_set_title(self->status_page, gettext("Updating..."));
     adw_status_page_set_description(self->status_page, gettext("This might take a while"));
 
-    /* Enable the cancel button */
-    gtk_widget_set_sensitive(GTK_WIDGET(self->cancel_button), TRUE);
-    gtk_widget_set_visible(GTK_WIDGET(self->cancel_button), TRUE);
-
     /* Disable the close button */
     gtk_widget_set_sensitive(GTK_WIDGET(self->close_button), FALSE);
     gtk_widget_set_visible(GTK_WIDGET(self->close_button), FALSE);
@@ -59,10 +54,6 @@ updating_page_set_final_result (UpdatingPage *self, const char *result, const ch
     adw_status_page_set_title(self->status_page, result);
     adw_status_page_set_description(self->status_page, NULL);
     adw_status_page_set_icon_name(self->status_page, icon_name);
-
-    /* Disable the cancel button */
-    gtk_widget_set_sensitive(GTK_WIDGET(self->cancel_button), FALSE);
-    gtk_widget_set_visible(GTK_WIDGET(self->cancel_button), FALSE);
 
     /* Enable the close button */
     gtk_widget_set_sensitive(GTK_WIDGET(self->close_button), TRUE);
@@ -91,7 +82,6 @@ updating_page_finalize(GObject *object)
 
     /* Reset all child widgets */
     self->toolbar_view = NULL;
-    self->cancel_button = NULL;
     self->status_page = NULL;
     self->close_button = NULL;
     self->spinner = NULL;
@@ -113,7 +103,6 @@ updating_page_class_init(UpdatingPageClass *klass)
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/updating-page.ui");
 
     gtk_widget_class_bind_template_child (widget_class, UpdatingPage, toolbar_view);
-    gtk_widget_class_bind_template_child (widget_class, UpdatingPage, cancel_button);
     gtk_widget_class_bind_template_child (widget_class, UpdatingPage, status_page);
     gtk_widget_class_bind_template_child (widget_class, UpdatingPage, close_button);
 }
