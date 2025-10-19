@@ -13,6 +13,8 @@ src/scan-page.c
 src/scan-page.ui
 src/scanning-page.c
 src/scanning-page.ui
+src/threat-page.c
+src/threat-page.ui
 src/update-signature-page.c
 src/update-signature-page.ui
 src/updating-page.c

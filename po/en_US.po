@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-15 19:05+0800\n"
+"POT-Creation-Date: 2025-10-19 11:17+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -126,28 +126,83 @@ msgstr "Keyboard Shortcuts"
 msgid "_About WuMing"
 msgstr "About WuMing"
 
+#: src/security-overview-page.c:67 src/security-overview-page.c:76
+#: src/security-overview-page.c:162 src/scan-page.c:115 src/scan-page.c:122
+#, fuzzy
+msgid "Scan Has Expired"
+msgstr "Scan Has Expired"
+
+#: src/security-overview-page.c:67 src/security-overview-page.c:76
+#: src/scan-page.c:115 src/scan-page.c:122
+msgid "Scan Has Not Expired"
+msgstr "Scan Has Not Expired"
+
+#: src/security-overview-page.c:109 src/update-signature-page.c:61
+#, fuzzy
+msgid "Signature Is Outdated"
+msgstr "Signature Is Outdated"
+
+#: src/security-overview-page.c:114 src/update-signature-page.c:67
+#, fuzzy
+msgid "No Signature Found"
+msgstr "No Signature Found"
+
+#: src/security-overview-page.c:119 src/update-signature-page.c:73
+#, fuzzy
+msgid "Signature Is Up To Date"
+msgstr "Signature Is Up To Date"
+
+#: src/security-overview-page.c:125 src/update-signature-page.c:79
+#: src/update-signature-page.c:81
+#, fuzzy
+msgid "Unknown Signature Status"
+msgstr "Unknown Signature Status"
+
+#: src/security-overview-page.c:151
+msgid "Poor Status"
+msgstr "Poor Status"
+
+#: src/security-overview-page.c:152
+msgid "Please take action immediately"
+msgstr "Please take action immediately"
+
+#: src/security-overview-page.c:156 src/security-overview-page.c:161
+msgid "Need Attention"
+msgstr "Need Attention"
+
+#: src/security-overview-page.c:157
+msgid "Something wrong with the signature"
+msgstr "Something wrong with the signature"
+
+#: src/security-overview-page.c:166
+msgid "All Good"
+msgstr "All Good"
+
+#: src/security-overview-page.c:167
+msgid "All set, have a nice day"
+msgstr "All set, have a nice day"
+
+#: src/security-overview-page.c:171
+msgid "Unknown Health Level"
+msgstr "Unknown Health Level"
+
+#: src/security-overview-page.c:172
+msgid "Please check the logs for more information"
+msgstr "Please check the logs for more information"
+
 #: src/security-overview-page.ui:27
 #, fuzzy
 msgid "Last Scan Time"
 msgstr "Last Scan Time"
 
-#: src/security-overview-page.ui:39 src/update-signature-page.ui:19
+#: src/security-overview-page.ui:40 src/update-signature-page.ui:19
 msgid "Current Signature Status"
 msgstr "Current Signature Status"
 
-#: src/scan-page.c:72 src/scan-page.c:79
+#: src/scan-page.c:74 src/scan-page.c:81
 #, c-format
 msgid "Last Scan Time: %s"
 msgstr "Last Scan Time: %s"
-
-#: src/scan-page.c:154 src/scan-page.c:163
-#, fuzzy
-msgid "Scan Has Expired"
-msgstr "Scan Has Expired"
-
-#: src/scan-page.c:154 src/scan-page.c:163
-msgid "Scan Has Not Expired"
-msgstr "Scan Has Not Expired"
 
 #: src/scan-page.ui:30
 msgid "Scan file"
@@ -177,26 +232,21 @@ msgstr "Show threats"
 msgid "Close"
 msgstr "Close"
 
-#: src/update-signature-page.c:55
+#: src/threat-page.ui:14
 #, fuzzy
-msgid "Signature Is Outdated"
-msgstr "Signature Is Outdated"
+msgid "Found Threats"
+msgstr "Found Threats"
 
-#: src/update-signature-page.c:56 src/update-signature-page.c:68
+#: src/update-signature-page.c:62 src/update-signature-page.c:74
 #, fuzzy, c-format
 msgid "Current signature date: %d.%d.%d %d:%d"
 msgstr "Current signature date: %d.%d.%d %d:%d"
 
-#: src/update-signature-page.c:57
+#: src/update-signature-page.c:63
 msgid "Outdated!"
 msgstr "Outdated!"
 
-#: src/update-signature-page.c:61
-#, fuzzy
-msgid "No Signature Found"
-msgstr "No Signature Found"
-
-#: src/update-signature-page.c:62
+#: src/update-signature-page.c:68
 #, fuzzy
 msgid ""
 "Warning: No signature found\n"
@@ -205,39 +255,29 @@ msgstr ""
 "Warning: No signature found\n"
 "Please update the signature now!"
 
-#: src/update-signature-page.c:63
+#: src/update-signature-page.c:69
 #, fuzzy
 msgid "No signature"
 msgstr "No signature"
 
-#: src/update-signature-page.c:67
-#, fuzzy
-msgid "Signature Is Up To Date"
-msgstr "Signature Is Up To Date"
-
-#: src/update-signature-page.c:69
+#: src/update-signature-page.c:75
 msgid "Is Up To Date"
 msgstr "Is Up To Date"
 
-#: src/update-signature-page.c:73 src/update-signature-page.c:75
-#, fuzzy
-msgid "Unknown Signature Status"
-msgstr "Unknown Signature Status"
-
-#: src/update-signature-page.c:74
+#: src/update-signature-page.c:80
 #, fuzzy, c-format
 msgid "Signature status: %d"
 msgstr "Unknown signature status: %d"
 
-#: src/update-signature-page.c:91
+#: src/update-signature-page.c:97
 msgid "Enabled"
 msgstr "Enabled"
 
-#: src/update-signature-page.c:92
+#: src/update-signature-page.c:98
 msgid "Disabled"
 msgstr "Disabled"
 
-#: src/update-signature-page.c:93
+#: src/update-signature-page.c:99
 msgid "Failed to check!"
 msgstr "Failed to check!"
 
@@ -294,15 +334,15 @@ msgstr "Permission denied!"
 msgid "Unknown error!"
 msgstr "Unknown error!"
 
-#: src/libs/scan.c:191
+#: src/libs/scan.c:187
 msgid "Delete"
 msgstr "Delete"
 
-#: src/libs/scan.c:224
+#: src/libs/scan.c:220
 msgid "Failed to set file properties"
 msgstr "Failed to set file properties"
 
-#: src/libs/scan.c:309
+#: src/libs/scan.c:305
 #, c-format
 msgid ""
 "%d files scanned\n"
@@ -311,26 +351,26 @@ msgstr ""
 "%d files scanned\n"
 "%d threats found"
 
-#: src/libs/scan.c:331
+#: src/libs/scan.c:327
 msgid "User cancelled the scan"
 msgstr "User cancelled the scan"
 
-#: src/libs/scan.c:408
+#: src/libs/scan.c:404
 msgid "Scan Canceled"
 msgstr "Scan Canceled"
 
-#: src/libs/scan.c:412
+#: src/libs/scan.c:408
 msgid "Scan Complete"
 msgstr "Scan Complete"
 
-#: src/libs/scan.c:416
+#: src/libs/scan.c:412
 msgid "Scan Failed"
 msgstr "Scan Failed"
 
-#: src/libs/update-signature.c:435
+#: src/libs/update-signature.c:161
 msgid "Update Complete"
 msgstr "Update Complete"
 
-#: src/libs/update-signature.c:435
+#: src/libs/update-signature.c:161
 msgid "Update Failed"
 msgstr "Update Failed"
