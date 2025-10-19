@@ -58,6 +58,18 @@
   </screenshots>
 
   <releases>
+    <release version="0.3" date="2025-10-20">
+      <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.3</url>
+      <description translate="no">
+        <p>Add SecurityOverviewPage and UI redesign</p>
+        <ul>
+          <li>Add SecurityOverviewPage</li>
+          <li>Redesign some pages and widgets</li>
+          <li>Minor fixes and some optimizations</li>
+          <li></li>
+        </ul>
+      </description>
+    </release>
     <release version="0.2.beta3" date="2025-9-26">
       <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.2.beta3</url>
       <description translate="no">

@@ -87,10 +87,12 @@ wuming_application_about_action (GSimpleAction *action,
 	                       "application-icon", "com.ericlin.wuming",
 	                       "developer-name", "EricLin",
 	                       "translator-credits", _("translator-credits"),
-	                       "version", "0.2.beta3",
+	                       "version", "0.3",
 	                       "developers", developers,
 	                       "copyright", "© 2025 EricLin",
                            "license-type", GTK_LICENSE_GPL_3_0,
+						   "website", "https://github.com/EricLin0509/WuMing",
+						   "issue-url", "https://github.com/EricLin0509/WuMing/issues",
 	                       NULL);
 }
 
