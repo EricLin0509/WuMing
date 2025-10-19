@@ -31,6 +31,13 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (SecurityOverviewPage, security_overview_page, SECURITY_OVERVIEW, PAGE, GtkWidget)
 
+/* Let `scan_overview_button` connect signal to `clicked` signal of goto scan page */
+/*
+  * @warning
+  * This function should be called when `wuming-window` initialized.
+*/
+void
+security_overview_page_connect_goto_scan_page_signal (SecurityOverviewPage *self);
 
 /* Show the last scan time status on the security overview page. */
 /*

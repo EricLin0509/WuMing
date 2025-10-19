@@ -1,0 +1,14 @@
+[default]
+name=Default
+runtime=host
+toolchain=default
+config-opts=
+run-opts=
+prefix=/home/EricLin/Projects/.gnome-builder/projects/WuMing/install/host
+app-id=
+postbuild=
+prebuild=
+run-command=
+default=true
+
+[default.environment]

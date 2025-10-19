@@ -50,7 +50,7 @@
         </property>
         <child>
           <object class="AdwBreakpoint">
-            <condition>max-width: 450px</condition>
+            <condition>max-width: 500px</condition>
             <setter object="clamp" property="maximum-size">300</setter>
             <setter object="clamp" property="tightening-threshold">150</setter>
             <setter object="box_main" property="orientation">vertical</setter>
