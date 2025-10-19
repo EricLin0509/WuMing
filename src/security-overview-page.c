@@ -42,7 +42,7 @@ static void
 goto_scan_page_cb (GtkButton *button, gpointer user_data)
 {
     AdwViewStack *view_stack = user_data;
-    adw_view_stack_set_visible_child_name (view_stack, gettext("Scan"));
+    adw_view_stack_set_visible_child_name (view_stack, "scan");
 }
 
 /* Let `scan_overview_button` connect signal to `clicked` signal of goto scan page */
