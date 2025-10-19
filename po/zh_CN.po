@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-19 11:17+0800\n"
+"POT-Creation-Date: 2025-10-19 23:02+0800\n"
 "PO-Revision-Date: 2025-08-07 20:36+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -61,8 +61,8 @@ msgctxt "shortcut window"
 msgid "Quit"
 msgstr "退出程序"
 
-#: src/shortcuts-dialog.ui:23 src/wuming-window.ui:78 src/wuming-window.ui:79
-#: src/wuming-window.ui:83 src/wuming-window.ui:141
+#: src/shortcuts-dialog.ui:23 src/wuming-window.ui:78 src/wuming-window.ui:83
+#: src/wuming-window.ui:141
 msgid "Scan"
 msgstr "扫描"
 
@@ -76,7 +76,7 @@ msgctxt "shortcut window"
 msgid "Scan folder"
 msgstr "扫描文件夹"
 
-#: src/shortcuts-dialog.ui:40 src/wuming-window.ui:95 src/wuming-window.ui:96
+#: src/shortcuts-dialog.ui:40 src/wuming-window.ui:95
 msgid "Update Signature"
 msgstr "更新病毒库"
 
@@ -89,11 +89,11 @@ msgstr "更新病毒库"
 msgid "Main Menu"
 msgstr "主菜单"
 
-#: src/wuming-window.ui:61 src/wuming-window.ui:62 src/wuming-window.ui:66
+#: src/wuming-window.ui:61 src/wuming-window.ui:66
 msgid "Security Overview"
 msgstr "安全概览"
 
-#: src/wuming-window.ui:111 src/wuming-window.ui:112
+#: src/wuming-window.ui:111
 msgid "Check History"
 msgstr "查看历史"
 
@@ -121,62 +121,62 @@ msgstr "快捷键"
 msgid "_About WuMing"
 msgstr "关于无名"
 
-#: src/security-overview-page.c:67 src/security-overview-page.c:76
-#: src/security-overview-page.c:162 src/scan-page.c:115 src/scan-page.c:122
+#: src/security-overview-page.c:90 src/security-overview-page.c:99
+#: src/security-overview-page.c:185 src/scan-page.c:117 src/scan-page.c:124
 msgid "Scan Has Expired"
 msgstr "扫描已过期"
 
-#: src/security-overview-page.c:67 src/security-overview-page.c:76
-#: src/scan-page.c:115 src/scan-page.c:122
+#: src/security-overview-page.c:90 src/security-overview-page.c:99
+#: src/scan-page.c:117 src/scan-page.c:124
 msgid "Scan Has Not Expired"
 msgstr "扫描尚未过期"
 
-#: src/security-overview-page.c:109 src/update-signature-page.c:61
+#: src/security-overview-page.c:132 src/update-signature-page.c:61
 msgid "Signature Is Outdated"
 msgstr "病毒库已过期"
 
-#: src/security-overview-page.c:114 src/update-signature-page.c:67
+#: src/security-overview-page.c:137 src/update-signature-page.c:67
 msgid "No Signature Found"
 msgstr "未发现病毒库"
 
-#: src/security-overview-page.c:119 src/update-signature-page.c:73
+#: src/security-overview-page.c:142 src/update-signature-page.c:73
 msgid "Signature Is Up To Date"
 msgstr "病毒库已是最新"
 
-#: src/security-overview-page.c:125 src/update-signature-page.c:79
+#: src/security-overview-page.c:148 src/update-signature-page.c:79
 #: src/update-signature-page.c:81
 msgid "Unknown Signature Status"
 msgstr "未知病毒库状态"
 
-#: src/security-overview-page.c:151
+#: src/security-overview-page.c:174
 msgid "Poor Status"
 msgstr "状态欠佳"
 
-#: src/security-overview-page.c:152
+#: src/security-overview-page.c:175
 msgid "Please take action immediately"
 msgstr "请立即采取措施"
 
-#: src/security-overview-page.c:156 src/security-overview-page.c:161
+#: src/security-overview-page.c:179 src/security-overview-page.c:184
 msgid "Need Attention"
 msgstr "需要注意"
 
-#: src/security-overview-page.c:157
+#: src/security-overview-page.c:180
 msgid "Something wrong with the signature"
 msgstr "病毒库有问题"
 
-#: src/security-overview-page.c:166
+#: src/security-overview-page.c:189
 msgid "All Good"
 msgstr "状态良好"
 
-#: src/security-overview-page.c:167
+#: src/security-overview-page.c:190
 msgid "All set, have a nice day"
 msgstr "一切就绪，祝你有愉快的一天"
 
-#: src/security-overview-page.c:171
+#: src/security-overview-page.c:194
 msgid "Unknown Health Level"
 msgstr "未知健康水平"
 
-#: src/security-overview-page.c:172
+#: src/security-overview-page.c:195
 msgid "Please check the logs for more information"
 msgstr "请检查日志以获取更多信息"
 
@@ -209,7 +209,7 @@ msgstr "扫描中..."
 msgid "Preparing..."
 msgstr "准备中..."
 
-#: src/scanning-page.ui:14 src/updating-page.ui:14
+#: src/scanning-page.ui:14
 msgid "Cancel"
 msgstr "取消"
 
@@ -217,7 +217,7 @@ msgstr "取消"
 msgid "Show threats"
 msgstr "显示威胁"
 
-#: src/scanning-page.ui:50 src/updating-page.ui:31
+#: src/scanning-page.ui:50 src/updating-page.ui:21
 msgid "Close"
 msgstr "关闭"
 
@@ -271,11 +271,11 @@ msgstr "检查失败！"
 msgid "Freshclam Service Status"
 msgstr "Freshclam 服务状态"
 
-#: src/updating-page.c:44
+#: src/updating-page.c:43
 msgid "Updating..."
 msgstr "更新中..."
 
-#: src/updating-page.c:45
+#: src/updating-page.c:44
 msgid "This might take a while"
 msgstr "这可能需要一些时间"
 

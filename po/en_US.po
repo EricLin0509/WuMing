@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-19 11:17+0800\n"
+"POT-Creation-Date: 2025-10-19 23:02+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -63,8 +63,8 @@ msgctxt "shortcut window"
 msgid "Quit"
 msgstr "Quit"
 
-#: src/shortcuts-dialog.ui:23 src/wuming-window.ui:78 src/wuming-window.ui:79
-#: src/wuming-window.ui:83 src/wuming-window.ui:141
+#: src/shortcuts-dialog.ui:23 src/wuming-window.ui:78 src/wuming-window.ui:83
+#: src/wuming-window.ui:141
 msgid "Scan"
 msgstr "Scan"
 
@@ -80,7 +80,7 @@ msgctxt "shortcut window"
 msgid "Scan folder"
 msgstr "Scan folder"
 
-#: src/shortcuts-dialog.ui:40 src/wuming-window.ui:95 src/wuming-window.ui:96
+#: src/shortcuts-dialog.ui:40 src/wuming-window.ui:95
 msgid "Update Signature"
 msgstr "Update Signature"
 
@@ -94,11 +94,11 @@ msgstr "Update Signature"
 msgid "Main Menu"
 msgstr "Main Menu"
 
-#: src/wuming-window.ui:61 src/wuming-window.ui:62 src/wuming-window.ui:66
+#: src/wuming-window.ui:61 src/wuming-window.ui:66
 msgid "Security Overview"
 msgstr "Security Overview"
 
-#: src/wuming-window.ui:111 src/wuming-window.ui:112
+#: src/wuming-window.ui:111
 msgid "Check History"
 msgstr "Check History"
 
@@ -126,67 +126,67 @@ msgstr "Keyboard Shortcuts"
 msgid "_About WuMing"
 msgstr "About WuMing"
 
-#: src/security-overview-page.c:67 src/security-overview-page.c:76
-#: src/security-overview-page.c:162 src/scan-page.c:115 src/scan-page.c:122
+#: src/security-overview-page.c:90 src/security-overview-page.c:99
+#: src/security-overview-page.c:185 src/scan-page.c:117 src/scan-page.c:124
 #, fuzzy
 msgid "Scan Has Expired"
 msgstr "Scan Has Expired"
 
-#: src/security-overview-page.c:67 src/security-overview-page.c:76
-#: src/scan-page.c:115 src/scan-page.c:122
+#: src/security-overview-page.c:90 src/security-overview-page.c:99
+#: src/scan-page.c:117 src/scan-page.c:124
 msgid "Scan Has Not Expired"
 msgstr "Scan Has Not Expired"
 
-#: src/security-overview-page.c:109 src/update-signature-page.c:61
+#: src/security-overview-page.c:132 src/update-signature-page.c:61
 #, fuzzy
 msgid "Signature Is Outdated"
 msgstr "Signature Is Outdated"
 
-#: src/security-overview-page.c:114 src/update-signature-page.c:67
+#: src/security-overview-page.c:137 src/update-signature-page.c:67
 #, fuzzy
 msgid "No Signature Found"
 msgstr "No Signature Found"
 
-#: src/security-overview-page.c:119 src/update-signature-page.c:73
+#: src/security-overview-page.c:142 src/update-signature-page.c:73
 #, fuzzy
 msgid "Signature Is Up To Date"
 msgstr "Signature Is Up To Date"
 
-#: src/security-overview-page.c:125 src/update-signature-page.c:79
+#: src/security-overview-page.c:148 src/update-signature-page.c:79
 #: src/update-signature-page.c:81
 #, fuzzy
 msgid "Unknown Signature Status"
 msgstr "Unknown Signature Status"
 
-#: src/security-overview-page.c:151
+#: src/security-overview-page.c:174
 msgid "Poor Status"
 msgstr "Poor Status"
 
-#: src/security-overview-page.c:152
+#: src/security-overview-page.c:175
 msgid "Please take action immediately"
 msgstr "Please take action immediately"
 
-#: src/security-overview-page.c:156 src/security-overview-page.c:161
+#: src/security-overview-page.c:179 src/security-overview-page.c:184
 msgid "Need Attention"
 msgstr "Need Attention"
 
-#: src/security-overview-page.c:157
+#: src/security-overview-page.c:180
 msgid "Something wrong with the signature"
 msgstr "Something wrong with the signature"
 
-#: src/security-overview-page.c:166
+#: src/security-overview-page.c:189
 msgid "All Good"
 msgstr "All Good"
 
-#: src/security-overview-page.c:167
+#: src/security-overview-page.c:190
 msgid "All set, have a nice day"
 msgstr "All set, have a nice day"
 
-#: src/security-overview-page.c:171
+#: src/security-overview-page.c:194
 msgid "Unknown Health Level"
 msgstr "Unknown Health Level"
 
-#: src/security-overview-page.c:172
+#: src/security-overview-page.c:195
 msgid "Please check the logs for more information"
 msgstr "Please check the logs for more information"
 
@@ -220,7 +220,7 @@ msgstr "Scanning..."
 msgid "Preparing..."
 msgstr "Preparing..."
 
-#: src/scanning-page.ui:14 src/updating-page.ui:14
+#: src/scanning-page.ui:14
 msgid "Cancel"
 msgstr "Cancel"
 
@@ -228,7 +228,7 @@ msgstr "Cancel"
 msgid "Show threats"
 msgstr "Show threats"
 
-#: src/scanning-page.ui:50 src/updating-page.ui:31
+#: src/scanning-page.ui:50 src/updating-page.ui:21
 msgid "Close"
 msgstr "Close"
 
@@ -286,11 +286,11 @@ msgstr "Failed to check!"
 msgid "Freshclam Service Status"
 msgstr "Freshclam Service Status"
 
-#: src/updating-page.c:44
+#: src/updating-page.c:43
 msgid "Updating..."
 msgstr "Updating..."
 
-#: src/updating-page.c:45
+#: src/updating-page.c:44
 msgid "This might take a while"
 msgstr "This might take a while"
 
