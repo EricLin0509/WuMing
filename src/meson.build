@@ -11,7 +11,6 @@ wuming_sources = [
 ]
 
 wuming_deps = [
-  dependency('libclamav'),
   dependency('dbus-1'),
   dependency('gtk4'),
   dependency('libadwaita-1', version: '>= 1.4'),

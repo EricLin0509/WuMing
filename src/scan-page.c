@@ -108,8 +108,10 @@ scan_page_show_last_scan_time_status (ScanPage *self, GSettings *setting, gboole
   GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
 
   gboolean is_null = (setting == NULL);
+
   gchar *title = NULL;
   gchar *icon_name = NULL;
+
   if (is_null) // No `GSettings`, use `is_expired` directly
   {
     title = is_expired ? gettext("Scan Has Expired") : gettext("Scan Has Not Expired");
