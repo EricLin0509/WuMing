@@ -32,7 +32,6 @@
 
 #define CLAMAV_CVD_PATH "/var/lib/clamav"
 
-#define HEADER_SIZE 128
 #define HEADER_COLON_COUNT 8 // The header format is `ClamAV-VDB:time:version:sigs:fl:md5:dsig:builder:stime`, so there are 8 colons
 
 typedef struct signature_status {
@@ -153,14 +152,9 @@ parse_cvd_header_time(const char *filepath)
         return NULL;
     }
 
-    if (file_stat.st_size < HEADER_SIZE)
-    {
-        g_critical("File size is too small: %s", filepath);
-        close(descriptor);
-        return NULL;
-    }
+    const size_t file_size = (size_t)file_stat.st_size;
 
-    char *header = mmap(NULL, HEADER_SIZE, PROT_READ, MAP_PRIVATE, descriptor, 0);
+    char *header = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, descriptor, 0);
     if (header == MAP_FAILED)
     {
         g_critical("Failed to mmap %s: %s", filepath, strerror(errno));
@@ -173,7 +167,7 @@ parse_cvd_header_time(const char *filepath)
     int colons_pos[HEADER_COLON_COUNT] = {-1, -1, -1, -1, -1, -1, -1, -1}; // Position of the colons in the header
     int colon_count = 0;
 
-    for (int i = 0; i < HEADER_SIZE && colon_count < HEADER_COLON_COUNT; i++)
+    for (int i = 0; i < file_size && colon_count < HEADER_COLON_COUNT; i++)
     {
         if (header[i] == ':') colons_pos[colon_count++] = i; // Find the colons in the header
     }
@@ -181,7 +175,7 @@ parse_cvd_header_time(const char *filepath)
     if (colon_count < HEADER_COLON_COUNT)
     {
         g_critical("Invalid header: %s", filepath);
-        munmap(header, HEADER_SIZE);
+        munmap(header, file_size);
         return NULL;
     }
 
@@ -191,7 +185,7 @@ parse_cvd_header_time(const char *filepath)
 
     result = g_strndup(str_start, size);
 
-    munmap(header, HEADER_SIZE);
+    munmap(header, file_size);
     header = NULL;
 
     return result;
