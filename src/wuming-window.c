@@ -65,10 +65,6 @@ struct _WumingWindow
     /* Threat Navigation Page */
     AdwNavigationPage   *threat_nav_page;
     ThreatPage          *threat_page;
-
-    /* Private */
-    UpdateContext       *update_context;
-    ScanContext         *scan_context;
 };
 
 G_DEFINE_FINAL_TYPE (WumingWindow, wuming_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -110,24 +106,6 @@ wuming_window_is_current_page_tag (WumingWindow *self, const char *tag)
     return g_strcmp0 (current_tag, tag) == 0;
 }
 
-/* Get `UpdateContext` */
-UpdateContext *
-wuming_window_get_update_context (WumingWindow *self)
-{
-    g_return_val_if_fail(self, NULL);
-
-    return self->update_context;
-}
-
-/* Get `ScanContext` */
-ScanContext *
-wuming_window_get_scan_context (WumingWindow *self)
-{
-    g_return_val_if_fail(self, NULL);
-
-    return self->scan_context;
-}
-
 /* Set hide the window on close */
 void
 wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close)
@@ -147,9 +125,6 @@ static void
 wuming_window_dispose (GObject *object)
 {
     WumingWindow *self = WUMING_WINDOW (object);
-
-    update_context_clear (&self->update_context);
-    scan_context_clear (&self->scan_context);
 
     GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
     g_clear_pointer (&navigation_view, gtk_widget_unparent);
@@ -285,6 +260,9 @@ wuming_window_init (WumingWindow *self)
 
     signature_status_clear (&result);
 
-    self->update_context = update_context_new(self, self->security_overview_page, self->update_signature_page, self->updating_page);
-    self->scan_context = scan_context_new(self, self->security_overview_page, self->scan_page, self->scanning_page, self->threat_page);
+    UpdateContext *update_context = update_context_new(self, self->security_overview_page, self->update_signature_page, self->updating_page);
+    update_signature_page_set_update_context (self->update_signature_page, update_context);
+
+    ScanContext *scan_context = scan_context_new(self, self->security_overview_page, self->scan_page, self->scanning_page, self->threat_page);
+    scan_page_set_scan_context (self->scan_page, scan_context);
 }

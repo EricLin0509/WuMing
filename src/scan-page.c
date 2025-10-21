@@ -21,13 +21,9 @@
 #include <glib/gi18n.h>
 
 #include "libs/check-scan-time.h"
-#include "libs/scan.h"
 
-#include "scan-page.h"
 #include "wuming-window.h"
-#include "security-overview-page.h"
-#include "scanning-page.h"
-#include "threat-page.h"
+#include "scan-page.h"
 
 struct _ScanPage {
   GtkWidget          parent_instance;
@@ -36,6 +32,9 @@ struct _ScanPage {
   GtkWidget          *break_point;
   GtkButton          *scan_a_file_button;
   GtkButton          *scan_a_folder_button;
+
+  /* Private */
+  ScanContext        *scan_context;
 };
 
 G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
@@ -157,13 +156,13 @@ save_last_scan_time (GSettings *setting, gboolean need_timestamp)
   return need_timestamp ? g_steal_pointer(&timestamp) : NULL;
 }
 
-static void
-reset_and_start_scan (ScanPage *self, char *path)
+/* Set the `ScanContext` object to the `ScanPage` object */
+void
+scan_page_set_scan_context (ScanPage *self, ScanContext *context)
 {
-  WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
-  ScanContext *context = wuming_window_get_scan_context (window);
+  g_return_if_fail (self && context);
 
-  start_scan (context, path);
+  self->scan_context = context;
 }
 
 static void
@@ -178,8 +177,8 @@ start_scan_file (GObject *source_object, GAsyncResult *res, gpointer data)
     {
       char *filepath = g_file_get_path (file);
 
-      /* Reset widget and start scannning */
-      reset_and_start_scan (self, filepath);
+      /* Start scannning */
+      start_scan (self->scan_context, filepath);
 
       g_object_unref (file); // Only unref the file if it is successfully opened
     }
@@ -206,8 +205,8 @@ start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
     {
       char *folderpath = g_file_get_path (file);
 
-      /* Reset widget and start scannning */
-      reset_and_start_scan (self, folderpath);
+      /* Start scannning */
+      start_scan (self->scan_context, folderpath);
 
       g_object_unref (file); // Only unref the file if it is successfully opened
     }
@@ -286,8 +285,10 @@ static void
 scan_page_dispose(GObject *gobject)
 {
   ScanPage *self = SCAN_PAGE (gobject);
-  GApplication *app = g_application_get_default();
 
+  scan_context_clear(&self->scan_context);
+
+  GApplication *app = g_application_get_default();
   g_action_map_remove_action_entries (G_ACTION_MAP (app),
 	                                 scan_actions,
 	                                 G_N_ELEMENTS (scan_actions));

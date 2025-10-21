@@ -23,6 +23,7 @@
 #include <adwaita.h>
 
 #include "libs/signature-status.h"
+#include "libs/update-signature.h"
 
 G_BEGIN_DECLS
 
@@ -38,5 +39,8 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 
 void
 update_signature_page_show_servicestat(UpdateSignaturePage *self);
+
+void
+update_signature_page_set_update_context(UpdateSignaturePage *self, UpdateContext *context);
 
 G_END_DECLS

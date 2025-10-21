@@ -227,7 +227,7 @@ clear_threat_paths(ScanContext *ctx)
   g_return_if_fail(ctx);
 
   g_mutex_lock(&ctx->threats_mutex);
-  threat_page_clear(ctx->threat_page);
+  if (ctx->threat_page && THREAT_IS_PAGE(ctx->threat_page)) threat_page_clear(ctx->threat_page);
 
   if (ctx->threat_paths)
   {

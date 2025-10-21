@@ -55,14 +55,6 @@ wuming_window_get_current_page_tag (WumingWindow *self);
 gboolean
 wuming_window_is_current_page_tag (WumingWindow *self, const char *tag);
 
-/* Get `UpdateContext` */
-UpdateContext *
-wuming_window_get_update_context (WumingWindow *self);
-
-/* Get `ScanContext` */
-ScanContext *
-wuming_window_get_scan_context (WumingWindow *self);
-
 /* Set hide the window on close */
 void
 wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close);
