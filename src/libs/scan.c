@@ -26,11 +26,17 @@
 #include "subprocess-components.h"
 #include "scan.h"
 
+#include "../wuming-window.h"
+#include "../security-overview-page.h"
+#include "../scan-page.h"
+#include "../scanning-page.h"
+#include "../threat-page.h"
+
 #include "delete-file.h"
 
 #define CLAMSCAN_PATH "/usr/bin/clamscan"
 
-typedef struct {
+typedef struct ScanContext {
   /* Protected by mutex */
   GMutex mutex; // Only protect initialization, "completed", "success" and "cancellable" fields
   gboolean completed;
@@ -47,55 +53,12 @@ typedef struct {
 
   /*No need to protect these fields because they always same after initialize*/
   WumingWindow *window; // The main window
+  SecurityOverviewPage *security_overview_page; // The security overview page
+  ScanPage *scan_page; // The scan page
   ScanningPage *scanning_page; // The scanning page
   char *path; // file/folder path
 
-  /* Protected by atomic operation */
-  volatile gint ref_count;
 } ScanContext;
-
-static ScanContext*
-scan_context_new(void)
-{
-  ScanContext *ctx = g_new0(ScanContext, 1);
-  g_mutex_init(&ctx->mutex);
-  g_mutex_init(&ctx->threats_mutex);
-
-  ctx->cancellable = g_cancellable_new(); // Initialize the cancellable object
-  ctx->ref_count = 1;
-  return ctx;
-}
-
-static gpointer
-scan_context_ref(gpointer ctx)
-{
-  ScanContext *context = (ScanContext*)ctx;
-  g_return_val_if_fail(context != NULL, NULL);
-  g_return_val_if_fail(g_atomic_int_get(&context->ref_count) > 0, NULL);
-  if (context) g_atomic_int_inc(&context->ref_count);
-  return context;
-}
-
-static void
-scan_context_unref(gpointer ctx)
-{
-  ScanContext *context = (ScanContext*)ctx;
-  if (context && g_atomic_int_dec_and_test(&context->ref_count))
-  {
-    scanning_page_revoke_close_signal(context->scanning_page); // Revoke the close signal
-    scanning_page_revoke_cancel_signal(context->scanning_page); // Revoke the cancel signal
-
-    if (context->cancellable) g_object_unref(context->cancellable);
-
-    g_mutex_clear(&context->mutex);
-    g_mutex_clear(&context->threats_mutex);
-
-    g_clear_pointer(&context->path, g_free);
-
-    g_atomic_int_set(&context->ref_count, INT_MIN);
-    g_free(context);
-  }
-}
 
 /* thread-safe method to get/set states */
 static void
@@ -142,11 +105,17 @@ set_cancel_scan(ScanContext *ctx)
   g_mutex_unlock(&ctx->mutex);
 }
 
-/* thread-safe method to inc/get total threats */
+/* thread-safe method to inc/get/reset total threats */
 static void
 inc_total_threats(ScanContext *ctx)
 {
   g_atomic_int_inc(&ctx->total_threats);
+}
+
+static void
+reset_total_threats(ScanContext *ctx)
+{
+  g_atomic_int_set(&ctx->total_threats, 0);
 }
 
 static gint
@@ -155,7 +124,7 @@ get_total_threats(ScanContext *ctx)
   return g_atomic_int_get(&ctx->total_threats);
 }
 
-/* thread-safe method to inc/get total files */
+/* thread-safe method to inc/get/reset total files */
 static void
 inc_total_files(ScanContext *ctx)
 {
@@ -166,6 +135,12 @@ static gint
 get_total_files(ScanContext *ctx)
 {
   return g_atomic_int_get(&ctx->total_files);
+}
+
+static void
+reset_total_files(ScanContext *ctx)
+{
+  g_atomic_int_set(&ctx->total_files, 0);
 }
 
 /* Create a new `AdwActionRow` for the threat list view */
@@ -263,15 +238,6 @@ clear_threat_paths(ScanContext *ctx)
   g_mutex_unlock(&ctx->threats_mutex);
 }
 
-static void
-resource_clean_up(gpointer user_data)
-{
-  IdleData *data = (IdleData *)user_data; // Cast the data to IdleData struct
-  scan_context_unref (data->context);
-  g_free(data->message);
-  g_free(data);
-}
-
 /* The ui callback function for `process_output_lines()` */
 static gboolean
 scan_ui_callback(gpointer user_data)
@@ -279,8 +245,7 @@ scan_ui_callback(gpointer user_data)
   IdleData *data = (IdleData *)user_data;
   ScanContext *ctx = data->context;
 
-  g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
-                      G_SOURCE_REMOVE);
+  g_return_val_if_fail(data && ctx, G_SOURCE_REMOVE);
 
   char *status_marker = NULL; // Check file is OK or FOUND
 
@@ -317,8 +282,7 @@ scan_complete_callback(gpointer user_data)
   IdleData *data = user_data;
   ScanContext *ctx = data->context;
 
-  g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
-                      G_SOURCE_REMOVE);
+  g_return_val_if_fail(data && ctx, G_SOURCE_REMOVE);
 
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
@@ -354,7 +318,6 @@ scan_thread(gpointer data)
     if (!spawn_new_process(pipefd, &pid, 
         CLAMSCAN_PATH, "clamscan", ctx->path, "--recursive", NULL))
     {
-        scan_context_unref(ctx);
         return NULL;
     }
 
@@ -386,7 +349,7 @@ scan_thread(gpointer data)
 
         if (ready > 0)
         {
-          process_output_lines(&io_ctx, scan_context_ref, ctx, scan_ui_callback, resource_clean_up);
+          process_output_lines(&io_ctx, ctx, scan_ui_callback);
 
           if (!handle_io_event(&io_ctx))
           {
@@ -414,7 +377,7 @@ scan_thread(gpointer data)
         status_text = gettext("Scan Failed");
     }
 
-    send_final_message(scan_context_ref, (void *)ctx, status_text, success, scan_complete_callback, resource_clean_up);
+    send_final_message((void *)ctx, status_text, success, scan_complete_callback);
 
     close(pipefd[0]);
     return NULL;
@@ -427,31 +390,111 @@ clear_box_list_and_close(ScanContext *ctx)
   clear_threat_paths(ctx); // Clear the list view
 
   wuming_window_pop_page(ctx->window); // Pop the scanning page
-  scan_context_unref(ctx); // unref at here to avoid fucked up the `ScanContext` before getting the `threat_list_box`
 }
 
-void
-start_scan(WumingWindow *window, ScanningPage *scanning_page, ThreatPage *threat_page, const char *path)
+static void
+scan_context_clear_path(ScanContext *ctx)
 {
-  ScanContext *ctx = scan_context_new();
+  g_return_if_fail(ctx);
 
-  g_mutex_lock(&ctx->mutex);
+  g_clear_pointer(&ctx->path, g_free);
+}
+
+static void
+scan_context_add_path(ScanContext *ctx, const char *path)
+{
+  g_return_if_fail(ctx && path);
+
+  if (ctx->path) scan_context_clear_path(ctx); // If have a path, clear it first
+
+  ctx->path = g_steal_pointer(&path); // Add the new path to the context
+}
+
+ScanContext *
+scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_page, ScanPage *scan_page, ScanningPage *scanning_page, ThreatPage *threat_page)
+{
+  g_return_val_if_fail(window && scanning_page && threat_page, NULL);
+
+  ScanContext *ctx = g_new0(ScanContext, 1);
+  g_mutex_init(&ctx->mutex);
+  g_mutex_init(&ctx->threats_mutex);
+
   ctx->completed = FALSE;
   ctx->success = FALSE;
   ctx->total_files = 0;
   ctx->total_threats = 0;
   ctx->threat_paths = NULL;
   ctx->window = window;
+  ctx->security_overview_page = security_overview_page;
+  ctx->scan_page = scan_page;
   ctx->scanning_page = scanning_page;
   ctx->threat_page = threat_page;
-  ctx->path = path;
-  ctx->ref_count = G_ATOMIC_REF_COUNT_INIT;
-  g_mutex_unlock(&ctx->mutex);
+  ctx->path = NULL;
 
-  wuming_window_set_hide_on_close(window, TRUE); // Hide the window instead of closing it
+  ctx->cancellable = g_cancellable_new(); // Initialize the cancellable object
 
-  scanning_page_set_close_signal (scanning_page, (GCallback) clear_box_list_and_close, ctx);
-  scanning_page_set_cancel_signal (scanning_page, (GCallback) set_cancel_scan, ctx);
+  /* Bind the signal */
+  scanning_page_set_close_signal(scanning_page, (GCallback) clear_box_list_and_close, ctx);
+  scanning_page_set_cancel_signal(scanning_page, (GCallback) set_cancel_scan, ctx);
+
+  return ctx;
+}
+
+void
+scan_context_clear(ScanContext **ctx)
+{
+  g_return_if_fail(ctx && *ctx);
+
+  /* Revoke the signal */
+  scanning_page_revoke_close_signal((*ctx)->scanning_page);
+  scanning_page_revoke_cancel_signal((*ctx)->scanning_page);
+
+  if ((*ctx)->cancellable) g_object_unref((*ctx)->cancellable);
+
+  g_mutex_clear(&(*ctx)->mutex);
+  g_mutex_clear(&(*ctx)->threats_mutex);
+
+  if ((*ctx)->path) scan_context_clear_path(*ctx); // Clear the path if have one
+  clear_threat_paths(*ctx); // Clear the list view
+
+  g_free(*ctx);
+  *ctx = NULL;
+}
+
+static void
+scan_context_reset(ScanContext *ctx)
+{
+  g_return_if_fail(ctx);
+
+  /* Reset `ScanContext` */
+  g_cancellable_reset(ctx->cancellable); // Reset the cancellable object
+  clear_threat_paths(ctx); // Clear the list view
+  reset_total_files(ctx); // Reset the total files
+  reset_total_threats(ctx); // Reset the total threats
+  set_completion_state(ctx, FALSE, FALSE); // Reset the completion state
+
+  /* Reset Widgets */
+  scanning_page_reset(ctx->scanning_page);
+
+  g_autofree gchar *timestamp = save_last_scan_time(NULL, TRUE);
+  scan_page_show_last_scan_time(ctx->scan_page, NULL, timestamp);
+  scan_page_show_last_scan_time_status(ctx->scan_page, NULL, FALSE);
+  security_overview_page_show_last_scan_time_status(ctx->security_overview_page, NULL, FALSE);
+  security_overview_page_show_health_level(ctx->security_overview_page);
+}
+
+void
+start_scan(ScanContext *ctx, const char *path)
+{
+  g_return_if_fail(ctx && path);
+
+  scan_context_add_path(ctx, path);
+
+  /* Reset `ScanContext` */
+  scan_context_reset(ctx);
+
+  wuming_window_push_page_by_tag(ctx->window, "scanning_nav_page");
+  wuming_window_set_hide_on_close(ctx->window, TRUE); // Hide the window instead of closing it
 
   /* Start scan thread */
   g_thread_new("scan-thread", scan_thread, ctx);

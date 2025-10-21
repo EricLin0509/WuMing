@@ -65,6 +65,20 @@ scan_page_show_last_scan_time (ScanPage *self, GSettings *setting, const gchar *
 void
 scan_page_show_last_scan_time_status (ScanPage *self, GSettings *setting, gboolean is_expired);
 
+/* Save last scan time to GSettings */
+/*
+  * @param setting
+  * `GSettings` object to save last scan time, if this is NULL, it will create a new one.
+  * 
+  * @param need_timestamp [optional]
+  * If this is true, it will generate a new timestamp and save it to GSettings. otherwise return NULL
+  * 
+  * @warning
+  * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
+*/
+gchar *
+save_last_scan_time (GSettings *setting, gboolean need_timestamp);
+
 GtkWidget *
 scan_page_new(void);
 

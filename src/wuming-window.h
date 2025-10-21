@@ -22,6 +22,9 @@
 
 #include <adwaita.h>
 
+#include "libs/update-signature.h"
+#include "libs/scan.h"
+
 G_BEGIN_DECLS
 
 #define WUMING_TYPE_WINDOW (wuming_window_get_type())
@@ -40,22 +43,6 @@ wuming_window_pop_page (WumingWindow *self);
 const char *
 wuming_window_get_current_page_tag (WumingWindow *self);
 
-/* Get `SecurityOverviewPage` */
-GtkWidget *
-wuming_window_get_security_overview_page (WumingWindow *self);
-
-/* Get `UpdatingPage` */
-GtkWidget *
-wuming_window_get_updating_page (WumingWindow *self);
-
-/* Get `ScanningPage` */
-GtkWidget *
-wuming_window_get_scanning_page (WumingWindow *self);
-
-/* Get `ThreatPage` */
-GtkWidget *
-wuming_window_get_threat_page (WumingWindow *self);
-
 /* Compare current page tag with the given tag */
 /*
   * @param self
@@ -67,6 +54,14 @@ wuming_window_get_threat_page (WumingWindow *self);
 */
 gboolean
 wuming_window_is_current_page_tag (WumingWindow *self, const char *tag);
+
+/* Get `UpdateContext` */
+UpdateContext *
+wuming_window_get_update_context (WumingWindow *self);
+
+/* Get `ScanContext` */
+ScanContext *
+wuming_window_get_scan_context (WumingWindow *self);
 
 /* Set hide the window on close */
 void

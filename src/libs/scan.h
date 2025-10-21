@@ -22,9 +22,19 @@
 
 #include <adwaita.h>
 
-#include "../wuming-window.h"
-#include "../scanning-page.h"
-#include "../threat-page.h"
+typedef struct _WumingWindow WumingWindow;
+typedef struct _SecurityOverviewPage SecurityOverviewPage;
+typedef struct _ScanPage ScanPage;
+typedef struct _ScanningPage ScanningPage;
+typedef struct _ThreatPage ThreatPage;
+
+typedef struct ScanContext ScanContext;
+
+ScanContext *
+scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_page, ScanPage *scan_page, ScanningPage *scanning_page, ThreatPage *threat_page);
 
 void
-start_scan(WumingWindow *window, ScanningPage *scanning_page, ThreatPage *threat_page, const char *path);
+scan_context_clear(ScanContext **ctx);
+
+void
+start_scan(ScanContext *ctx, const char *path);

@@ -26,11 +26,16 @@
 #include "update-signature.h"
 #include "signature-status.h"
 
+#include "../wuming-window.h"
+#include "../security-overview-page.h"
+#include "../updating-page.h"
+#include "../update-signature-page.h"
+
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
 #define PKEXEC_PATH "/usr/bin/pkexec"
 
 /*Update Signature*/
-typedef struct {
+typedef struct UpdateContext {
   /* Protected by mutex */
   GMutex mutex; // Only protect "completed" and "success" fields
   gboolean completed;
@@ -42,44 +47,10 @@ typedef struct {
   UpdateSignaturePage *update_signature_page;
   UpdatingPage *updating_page;
 
-  /* Protected by atomic ref count */
-  volatile gint ref_count;
 } UpdateContext;
 
-static UpdateContext*
-update_context_new(void)
-{
-  UpdateContext *ctx = g_new0(UpdateContext, 1);
-  g_mutex_init(&ctx->mutex);
-  ctx->ref_count = 1;
-  return ctx;
-}
-
-static gpointer
-update_context_ref(gpointer ctx)
-{
-  UpdateContext *context = (UpdateContext*)ctx;
-  g_return_val_if_fail(context != NULL, NULL);
-  g_return_val_if_fail(g_atomic_int_get(&context->ref_count) > 0, NULL);
-  if (context) g_atomic_int_inc(&context->ref_count);
-  return context;
-}
-
-static void
-update_context_unref(gpointer ctx)
-{
-  UpdateContext *context = (UpdateContext*)ctx;
-  if (context && g_atomic_int_dec_and_test(&context->ref_count))
-  {
-    g_mutex_clear(&context->mutex);
-    g_atomic_int_set(&context->ref_count, INT_MIN);
-    g_free(context);
-  }
-}
-
-
 /* thread-safe method to get/set states */
-static void
+void
 set_completion_state(UpdateContext *ctx, gboolean completed, gboolean success)
 {
   g_mutex_lock(&ctx->mutex);
@@ -98,23 +69,13 @@ get_completion_state(UpdateContext *ctx, gboolean *out_completed, gboolean *out_
   g_mutex_unlock(&ctx->mutex);
 }
 
-static void
-resource_clean_up(gpointer user_data)
-{
-  IdleData *data = (IdleData *)user_data; // Cast the data to IdleData struct
-  update_context_unref (data->context);
-  g_free(data->message);
-  g_free(data);
-}
-
 static gboolean
 update_complete_callback(gpointer user_data)
 {
   IdleData *data = user_data;
   UpdateContext *ctx = data->context;
 
-  g_return_val_if_fail(data && ctx && g_atomic_int_get(&ctx->ref_count) > 0, 
-                      G_SOURCE_REMOVE);
+  g_return_val_if_fail(data && ctx, G_SOURCE_REMOVE);
 
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
@@ -150,7 +111,6 @@ update_thread(gpointer data)
     if (!spawn_new_process_no_pipes(&pid,
         PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL))
     {
-        update_context_unref(ctx);
         return NULL;
     }
 
@@ -162,28 +122,61 @@ update_thread(gpointer data)
     const char *status_text = success ?
         gettext("Update Complete") : gettext("Update Failed");
 
-    send_final_message(update_context_ref, (void *)ctx, status_text, success, update_complete_callback, resource_clean_up);
-    
-    update_context_unref(ctx);
+    send_final_message((void *)ctx, status_text, success, update_complete_callback);
+
     return NULL;
 }
 
-void
-start_update(WumingWindow *window, SecurityOverviewPage *security_overview_page, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page)
+UpdateContext *
+update_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_page, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page)
 {
-  UpdateContext *ctx = update_context_new();
+  g_return_val_if_fail(window && security_overview_page && update_signature_page && updating_page, NULL);
 
-  g_mutex_lock(&ctx->mutex);
+  UpdateContext *ctx = g_new0(UpdateContext, 1);
+  g_mutex_init(&ctx->mutex);
+
   ctx->completed = FALSE;
   ctx->success = FALSE;
   ctx->window = window;
   ctx->security_overview_page = security_overview_page;
   ctx->update_signature_page = update_signature_page;
   ctx->updating_page = updating_page;
-  ctx->ref_count = G_ATOMIC_REF_COUNT_INIT;
-  g_mutex_unlock(&ctx->mutex);
 
-  wuming_window_set_hide_on_close(window, TRUE); // Hide the window instead of closing it
+  return ctx;
+}
+
+void
+update_context_clear(UpdateContext **ctx)
+{
+  g_return_if_fail(ctx && *ctx);
+
+  g_mutex_clear(&(*ctx)->mutex);
+  g_free(*ctx);
+  *ctx = NULL;
+}
+
+static void
+update_context_reset(UpdateContext *ctx)
+{
+  g_return_if_fail(ctx);
+
+  /* Reset `UpdateContext` */
+  set_completion_state(ctx, FALSE, FALSE);
+
+  /* Reset Widgets */
+  updating_page_reset(ctx->updating_page);
+}
+
+void
+start_update(UpdateContext *ctx)
+{
+  g_return_if_fail(ctx);
+
+  /* Reset `UpdateContext` */
+  update_context_reset(ctx);
+
+  wuming_window_push_page_by_tag (ctx->window, "updating_nav_page");
+  wuming_window_set_hide_on_close(ctx->window, TRUE); // Hide the window instead of closing it
 
   /* Start update thread */
   g_thread_new("update-thread", update_thread, ctx);

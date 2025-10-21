@@ -31,7 +31,6 @@
 #define BASE_TIMEOUT_MS 50
 #define MAX_TIMEOUT_MS 1000
 
-typedef gpointer (*RefFunc)(gpointer context); // reference function for the context data
 typedef void (*SetStatusFunc) (gpointer context, gboolean completed, gboolean success); // set the status of the context data
 
 typedef struct {
@@ -64,24 +63,21 @@ handle_io_event(IOContext *io_ctx);
 /*
   * io_ctx: the IO context
   * context: the context data for the callback function
-  * ref_function: the reference function for the context data
   * callback_function: the callback function to process the output lines
-  * destroy_notify: the cleanup function for the context data
 */
 void
-process_output_lines(IOContext *io_ctx, RefFunc ref_function, gpointer context,
-                      GSourceFunc callback_function, GDestroyNotify destroy_notify);
+process_output_lines(IOContext *io_ctx, gpointer context,
+                      GSourceFunc callback_function);
 
 /* Send the final message from the subprocess to the main process */
 /*
-  * ref_function: the reference function for the context data
   * context: the context data for the callback function
   * message: the final message from the subprocess
   * is_success: whether the subprocess is exited successfully or not
 */
 void
-send_final_message(RefFunc ref_function, gpointer context, const char *message, gboolean is_success,
-                    GSourceFunc callback_function, GDestroyNotify destroy_notify);
+send_final_message(gpointer context, const char *message, gboolean is_success,
+                    GSourceFunc callback_function);
 
 /* Spawn a new process */
 // path & command: use for `execv()`

@@ -140,7 +140,7 @@ scan_page_show_last_scan_time_status (ScanPage *self, GSettings *setting, gboole
   * @warning
   * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
 */
-static gchar *
+gchar *
 save_last_scan_time (GSettings *setting, gboolean need_timestamp)
 {
   gboolean is_null = (setting == NULL);
@@ -161,22 +161,9 @@ static void
 reset_and_start_scan (ScanPage *self, char *path)
 {
   WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
-  SecurityOverviewPage *security_overview_page = SECURITY_OVERVIEW_PAGE (wuming_window_get_security_overview_page (window));
-  ScanningPage *scanning_page = SCANNING_PAGE (wuming_window_get_scanning_page (window));
-  ThreatPage *threat_page = THREAT_PAGE (wuming_window_get_threat_page (window));
+  ScanContext *context = wuming_window_get_scan_context (window);
 
-  g_autofree gchar *timestamp = save_last_scan_time (NULL, TRUE);
-  scan_page_show_last_scan_time (self, NULL, timestamp);
-  scan_page_show_last_scan_time_status (self, NULL, FALSE);
-  security_overview_page_show_last_scan_time_status (security_overview_page, NULL, FALSE);
-  security_overview_page_show_health_level (security_overview_page);
-
-  /* Reset widget and start scanning */
-  scanning_page_reset (scanning_page);
-  threat_page_clear (threat_page);
-  wuming_window_push_page_by_tag (window, "scanning_nav_page");
-
-  start_scan (window, scanning_page, threat_page, path);
+  start_scan (context, path);
 }
 
 static void

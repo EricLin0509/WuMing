@@ -43,9 +43,6 @@ G_DEFINE_FINAL_TYPE(ScanningPage, scanning_page, GTK_TYPE_WIDGET)
 void
 scanning_page_reset (ScanningPage *self)
 {
-    scanning_page_revoke_close_signal(self);
-    scanning_page_revoke_cancel_signal(self);
-
     adw_status_page_set_title(self->status_page, gettext("Scanning..."));
     adw_status_page_set_description(self->status_page, gettext("Preparing..."));
     adw_status_page_set_paintable(self->status_page, GDK_PAINTABLE(self->spinner));

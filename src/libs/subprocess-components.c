@@ -104,28 +104,35 @@ handle_io_event(IOContext *io_ctx)
     return FALSE;
 }
 
+static void
+resource_clean_up(gpointer user_data)
+{
+  IdleData *data = (IdleData *)user_data; // Cast the data to IdleData struct
+  g_free(data->message);
+  g_free(data);
+}
+
 /* Process the subprocess stdout message */
 /*
   * io_ctx: the IO context
   * context: the context data for the callback function
-  * ref_function: the reference function for the context data
   * callback_function: the callback function to process the output lines
   * destroy_notify: the cleanup function for the context data
 */
 void
-process_output_lines(IOContext *io_ctx, RefFunc ref_function, gpointer context,
-                      GSourceFunc callback_function, GDestroyNotify destroy_notify)
+process_output_lines(IOContext *io_ctx, gpointer context,
+                      GSourceFunc callback_function)
 {
     g_return_if_fail(io_ctx != NULL);
-    g_return_if_fail(callback_function != NULL && destroy_notify != NULL);
-    g_return_if_fail(ref_function != NULL && context != NULL);
+    g_return_if_fail(callback_function != NULL);
+    g_return_if_fail(context != NULL);
 
     char *line;
     while ((line = ring_buffer_find_new_line(io_ctx->ring_buf)) != NULL)
     {
         IdleData *data = g_new0(IdleData, 1);
         data->message = line;
-        data->context = ref_function(context); // Add a reference to the context data and store it in the IdleData
+        data->context = context;
 
         /* Send the message to the main process */
         g_main_context_invoke_full( // Invoke the callback function in the main context
@@ -133,13 +140,12 @@ process_output_lines(IOContext *io_ctx, RefFunc ref_function, gpointer context,
                        G_PRIORITY_HIGH_IDLE,
                        (GSourceFunc) callback_function,
                        data,
-                       (GDestroyNotify)destroy_notify);
+                       (GDestroyNotify)resource_clean_up);
     }
 }
 
 /* Send the final message from the subprocess to the main process */
 /*
-  * ref_function: the reference function for the context data
   * context: the context data for the callback function
   * message: the final message from the subprocess
   * is_success: whether the subprocess is exited successfully or not
@@ -147,17 +153,17 @@ process_output_lines(IOContext *io_ctx, RefFunc ref_function, gpointer context,
   * destroy_notify: the cleanup function for the context data
 */
 void
-send_final_message(RefFunc ref_function, gpointer context, const char *message, gboolean is_success,
-                    GSourceFunc callback_function, GDestroyNotify destroy_notify)
+send_final_message(gpointer context, const char *message, gboolean is_success,
+                    GSourceFunc callback_function)
 {
     g_return_if_fail(message != NULL);
-    g_return_if_fail(callback_function != NULL && destroy_notify != NULL);
-    g_return_if_fail(ref_function != NULL && context != NULL);
+    g_return_if_fail(callback_function != NULL);
+    g_return_if_fail(context != NULL);
 
     /* Create final status message */
     IdleData *complete_data = g_new0(IdleData, 1);
     complete_data->message = g_strdup(message);
-    complete_data->context = ref_function(context); // Add a reference to the context data and store it in the IdleData
+    complete_data->context = context;
 
     /* Send the final message to the main process */
     g_main_context_invoke_full( // Invoke the callback function in the main context
@@ -165,7 +171,7 @@ send_final_message(RefFunc ref_function, gpointer context, const char *message, 
                    G_PRIORITY_HIGH_IDLE,
                    (GSourceFunc) callback_function,
                    complete_data,
-                   (GDestroyNotify)destroy_notify);
+                   (GDestroyNotify)resource_clean_up);
 }
 
 /* Build the command arguments */
