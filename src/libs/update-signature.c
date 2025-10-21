@@ -135,6 +135,8 @@ update_complete_callback(gpointer user_data)
     signature_status_clear(&result);
   }
 
+  wuming_window_set_hide_on_close(ctx->window, FALSE); // Allow the window to be closed when update is complete
+
   return G_SOURCE_REMOVE;
 }
 
@@ -180,6 +182,8 @@ start_update(WumingWindow *window, SecurityOverviewPage *security_overview_page,
   ctx->updating_page = updating_page;
   ctx->ref_count = G_ATOMIC_REF_COUNT_INIT;
   g_mutex_unlock(&ctx->mutex);
+
+  wuming_window_set_hide_on_close(window, TRUE); // Hide the window instead of closing it
 
   /* Start update thread */
   g_thread_new("update-thread", update_thread, ctx);

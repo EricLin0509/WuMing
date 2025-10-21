@@ -334,6 +334,8 @@ scan_complete_callback(gpointer user_data)
     wuming_window_push_page_by_tag(ctx->window, "threat_nav_page");
   }
 
+  wuming_window_set_hide_on_close(ctx->window, FALSE); // Allow the window to be closed when the scan is complete
+
   return G_SOURCE_REMOVE;
 }
 
@@ -445,6 +447,8 @@ start_scan(WumingWindow *window, ScanningPage *scanning_page, ThreatPage *threat
   ctx->path = path;
   ctx->ref_count = G_ATOMIC_REF_COUNT_INIT;
   g_mutex_unlock(&ctx->mutex);
+
+  wuming_window_set_hide_on_close(window, TRUE); // Hide the window instead of closing it
 
   scanning_page_set_close_signal (scanning_page, (GCallback) clear_box_list_and_close, ctx);
   scanning_page_set_cancel_signal (scanning_page, (GCallback) set_cancel_scan, ctx);

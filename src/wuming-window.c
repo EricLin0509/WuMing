@@ -134,6 +134,20 @@ wuming_window_is_current_page_tag (WumingWindow *self, const char *tag)
     return g_strcmp0 (current_tag, tag) == 0;
 }
 
+/* Set hide the window on close */
+void
+wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close)
+{
+    gtk_window_set_hide_on_close (GTK_WINDOW (self), hide_on_close);
+}
+
+/* Present the window */
+void
+wuming_window_present (WumingWindow *self)
+{
+    gtk_window_present (GTK_WINDOW (self));
+}
+
 /* GObject essential functions */
 static void
 wuming_window_dispose (GObject *object)
