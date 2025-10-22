@@ -89,7 +89,7 @@ set_file_properties(DeleteFileData *data)
 
     if (!data->action_row || !GTK_IS_WIDGET(data->action_row)) return FALSE; // Check if the action row is valid
 
-    char *path = data->path;
+    const char *path = data->path;
 
     if (!path || !*path || path[0] != '/') // Check if the path is valid and is absolute
     {
@@ -245,8 +245,8 @@ delete_threat_file_elevated(DeleteFileData *data)
         goto error_clean_up;
     }
 
-    int exit_status = wait_for_process(pid);
-    if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK)
+    FileSecurityStatus exit_status = (FileSecurityStatus)wait_for_process(pid);
+    if (exit_status != FILE_SECURITY_OK)
     {
         g_critical("[ERROR] Helper process returned error: %d", exit_status);
         goto error_clean_up;

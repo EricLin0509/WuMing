@@ -28,7 +28,7 @@
 #include "file-security.h"
 
 typedef struct {
-    char *path;
+    const char *path;
     GtkWidget *list_box;
     GtkWidget *action_row;
 

@@ -178,7 +178,7 @@ calculate_path_depth(const gchar *path)
   * User configurations (Later versions will add support for this, use GSettings to manage this)
 */
 gboolean
-validate_path_safety(char *path)
+validate_path_safety(const char *path)
 {
     if (!path || !*path) return FALSE; // Check if the path is valid
 

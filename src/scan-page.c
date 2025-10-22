@@ -173,7 +173,7 @@ start_scan_file (GObject *source_object, GAsyncResult *res, gpointer data)
   GFile *file = NULL;
   GError *error = NULL;
 
-  if (file = gtk_file_dialog_open_finish (file_dialog, res, &error))
+  if ((file = gtk_file_dialog_open_finish (file_dialog, res, &error)) != NULL)
     {
       char *filepath = g_file_get_path (file);
 
@@ -201,7 +201,7 @@ start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
   GFile *file = NULL;
   GError *error = NULL;
 
-  if (file = gtk_file_dialog_select_folder_finish (file_dialog, res, &error))
+  if ((file = gtk_file_dialog_select_folder_finish (file_dialog, res, &error)) != NULL)
     {
       char *folderpath = g_file_get_path (file);
 

@@ -66,7 +66,7 @@ file_security_context_clear(FileSecurityContext *context);
   * `TRUE` if the path is safe, `FALSE` otherwise
 */
 gboolean
-validate_path_safety(char *path);
+validate_path_safety(const char *path);
 
 /* Delete file securely */
 /*

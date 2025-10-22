@@ -407,7 +407,7 @@ scan_context_add_path(ScanContext *ctx, const char *path)
 
   if (ctx->path) scan_context_clear_path(ctx); // If have a path, clear it first
 
-  ctx->path = g_steal_pointer(&path); // Add the new path to the context
+  ctx->path = (char *)g_steal_pointer(&path); // Add the new path to the context
 }
 
 ScanContext *
