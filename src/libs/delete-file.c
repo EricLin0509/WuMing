@@ -36,8 +36,6 @@
 // Warning: this macro should be started and ended with a space, otherwise may cause comparison error
 #define SYSTEM_DIRECTORIES " /usr /lib /lib64 /etc /opt /var /sys /proc " // System directories that should be warned before deleting
 
-#define CLAMP(x, low, high)( (x) < (low) ? (low) : ((x) > (high) ? (high) : (x)) );
-
 #define PKEXEC_PATH "/usr/bin/pkexec" // Path to the `pkexec` binary
 
 /* Create a new delete file data structure */
@@ -244,7 +242,7 @@ delete_threat_file_elevated(DeleteFileData *data)
                                     shm_name, data->path, key_str, NULL); // Spawn the helper process
 
     int exit_status = pid == -1 ? FILE_SECURITY_UNKNOWN_ERROR : wait_for_process(pid); // Wait for the helper process to finish
-    exit_status = CLAMP(exit_status, FILE_SECURITY_OK, FILE_SECURITY_UNKNOWN_ERROR); // Clamp the exit status to the valid range
+    exit_status = (exit_status < FILE_SECURITY_OK || exit_status > FILE_SECURITY_UNKNOWN_ERROR) ? FILE_SECURITY_UNKNOWN_ERROR : exit_status; // Check if the exit status is valid
 
     if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK)
     {
