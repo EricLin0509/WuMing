@@ -36,6 +36,8 @@
 // Warning: this macro should be started and ended with a space, otherwise may cause comparison error
 #define SYSTEM_DIRECTORIES " /usr /lib /lib64 /etc /opt /var /sys /proc " // System directories that should be warned before deleting
 
+#define CLAMP(x, low, high)( (x) < (low) ? (low) : ((x) > (high) ? (high) : (x)) );
+
 #define PKEXEC_PATH "/usr/bin/pkexec" // Path to the `pkexec` binary
 
 /* Create a new delete file data structure */
@@ -238,15 +240,13 @@ delete_threat_file_elevated(DeleteFileData *data)
 
     pid_t pid;
 
-    if (!spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
-                                    shm_name, data->path, key_str, NULL))
-    {
-        g_critical("[ERROR] Failed to spawn helper process: %s", strerror(errno));
-        goto error_clean_up;
-    }
+    spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
+                                    shm_name, data->path, key_str, NULL); // Spawn the helper process
 
-    FileSecurityStatus exit_status = (FileSecurityStatus)wait_for_process(pid);
-    if (exit_status != FILE_SECURITY_OK)
+    int exit_status = pid == -1 ? FILE_SECURITY_UNKNOWN_ERROR : wait_for_process(pid); // Wait for the helper process to finish
+    exit_status = CLAMP(exit_status, FILE_SECURITY_OK, FILE_SECURITY_UNKNOWN_ERROR); // Clamp the exit status to the valid range
+
+    if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK)
     {
         g_critical("[ERROR] Helper process returned error: %d", exit_status);
         goto error_clean_up;
