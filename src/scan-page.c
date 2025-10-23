@@ -222,17 +222,6 @@ start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
     }
 }
 
-static gboolean
-check_is_scanning (WumingWindow *window)
-{
-  g_return_val_if_fail (WUMING_IS_WINDOW (window), TRUE); // Fallback save if window is not a WumingWindow
-
-  if (wuming_window_is_current_page_tag (window, "scanning_nav_page")) return TRUE;
-  if (wuming_window_is_current_page_tag (window, "threat_nav_page")) return TRUE;
-
-  return FALSE;
-}
-
 /*Callbacks*/
 
 static void
@@ -244,7 +233,7 @@ file_chooser (GSimpleAction *action,
 
   WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
 
-  if (check_is_scanning (window)) return; // Prevent multiple scans
+  if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
 
   g_print("[INFO] Choose a file\n");
 
@@ -266,7 +255,7 @@ folder_chooser (GSimpleAction *action,
 
   WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
 
-  if (check_is_scanning (window)) return; // Prevent multiple scans
+  if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
 
   g_print("[INFO] Choose a folder\n");
 

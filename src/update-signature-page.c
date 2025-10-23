@@ -108,7 +108,7 @@ update_signature_cb (GSimpleAction *action,
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE(user_data);
   WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
 
-  if (wuming_window_is_current_page_tag (window, "updating_nav_page")) return; // No need to update signature if is in updating page
+  if (!wuming_window_is_in_main_page (window)) return; // Prevent multiple tasks running at the same time
 
   g_print("[INFO] Update Signature\n");
 

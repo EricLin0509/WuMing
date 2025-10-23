@@ -43,17 +43,9 @@ wuming_window_pop_page (WumingWindow *self);
 const char *
 wuming_window_get_current_page_tag (WumingWindow *self);
 
-/* Compare current page tag with the given tag */
-/*
-  * @param self
-  * the WumingWindow instance
-  * @param tag
-  * the tag to compare with
-  * @return
-  * true if the current page tag is the same as the given tag, false otherwise
-*/
+/* Check the AdwNavigation is in the `main_page` */
 gboolean
-wuming_window_is_current_page_tag (WumingWindow *self, const char *tag);
+wuming_window_is_in_main_page (WumingWindow *self);
 
 /* Set hide the window on close */
 void

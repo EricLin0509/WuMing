@@ -90,20 +90,15 @@ wuming_window_get_current_page_tag (WumingWindow *self)
     return adw_navigation_view_get_visible_page_tag (self->navigation_view);
 }
 
-/* Compare current page tag with the given tag */
-/*
-  * @param self
-  * the WumingWindow instance
-  * @param tag
-  * the tag to compare with
-  * @return
-  * true if the current page tag is the same as the given tag, false otherwise
-*/
+/* Check the AdwNavigation is in the `main_page` */
 gboolean
-wuming_window_is_current_page_tag (WumingWindow *self, const char *tag)
+wuming_window_is_in_main_page (WumingWindow *self)
 {
-    const char *current_tag = wuming_window_get_current_page_tag (self);
-    return g_strcmp0 (current_tag, tag) == 0;
+    g_return_val_if_fail (self != NULL, FALSE); // Check if the object is valid
+
+    const char *current_page_tag = wuming_window_get_current_page_tag (self);
+
+    return g_strcmp0 (current_page_tag, "main_nav_page") == 0;
 }
 
 /* Set hide the window on close */
