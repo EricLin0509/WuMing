@@ -9,3 +9,4 @@ Categories=Utility;
 Keywords=clamav;anti-virus;
 StartupNotify=true
 DBusActivatable=true
+X-GNOME-UsesNotifications=true
