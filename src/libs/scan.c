@@ -227,7 +227,6 @@ clear_threat_paths(ScanContext *ctx)
   g_return_if_fail(ctx);
 
   g_mutex_lock(&ctx->threats_mutex);
-  if (ctx->threat_page && THREAT_IS_PAGE(ctx->threat_page)) threat_page_clear(ctx->threat_page);
 
   if (ctx->threat_paths)
   {
@@ -440,6 +439,12 @@ scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_p
   return ctx;
 }
 
+/* Clear `ScanContext` */
+/*
+  * @warning
+  * This function won't free the widget pointers in `ScanContext`
+  * They should be freed by the `dispose` function
+*/
 void
 scan_context_clear(ScanContext **ctx)
 {
@@ -475,6 +480,7 @@ scan_context_reset(ScanContext *ctx)
 
   /* Reset Widgets */
   scanning_page_reset(ctx->scanning_page);
+  threat_page_clear(ctx->threat_page);
 
   g_autofree gchar *timestamp = save_last_scan_time(NULL, TRUE);
   scan_page_show_last_scan_time(ctx->scan_page, NULL, timestamp);
