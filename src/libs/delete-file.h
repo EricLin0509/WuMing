@@ -30,7 +30,7 @@ typedef struct DeleteFileData DeleteFileData;
 // Tips: this also creates a new security context for the file
 // Warning: the AdwActionRow MUST be added to the GtkListBox before calling this function
 DeleteFileData *
-delete_file_data_new(GtkWidget *list_box, GtkWidget *action_row);
+delete_file_data_new(GtkWidget *threat_page, GtkWidget *action_row);
 
 /* Clear the delete file data structure */
 // Tips: this also clears the security context for the file

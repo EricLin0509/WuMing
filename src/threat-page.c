@@ -31,12 +31,6 @@ struct _ThreatPage {
 
 G_DEFINE_FINAL_TYPE(ThreatPage, threat_page, GTK_TYPE_WIDGET)
 
-GtkWidget *
-threat_page_get_list_box (ThreatPage *self)
-{
-    return GTK_WIDGET (self->threat_list);
-}
-
 void
 threat_page_add_threat (ThreatPage *self, GtkWidget *row)
 {
@@ -46,7 +40,7 @@ threat_page_add_threat (ThreatPage *self, GtkWidget *row)
 void
 threat_page_remove_threat (ThreatPage *self, GtkWidget *row)
 {
-    gtk_list_box_remove (self->threat_list, GTK_WIDGET (row));
+    gtk_list_box_remove (self->threat_list, row);
 }
 
 void

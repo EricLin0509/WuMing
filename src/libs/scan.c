@@ -177,10 +177,9 @@ add_threat_path(ScanContext *ctx, const char *path)
 
   /* Add the action row to the list view */
   threat_page_add_threat (ctx->threat_page, action_row);
-  GtkWidget *threat_list_box = threat_page_get_list_box(ctx->threat_page);
 
   /* Set file properties and connect signal */
-  DeleteFileData *delete_data = delete_file_data_new(threat_list_box, action_row);
+  DeleteFileData *delete_data = delete_file_data_new(GTK_WIDGET(ctx->threat_page), action_row);
   if (!set_file_properties(delete_data)) // Set the file properties for the action row
   {
     /* If failed to set file properties, disable the AdwActionRow */

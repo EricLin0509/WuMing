@@ -28,9 +28,6 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (ThreatPage, threat_page, THREAT, PAGE, GtkWidget)
 
-GtkWidget *
-threat_page_get_list_box (ThreatPage *self);
-
 void
 threat_page_add_threat (ThreatPage *self, GtkWidget *row);
 

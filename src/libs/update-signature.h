@@ -22,10 +22,10 @@
 
 #include <adwaita.h>
 
-#include "../wuming-window.h"
-#include "../security-overview-page.h"
-#include "../updating-page.h"
-#include "../update-signature-page.h"
+#include "wuming-window.h"
+#include "security-overview-page.h"
+#include "updating-page.h"
+#include "update-signature-page.h"
 
 typedef struct UpdateContext UpdateContext;
 

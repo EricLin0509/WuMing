@@ -22,11 +22,11 @@
 
 #include <adwaita.h>
 
-#include "../wuming-window.h"
-#include "../security-overview-page.h"
-#include "../scan-page.h"
-#include "../scanning-page.h"
-#include "../threat-page.h"
+#include "wuming-window.h"
+#include "security-overview-page.h"
+#include "scan-page.h"
+#include "scanning-page.h"
+#include "threat-page.h"
 
 typedef struct ScanContext ScanContext;
 

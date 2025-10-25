@@ -35,6 +35,8 @@
 #include "wuming-unlinkat-helper.h"
 #include "subprocess-components.h"
 
+#include "threat-page.h"
+
 // Warning: this macro should be started and ended with a space, otherwise may cause comparison error
 #define SYSTEM_DIRECTORIES " /usr /lib /lib64 /etc /opt /var /sys /proc " // System directories that should be warned before deleting
 
@@ -42,7 +44,7 @@
 
 typedef struct DeleteFileData {
     const char *path;
-    GtkWidget *list_box;
+    GtkWidget *threat_page;
     GtkWidget *action_row;
 
     FileSecurityContext *security_context; // Security context for the file
@@ -52,19 +54,19 @@ typedef struct DeleteFileData {
 // Tips: this also creates a new security context for the file
 // Warning: the AdwActionRow MUST be added to the GtkListBox before calling this function
 DeleteFileData *
-delete_file_data_new(GtkWidget *list_box, GtkWidget *action_row)
+delete_file_data_new(GtkWidget *threat_page, GtkWidget *action_row)
 {
-    if (!list_box || !GTK_IS_WIDGET(list_box) ||
-       !action_row || !GTK_IS_WIDGET(action_row) || 
-       gtk_widget_get_parent(action_row) != list_box) // Check if the action_row is a child of the list_box
+    if (!threat_page || !GTK_IS_WIDGET(threat_page) ||
+       !action_row || !GTK_IS_WIDGET(action_row) ||
+        !gtk_widget_get_ancestor(action_row, THREAT_TYPE_PAGE) != NULL) // Check if the action_row is a child of the threat_page
     {
-        g_critical("[ERROR] Invalid parameters, list_box: %p, action_row: %p", list_box, action_row);
+        g_critical("[ERROR] Invalid parameters, threat_page: %p, action_row: %p", threat_page, action_row);
         return NULL;
     }
 
     DeleteFileData *data = g_new0(DeleteFileData, 1);
     data->path = adw_action_row_get_subtitle(ADW_ACTION_ROW(action_row)), // This string SHOULDN'T be freed because it's owned by the action row
-    data->list_box = list_box;
+    data->threat_page = threat_page;
     data->action_row = action_row;
     data->security_context = file_security_context_new(data->path);
 
@@ -262,7 +264,7 @@ delete_threat_file_elevated(DeleteFileData *data)
 
     // Clean up
     shm_unlink(shm_name);
-    gtk_list_box_remove(GTK_LIST_BOX(data->list_box), data->action_row); // Remove the action row from the list view
+    threat_page_remove_threat(THREAT_PAGE(data->threat_page), data->action_row); // Remove the action row from the list view
     log_deletion_attempt(data->path);
     return;
 
@@ -309,7 +311,7 @@ delete_threat_file(DeleteFileData *data)
     else // If the file is deleted successfully, show the success message and add audit log
     {
         g_print("[INFO] File deleted: %s\n", data->path);
-        gtk_list_box_remove(GTK_LIST_BOX(data->list_box), data->action_row); // Remove the action row from the list view
+        threat_page_remove_threat(THREAT_PAGE(data->threat_page), data->action_row); // Remove the action row from the list view
         log_deletion_attempt(data->path);
     }
 }
