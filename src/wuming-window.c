@@ -20,6 +20,9 @@
 
 #include "config.h"
 
+#include "libs/update-signature.h"
+#include "libs/scan.h"
+
 #include "wuming-window.h"
 
 #include "update-signature-page.h"
@@ -65,6 +68,10 @@ struct _WumingWindow
     /* Threat Navigation Page */
     AdwNavigationPage   *threat_nav_page;
     ThreatPage          *threat_page;
+
+    /* Private */
+    UpdateContext       *update_context;
+    ScanContext         *scan_context;
 };
 
 G_DEFINE_FINAL_TYPE (WumingWindow, wuming_window, ADW_TYPE_APPLICATION_WINDOW)
@@ -101,6 +108,32 @@ wuming_window_is_in_main_page (WumingWindow *self)
     return g_strcmp0 (current_page_tag, "main_nav_page") == 0;
 }
 
+/* Get `UpdateContext` */
+/*
+  * @warning
+  * This return a void pointer, which need to be cast to the `UpdateContext` pointer type.
+*/
+void *
+wuming_window_get_update_context (WumingWindow *self)
+{
+    g_return_val_if_fail(self, NULL);
+
+    return (void *)self->update_context;
+}
+
+/* Get `ScanContext` */
+/*
+  * @warning
+  * This return a void pointer, which need to be cast to the `ScanContext` pointer type.
+*/
+void *
+wuming_window_get_scan_context (WumingWindow *self)
+{
+    g_return_val_if_fail(self, NULL);
+
+    return (void *)self->scan_context;
+}
+
 /* Set hide the window on close */
 void
 wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close)
@@ -120,6 +153,9 @@ static void
 wuming_window_dispose (GObject *object)
 {
     WumingWindow *self = WUMING_WINDOW (object);
+
+    update_context_clear (&self->update_context);
+    scan_context_clear (&self->scan_context);
 
     GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
     g_clear_pointer (&navigation_view, gtk_widget_unparent);
@@ -255,9 +291,6 @@ wuming_window_init (WumingWindow *self)
 
     signature_status_clear (&result);
 
-    UpdateContext *update_context = update_context_new(self, self->security_overview_page, self->update_signature_page, self->updating_page);
-    update_signature_page_set_update_context (self->update_signature_page, update_context);
-
-    ScanContext *scan_context = scan_context_new(self, self->security_overview_page, self->scan_page, self->scanning_page, self->threat_page);
-    scan_page_set_scan_context (self->scan_page, scan_context);
+    self->update_context = update_context_new(self, self->security_overview_page, self->update_signature_page, self->updating_page);
+    self->scan_context = scan_context_new(self, self->security_overview_page, self->scan_page, self->scanning_page, self->threat_page);
 }

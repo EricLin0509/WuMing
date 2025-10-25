@@ -22,11 +22,11 @@
 
 #include <adwaita.h>
 
-typedef struct _WumingWindow WumingWindow;
-typedef struct _SecurityOverviewPage SecurityOverviewPage;
-typedef struct _ScanPage ScanPage;
-typedef struct _ScanningPage ScanningPage;
-typedef struct _ThreatPage ThreatPage;
+#include "../wuming-window.h"
+#include "../security-overview-page.h"
+#include "../scan-page.h"
+#include "../scanning-page.h"
+#include "../threat-page.h"
 
 typedef struct ScanContext ScanContext;
 

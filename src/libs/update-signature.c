@@ -26,11 +26,6 @@
 #include "update-signature.h"
 #include "signature-status.h"
 
-#include "../wuming-window.h"
-#include "../security-overview-page.h"
-#include "../updating-page.h"
-#include "../update-signature-page.h"
-
 #define FRESHCLAM_PATH "/usr/bin/freshclam"
 #define PKEXEC_PATH "/usr/bin/pkexec"
 

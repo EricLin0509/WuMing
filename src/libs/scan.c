@@ -26,12 +26,6 @@
 #include "subprocess-components.h"
 #include "scan.h"
 
-#include "../wuming-window.h"
-#include "../security-overview-page.h"
-#include "../scan-page.h"
-#include "../scanning-page.h"
-#include "../threat-page.h"
-
 #include "delete-file.h"
 
 #define CLAMSCAN_PATH "/usr/bin/clamscan"

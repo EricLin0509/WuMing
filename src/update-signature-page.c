@@ -20,10 +20,12 @@
 
 #include <glib/gi18n.h>
 
-#include "wuming-window.h"
 #include "update-signature-page.h"
+#include "wuming-window.h"
+#include "updating-page.h"
 
 #include "libs/systemd-control.h"
+#include "libs/update-signature.h"
 
 struct _UpdateSignaturePage {
   GtkWidget          parent_instance;
@@ -33,9 +35,6 @@ struct _UpdateSignaturePage {
   AdwActionRow       *status_row;
   GtkButton          *update_button;
   AdwActionRow       *service_row;
-
-  /* Private */
-  UpdateContext        *update_context;
 };
 
 G_DEFINE_FINAL_TYPE (UpdateSignaturePage, update_signature_page, GTK_TYPE_WIDGET)
@@ -107,20 +106,13 @@ update_signature_cb (GSimpleAction *action,
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE(user_data);
   WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
+  UpdateContext *context = (UpdateContext *)wuming_window_get_update_context(window);
 
   if (!wuming_window_is_in_main_page (window)) return; // Prevent multiple tasks running at the same time
 
   g_print("[INFO] Update Signature\n");
 
-  start_update(self->update_context);
-}
-
-void
-update_signature_page_set_update_context(UpdateSignaturePage *self, UpdateContext *context)
-{
-  g_return_if_fail (self && context);
-
-  self->update_context = context;
+  start_update(context);
 }
 
 /*GObject Essential Functions */
@@ -133,10 +125,8 @@ static void
 update_signature_page_dispose(GObject *gobject)
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE (gobject);
-
-  update_context_clear(&self->update_context);
-
   GApplication *app = g_application_get_default();
+
   g_action_map_remove_action_entries (G_ACTION_MAP (app),
 	                                 update_actions,
 	                                 G_N_ELEMENTS (update_actions));

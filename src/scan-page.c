@@ -21,9 +21,13 @@
 #include <glib/gi18n.h>
 
 #include "libs/check-scan-time.h"
+#include "libs/scan.h"
 
-#include "wuming-window.h"
 #include "scan-page.h"
+#include "wuming-window.h"
+#include "security-overview-page.h"
+#include "scanning-page.h"
+#include "threat-page.h"
 
 struct _ScanPage {
   GtkWidget          parent_instance;
@@ -35,7 +39,6 @@ struct _ScanPage {
 
   /* Private */
   GFile              *initial_folder;
-  ScanContext        *scan_context;
 };
 
 G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
@@ -157,69 +160,58 @@ save_last_scan_time (GSettings *setting, gboolean need_timestamp)
   return need_timestamp ? g_steal_pointer(&timestamp) : NULL;
 }
 
-/* Set the `ScanContext` object to the `ScanPage` object */
-void
-scan_page_set_scan_context (ScanPage *self, ScanContext *context)
-{
-  g_return_if_fail (self && context);
-
-  self->scan_context = context;
-}
-
 static void
 start_scan_file (GObject *source_object, GAsyncResult *res, gpointer data)
 {
   GtkFileDialog *file_dialog = GTK_FILE_DIALOG (source_object);
-  ScanPage *self = data;
+  ScanContext *context = data;
   GFile *file = NULL;
   GError *error = NULL;
 
   if ((file = gtk_file_dialog_open_finish (file_dialog, res, &error)) != NULL)
-    {
-      char *filepath = g_file_get_path (file);
+  {
+    char *filepath = g_file_get_path (file);
 
-      /* Start scannning */
-      start_scan (self->scan_context, filepath);
+    /* Start scannning */
+    start_scan (context, filepath);
 
-      g_object_unref (file); // Only unref the file if it is successfully opened
-    }
+    g_object_unref (file); // Only unref the file if it is successfully opened
+  }
   else
-    {
-      if (error->code == GTK_DIALOG_ERROR_DISMISSED)
-            g_warning ("[INFO] User canceled the file selection!");
-      else
-            g_warning ("[ERROR] Failed to open the file!");
-
-      g_clear_error (&error);
-    }
+  {
+    if (error->code == GTK_DIALOG_ERROR_DISMISSED)
+          g_warning ("[INFO] User canceled the file selection!");
+    else
+          g_critical ("[ERROR] Failed to open the file!");
+  }
+  g_clear_error (&error);
 }
 
 static void
 start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
 {
   GtkFileDialog *file_dialog = GTK_FILE_DIALOG (source_object);
-  ScanPage *self = data;
+  ScanContext *context = data;
   GFile *file = NULL;
   GError *error = NULL;
 
   if ((file = gtk_file_dialog_select_folder_finish (file_dialog, res, &error)) != NULL)
-    {
-      char *folderpath = g_file_get_path (file);
+  {
+    char *folderpath = g_file_get_path (file);
 
-      /* Start scannning */
-      start_scan (self->scan_context, folderpath);
+    /* Start scannning */
+    start_scan (context, folderpath);
 
-      g_object_unref (file); // Only unref the file if it is successfully opened
-    }
+    g_object_unref (file); // Only unref the file if it is successfully opened
+  }
   else
-    {
-      if (error->code == GTK_DIALOG_ERROR_DISMISSED)
-            g_warning ("[INFO] User canceled the folder selection!");
-      else
-            g_warning ("[ERROR] Failed to open the folder!");
-
-      g_clear_error (&error);
-    }
+  {
+    if (error->code == GTK_DIALOG_ERROR_DISMISSED)
+          g_warning ("[INFO] User canceled the folder selection!");
+    else
+          g_critical ("[ERROR] Failed to open the folder!");
+  }
+  g_clear_error (&error);
 }
 
 /*Callbacks*/
@@ -235,13 +227,15 @@ file_chooser (GSimpleAction *action,
 
   if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
 
+  ScanContext *context = (ScanContext *)wuming_window_get_scan_context (window);
+
   g_print("[INFO] Choose a file\n");
 
   GtkFileDialog *dialog;
   dialog = gtk_file_dialog_new ();
   gtk_file_dialog_set_initial_folder (dialog, self->initial_folder); // Set initial folder
 
-  gtk_file_dialog_open (dialog, GTK_WINDOW (window), NULL, start_scan_file, user_data); // Select a file
+  gtk_file_dialog_open (dialog, GTK_WINDOW (window), NULL, start_scan_file, context); // Select a file
 
   g_object_unref (dialog);
 }
@@ -257,13 +251,15 @@ folder_chooser (GSimpleAction *action,
 
   if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
 
+  ScanContext *context = (ScanContext *)wuming_window_get_scan_context (window);
+
   g_print("[INFO] Choose a folder\n");
 
   GtkFileDialog *dialog;
   dialog = gtk_file_dialog_new ();
   gtk_file_dialog_set_initial_folder (dialog, self->initial_folder); // Set initial folder
 
-  gtk_file_dialog_select_folder (dialog, GTK_WINDOW (window), NULL, start_scan_folder, user_data); // Select a folder
+  gtk_file_dialog_select_folder (dialog, GTK_WINDOW (window), NULL, start_scan_folder, context); // Select a folder
 
   g_object_unref (dialog);
 }
@@ -280,11 +276,10 @@ scan_page_dispose(GObject *gobject)
 {
   ScanPage *self = SCAN_PAGE (gobject);
 
-  scan_context_clear(&self->scan_context);
-
   g_clear_object (&self->initial_folder); // Clear the initial folder
 
   GApplication *app = g_application_get_default();
+
   g_action_map_remove_action_entries (G_ACTION_MAP (app),
 	                                 scan_actions,
 	                                 G_N_ELEMENTS (scan_actions));

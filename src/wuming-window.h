@@ -22,9 +22,6 @@
 
 #include <adwaita.h>
 
-#include "libs/update-signature.h"
-#include "libs/scan.h"
-
 G_BEGIN_DECLS
 
 #define WUMING_TYPE_WINDOW (wuming_window_get_type())
@@ -46,6 +43,22 @@ wuming_window_get_current_page_tag (WumingWindow *self);
 /* Check the AdwNavigation is in the `main_page` */
 gboolean
 wuming_window_is_in_main_page (WumingWindow *self);
+
+/* Get `UpdateContext` */
+/*
+  * @warning
+  * This return a void pointer, which need to be cast to the `UpdateContext` pointer type.
+*/
+void *
+wuming_window_get_update_context (WumingWindow *self);
+
+/* Get `ScanContext` */
+/*
+  * @warning
+  * This return a void pointer, which need to be cast to the `ScanContext` pointer type.
+*/
+void *
+wuming_window_get_scan_context (WumingWindow *self);
 
 /* Set hide the window on close */
 void

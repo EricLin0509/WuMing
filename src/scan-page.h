@@ -22,8 +22,6 @@
 
 #include <adwaita.h>
 
-#include "libs/scan.h"
-
 G_BEGIN_DECLS
 
 #define SCAN_TYPE_PAGE (scan_page_get_type())
@@ -80,10 +78,6 @@ scan_page_show_last_scan_time_status (ScanPage *self, GSettings *setting, gboole
 */
 gchar *
 save_last_scan_time (GSettings *setting, gboolean need_timestamp);
-
-/* Set the `ScanContext` object to the `ScanPage` object */
-void
-scan_page_set_scan_context (ScanPage *self, ScanContext *context);
 
 GtkWidget *
 scan_page_new(void);
