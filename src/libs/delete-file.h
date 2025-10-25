@@ -23,17 +23,8 @@
 #pragma once
 
 #include <adwaita.h>
-#include <sys/stat.h>
 
-#include "file-security.h"
-
-typedef struct {
-    const char *path;
-    GtkWidget *list_box;
-    GtkWidget *action_row;
-
-    FileSecurityContext *security_context; // Security context for the file
-} DeleteFileData; // Data structure to store the information of a file to be deleted
+typedef struct DeleteFileData DeleteFileData;
 
 /* Create a new delete file data structure */
 // Tips: this also creates a new security context for the file

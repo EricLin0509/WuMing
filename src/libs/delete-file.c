@@ -23,13 +23,15 @@
 #include <glib/gi18n.h>
 #include <syslog.h>
 #include <inttypes.h>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/random.h>
-#include <fcntl.h>
-#include <sys/mman.h>
 
 #include "delete-file.h"
+#include "file-security.h"
 #include "wuming-unlinkat-helper.h"
 #include "subprocess-components.h"
 
@@ -37,6 +39,14 @@
 #define SYSTEM_DIRECTORIES " /usr /lib /lib64 /etc /opt /var /sys /proc " // System directories that should be warned before deleting
 
 #define PKEXEC_PATH "/usr/bin/pkexec" // Path to the `pkexec` binary
+
+typedef struct DeleteFileData {
+    const char *path;
+    GtkWidget *list_box;
+    GtkWidget *action_row;
+
+    FileSecurityContext *security_context; // Security context for the file
+} DeleteFileData; // Data structure to store the information of a file to be deleted
 
 /* Create a new delete file data structure */
 // Tips: this also creates a new security context for the file
