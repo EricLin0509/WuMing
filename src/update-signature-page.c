@@ -44,10 +44,12 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 {
   GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
 
-  g_autofree char *signature_msg = NULL; // The title message for `AdwStatusPage`
-  g_autofree char *date_msg = NULL; // The description message for `AdwStatusPage`
-  g_autofree char *row_subtitle = NULL; // The subtitle message for `AdwActionRow`
+  g_autofree char *date_msg = NULL; // The description message for `AdwStatusPage` (This need autofree because it will be used in `g_strdup_printf`)
+
+  char *signature_msg = NULL; // The title message for `AdwStatusPage`
+  char *row_subtitle = NULL; // The subtitle message for `AdwActionRow`
   char *button_style = NULL; // The style of `update_button`
+  char *icon_name = NULL; // The icon name for `AdwStatusPage`
 
   int year, month, day, hour, minute;
   signature_status_get_date(result, &year, &month, &day, &hour, &minute);
@@ -58,32 +60,36 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
   switch (status)
   {
     case 0: // Signature is oudated
-      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-warning-symbolic");
-      signature_msg = g_strdup_printf (gettext("Signature Is Outdated"));
       date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), year, month, day, hour, minute);
-      row_subtitle = g_strdup_printf (gettext("Outdated!"));
+
+      signature_msg = gettext("Signature Is Outdated");
+      row_subtitle = gettext("Outdated!");
       button_style = "button-suggestion";
+      icon_name = "status-warning-symbolic";
       break;
     case 1: // No signature found
-      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-error-symbolic");
-      signature_msg = g_strdup_printf (gettext("No Signature Found"));
       date_msg = g_strdup_printf (gettext("Warning: No signature found\nPlease update the signature now!"));
-      row_subtitle = g_strdup_printf (gettext("No signature"));
+
+      signature_msg = gettext("No Signature Found");
+      row_subtitle = gettext("Signature Not Found");
       button_style = "button-suggestion";
+      icon_name = "status-error-symbolic";
       break;
     case 16: // Signature is up-to-date
-      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-ok-symbolic");
-      signature_msg = g_strdup_printf (gettext("Signature Is Up To Date"));
       date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), year, month, day, hour, minute);
-      row_subtitle = g_strdup_printf (gettext("Is Up To Date"));
+
+      signature_msg = gettext("Signature Is Up To Date");
+      row_subtitle = gettext("Is Up To Date");
       button_style = "button-default";
+      icon_name = "status-ok-symbolic";
       break;
     default: // Bit mask is invalid (because these two bit mask cannot be set at the same time)
-      adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-error-symbolic");
-      signature_msg = g_strdup_printf (gettext("Unknown Signature Status"));
       date_msg = g_strdup_printf (gettext("Signature status: %d"), status);
-      row_subtitle = g_strdup_printf (gettext("Unknown Signature Status"));
+
+      signature_msg = gettext("Unknown Signature Status");
+      row_subtitle = gettext("Unknown Signature Status");
       button_style = "button-suggestion";
+      icon_name = "status-error-symbolic";
       break;
   }
 
@@ -95,6 +101,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 
   adw_status_page_set_title (ADW_STATUS_PAGE (status_page), signature_msg);
   adw_status_page_set_description (ADW_STATUS_PAGE (status_page), date_msg);
+  adw_status_page_set_icon_name (ADW_STATUS_PAGE (status_page), icon_name);
 
   adw_action_row_set_subtitle (self->status_row, row_subtitle);
 }
