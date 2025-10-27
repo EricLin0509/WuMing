@@ -15,8 +15,9 @@
             <property name="child">
               <object class="GtkBox" id="box_main">
                 <property name="orientation">horizontal</property>
-                <property name="height-request">70</property>
-                <property name="margin-bottom">50</property>
+                <property name="height-request">100</property>
+                <property name="margin-bottom">20</property>
+                <property name="valign">center</property>
                 <property name="spacing">20</property>
                 <property name="homogeneous">true</property>
                 <child>
@@ -26,22 +27,40 @@
                         <property name="can-shrink">true</property>
                         <property name="label" translatable="yes">Last Scan Time</property>
                         <property name="icon-name">status-ok-symbolic</property>
-                        <property name="use-underline">True</property>
                       </object>
                     </property>
                   </object>
                 </child>
                 <child>
-                  <object class="GtkButton" id="signature_overview_button">
-                    <property name="action-name">app.update</property>
-                    <property name="child">
-                      <object class="AdwButtonContent">
-                        <property name="can-shrink">true</property>
-                        <property name="label" translatable="yes">Current Signature Status</property>
-                        <property name="icon-name">status-ok-symbolic</property>
-                        <property name="use-underline">True</property>
+                  <object class="GtkBox" id="box_right">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">10</property>
+                    <property name="homogeneous">true</property>
+                    <child>
+                      <object class="GtkButton" id="signature_overview_button">
+                        <property name="action-name">app.update</property>
+                        <property name="child">
+                          <object class="AdwButtonContent">
+                            <property name="can-shrink">true</property>
+                            <property name="label" translatable="yes">Current Signature Status</property>
+                            <property name="icon-name">status-ok-symbolic</property>
+                          <property name="use-underline">True</property>
+                          </object>
+                        </property>
                       </object>
-                    </property>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="service_overview_button">
+                        <property name="child">
+                          <object class="AdwButtonContent">
+                            <property name="can-shrink">true</property>
+                            <property name="label" translatable="yes">Freshclam Service Status</property>
+                            <property name="icon-name">status-ok-symbolic</property>
+                            <property name="use-underline">True</property>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -53,10 +72,12 @@
             <condition>max-width: 500px</condition>
             <setter object="clamp" property="maximum-size">300</setter>
             <setter object="clamp" property="tightening-threshold">150</setter>
+            <setter object="scan_overview_button" property="height-request">35</setter>
             <setter object="box_main" property="orientation">vertical</setter>
-            <setter object="box_main" property="spacing">10</setter>
-            <setter object="box_main" property="height-request">120</setter>
-            <setter object="box_main" property="margin-bottom">0</setter>
+            <setter object="box_main" property="spacing">5</setter>
+            <setter object="box_main" property="homogeneous">false</setter>
+            <setter object="box_right" property="height-request">65</setter>
+            <setter object="box_right" property="spacing">5</setter>
           </object>
         </child>
       </object>

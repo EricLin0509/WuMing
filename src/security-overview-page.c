@@ -33,6 +33,8 @@ struct _SecurityOverviewPage {
     GtkButton *scan_overview_button;
     gulong scan_overview_button_handler_id;
     GtkButton *signature_overview_button;
+    GtkButton *service_overview_button;
+
     gushort health_level;
 };
 
@@ -171,6 +173,41 @@ security_overview_page_show_signature_status (SecurityOverviewPage *self, const 
     security_overview_page_set_css_style (GTK_WIDGET (self->signature_overview_button), style);
 }
 
+void
+security_overview_page_show_servicestat (SecurityOverviewPage *self, int service_status)
+{
+    GtkWidget *button_content = gtk_button_get_child (self->service_overview_button);
+
+    char *label = NULL;
+    char *icon_name = NULL;
+    char *style = NULL;
+
+    if (service_status == 1) // Service is enabled
+    {
+        label = gettext ("Freshclam Is Enabled");
+        icon_name = "status-ok-symbolic";
+        style = "button-success";
+    }
+    else if (service_status == 0) // Service is disabled
+    {
+        label = gettext ("Freshclam Is Disabled");
+        icon_name = "status-warning-symbolic";
+        style = "button-warning";
+    }
+    else // Service is not found
+    {
+        label = gettext ("Freshclam Is Not Found");
+        icon_name = "status-error-symbolic";
+        style = "button-error";
+    }
+
+    adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);
+    adw_button_content_set_icon_name (ADW_BUTTON_CONTENT (button_content), icon_name);
+
+    /* Set the style of the button */
+    security_overview_page_set_css_style (GTK_WIDGET (self->service_overview_button), style);
+}
+
 /* Show the health level on the security overview page. */
 void
 security_overview_page_show_health_level (SecurityOverviewPage *self)
@@ -266,6 +303,7 @@ security_overview_page_class_init (SecurityOverviewPageClass *klass)
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, break_point);
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, scan_overview_button);
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, signature_overview_button);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, service_overview_button);
 }
 
 GtkWidget *

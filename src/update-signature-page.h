@@ -37,6 +37,6 @@ void
 update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature_status *result);
 
 void
-update_signature_page_show_servicestat(UpdateSignaturePage *self);
+update_signature_page_show_servicestat(UpdateSignaturePage *self, int service_status);
 
 G_END_DECLS

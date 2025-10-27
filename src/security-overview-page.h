@@ -66,6 +66,10 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, G
 void
 security_overview_page_show_signature_status (SecurityOverviewPage *self, const signature_status *result);
 
+/* Show the freshclam serivce is enabled or not */
+void
+security_overview_page_show_servicestat (SecurityOverviewPage *self, int service_status);
+
 /* Show the health level on the security overview page. */
 void
 security_overview_page_show_health_level (SecurityOverviewPage *self);

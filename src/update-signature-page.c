@@ -24,7 +24,6 @@
 #include "wuming-window.h"
 #include "updating-page.h"
 
-#include "libs/systemd-control.h"
 #include "libs/update-signature.h"
 
 struct _UpdateSignaturePage {
@@ -107,13 +106,10 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 }
 
 void
-update_signature_page_show_servicestat(UpdateSignaturePage *self)
+update_signature_page_show_servicestat(UpdateSignaturePage *self, int service_status)
 {
-  const char *service = "clamav-freshclam.service";
-  int is_enabled = is_service_enabled(service);
-
-  if (is_enabled == 1) adw_action_row_set_subtitle (self->service_row, gettext("Enabled"));
-  else if (is_enabled == 0) adw_action_row_set_subtitle (self->service_row, gettext("Disabled"));
+  if (service_status == 1) adw_action_row_set_subtitle (self->service_row, gettext("Enabled"));
+  else if (service_status == 0) adw_action_row_set_subtitle (self->service_row, gettext("Disabled"));
   else adw_action_row_set_subtitle (self->service_row, gettext("Failed to check!"));
 }
 

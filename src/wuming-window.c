@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "libs/systemd-control.h"
 #include "libs/update-signature.h"
 #include "libs/scan.h"
 
@@ -277,16 +278,20 @@ wuming_window_init (WumingWindow *self)
     /* Initialize the settings */
     wuming_window_init_settings (self);
 
+    /* Check systemd service status */
+    int status = is_service_enabled ("clamav-freshclam.service");
+
     /* Scan the Database */
     signature_status *result = signature_status_new ();
 
     /* Update the `UpdateSignaturePage` */
     update_signature_page_show_isuptodate (self->update_signature_page, result);
-    update_signature_page_show_servicestat (self->update_signature_page);
+    update_signature_page_show_servicestat (self->update_signature_page, status);
 
     /* Update the `SecurityOverviewPage` */
     security_overview_page_show_signature_status (self->security_overview_page, result);
     security_overview_page_connect_goto_scan_page_signal (self->security_overview_page);
+    security_overview_page_show_servicestat (self->security_overview_page, status);
     security_overview_page_show_health_level (self->security_overview_page);
 
     signature_status_clear (&result);
