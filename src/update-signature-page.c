@@ -47,6 +47,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
   g_autofree char *signature_msg = NULL; // The title message for `AdwStatusPage`
   g_autofree char *date_msg = NULL; // The description message for `AdwStatusPage`
   g_autofree char *row_subtitle = NULL; // The subtitle message for `AdwActionRow`
+  char *button_style = NULL; // The style of `update_button`
 
   int year, month, day, hour, minute;
   signature_status_get_date(result, &year, &month, &day, &hour, &minute);
@@ -61,26 +62,36 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
       signature_msg = g_strdup_printf (gettext("Signature Is Outdated"));
       date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), year, month, day, hour, minute);
       row_subtitle = g_strdup_printf (gettext("Outdated!"));
+      button_style = "button-suggestion";
       break;
     case 1: // No signature found
       adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-error-symbolic");
       signature_msg = g_strdup_printf (gettext("No Signature Found"));
       date_msg = g_strdup_printf (gettext("Warning: No signature found\nPlease update the signature now!"));
       row_subtitle = g_strdup_printf (gettext("No signature"));
+      button_style = "button-suggestion";
       break;
     case 16: // Signature is up-to-date
       adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-ok-symbolic");
       signature_msg = g_strdup_printf (gettext("Signature Is Up To Date"));
       date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), year, month, day, hour, minute);
       row_subtitle = g_strdup_printf (gettext("Is Up To Date"));
+      button_style = "button-default";
       break;
     default: // Bit mask is invalid (because these two bit mask cannot be set at the same time)
       adw_status_page_set_icon_name(ADW_STATUS_PAGE (status_page), "status-error-symbolic");
       signature_msg = g_strdup_printf (gettext("Unknown Signature Status"));
       date_msg = g_strdup_printf (gettext("Signature status: %d"), status);
       row_subtitle = g_strdup_printf (gettext("Unknown Signature Status"));
+      button_style = "button-suggestion";
       break;
   }
+
+  /* Remove the old style class and add the new one */
+  gtk_widget_remove_css_class (GTK_WIDGET (self->update_button), "button-default");
+  gtk_widget_remove_css_class (GTK_WIDGET (self->update_button), "button-suggestion");
+
+  gtk_widget_add_css_class (GTK_WIDGET (self->update_button), button_style);
 
   adw_status_page_set_title (ADW_STATUS_PAGE (status_page), signature_msg);
   adw_status_page_set_description (ADW_STATUS_PAGE (status_page), date_msg);

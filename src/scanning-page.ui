@@ -13,7 +13,7 @@
                 <property name="can-shrink">true</property>
                 <property name="label" translatable="yes">Cancel</property>
                 <style>
-                  <class name="destructive-action"/>
+                  <class name="button-error"/>
                 </style>
               </object>
             </child>
@@ -38,7 +38,7 @@
                     <property name="action-target">'threat_nav_page'</property>
                     <style>
                       <class name="pill"/>
-                      <class name="warning"/>
+                      <class name="button-warning"/>
                     </style>
                   </object>
                 </child>
@@ -50,6 +50,7 @@
                     <property name="label" translatable="yes">Close</property>
                     <style>
                       <class name="pill"/>
+                      <class name="button-default"/>
                     </style>
                   </object>
                 </child>

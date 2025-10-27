@@ -39,6 +39,17 @@ struct _SecurityOverviewPage {
 G_DEFINE_FINAL_TYPE (SecurityOverviewPage, security_overview_page, GTK_TYPE_WIDGET)
 
 static void
+security_overview_page_set_css_style (GtkWidget *widget, const char *style)
+{
+    /* Remove the old style class and add the new one */
+    gtk_widget_remove_css_class(widget, "button-warning");
+    gtk_widget_remove_css_class(widget, "button-success");
+    gtk_widget_remove_css_class(widget, "button-error");
+
+    gtk_widget_add_css_class(widget, style);
+}
+
+static void
 goto_scan_page_cb (GtkButton *button, gpointer user_data)
 {
     AdwViewStack *view_stack = user_data;
@@ -89,7 +100,7 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, G
     {
         label = is_expired ? gettext ("Scan Has Expired") : gettext ("Scan Has Not Expired");
         icon_name = is_expired ? "status-warning-symbolic" : "status-ok-symbolic";
-        style = is_expired ? "warning" : "success";
+        style = is_expired ? "button-warning" : "button-success";
         if (!is_expired) self->health_level |= LAST_SCAN_TIME_VALID;
     }
     else // Has `GSettings`, use it to get the last scan time and check if it is expired
@@ -98,13 +109,15 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, G
 
         label = is_older_than_a_week ? gettext ("Scan Has Expired") : gettext ("Scan Has Not Expired");
         icon_name = is_older_than_a_week ? "status-warning-symbolic" : "status-ok-symbolic";
-        style = is_older_than_a_week ? "warning" : "success";
+        style = is_older_than_a_week ? "button-warning" : "button-success";
         if (!is_older_than_a_week) self->health_level |= LAST_SCAN_TIME_VALID;
     }
 
     adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);
     adw_button_content_set_icon_name (ADW_BUTTON_CONTENT (button_content), icon_name);
-    gtk_widget_add_css_class(GTK_WIDGET(self->scan_overview_button), style);
+
+    /* Set the style of the button */
+    security_overview_page_set_css_style (GTK_WIDGET (self->scan_overview_button), style);
 }
 
 /* Show the signature status on the security overview page. */
@@ -131,29 +144,31 @@ security_overview_page_show_signature_status (SecurityOverviewPage *self, const 
         case 0: // Signature is oudated
             label = gettext ("Signature Is Outdated");
             icon_name = "status-warning-symbolic";
-            style = "warning";
+            style = "button-warning";
             break;
         case 1: // No signature found
             label = gettext ("No Signature Found");
             icon_name = "status-error-symbolic";
-            style = "error";
+            style = "button-error";
             break;
         case 16: // Signature is up-to-date
             label = gettext ("Signature Is Up To Date");
             icon_name = "status-ok-symbolic";
-            style = "success";
+            style = "button-success";
             self->health_level |= SIGNATURE_VALID;
             break;
         default: // Bit mask is invalid (because these two bit mask cannot be set at the same time)
             label = gettext ("Unknown Signature Status");
             icon_name = "status-error-symbolic";
-            style = "error";
+            style = "button-error";
             break;
     }
 
     adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);
     adw_button_content_set_icon_name (ADW_BUTTON_CONTENT (button_content), icon_name);
-    gtk_widget_add_css_class(GTK_WIDGET(self->signature_overview_button), style);
+
+    /* Set the style of the button */
+    security_overview_page_set_css_style (GTK_WIDGET (self->signature_overview_button), style);
 }
 
 /* Show the health level on the security overview page. */

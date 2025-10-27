@@ -149,6 +149,7 @@ create_threat_action_row(GtkWidget **delete_button, const char *path)
   /* Delete button for the action row */
   *delete_button = gtk_button_new();
   gtk_widget_set_size_request(*delete_button, -1, 40);
+  gtk_widget_add_css_class(*delete_button, "button-default");
   gtk_widget_set_halign(*delete_button, GTK_ALIGN_CENTER);
   gtk_widget_set_valign(*delete_button, GTK_ALIGN_CENTER);
 

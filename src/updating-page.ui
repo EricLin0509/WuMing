@@ -22,6 +22,7 @@
                 <property name="action-name">navigation.pop</property>
                 <style>
                   <class name="pill"/>
+                  <class name="button-default"/>
                 </style>
               </object>
             </child>

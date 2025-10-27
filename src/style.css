@@ -1,0 +1,138 @@
+:root {
+  /* Default color scheme */
+  --default-bg: rgba(200, 200, 200, 0.5);
+  --default-text: rgb(0, 0, 0);
+  --default-hover: rgba(180, 180, 180, 0.7);
+  --default-active: rgba(180, 180, 180, 0.9);
+
+  --suggestion-bg: rgba(101, 206, 255, 0.5);
+  --suggestion-text: rgb(45, 96, 120);
+  --suggestion-hover: rgba(82, 171, 212, 0.7);
+  --suggestion-active: rgba(82, 171, 212, 0.9);
+
+  --success-bg: rgba(115, 255, 208, 0.5);
+  --success-text: rgb(50, 100, 80);
+  --success-hover: rgba(98, 223, 181, 0.7);
+  --success-active: rgba(98, 223, 181, 0.9);
+  
+  --warning-bg: rgba(255, 220, 114, 0.5);
+  --warning-text: rgb(100, 80, 50);
+  --warning-hover: rgba(224, 194, 106, 0.7);
+  --warning-active: rgba(224, 194, 106, 0.9);
+  
+  --error-bg: rgba(255, 115, 115, 0.5);
+  --error-text: rgb(100, 50, 50);
+  --error-hover: rgba(212, 94, 94, 0.7);
+  --error-active: rgba(212, 94, 94, 0.9);
+}
+
+/* Dark color scheme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --default-bg: rgba(100, 100, 100, 0.5);
+    --default-text: rgb(255, 255, 255);
+    --default-hover: rgba(120, 120, 120, 0.7);
+    --default-active: rgba(120, 120, 120, 0.9);
+
+    --suggestion-bg: rgba(41, 85, 105, 0.5);
+    --suggestion-text: rgb(112, 194, 232);
+    --suggestion-hover: rgba(49, 99, 122, 0.7);
+    --suggestion-active: rgba(49, 99, 122, 0.9);
+    
+    --success-bg: rgba(0, 100, 80, 0.5);
+    --success-text: rgb(200, 255, 240);
+    --success-hover: rgba(0, 136, 109, 0.7);
+    --success-active: rgba(0, 136, 109, 0.9);
+    
+    --warning-bg: rgba(100, 80, 50, 0.5);
+    --warning-text: rgb(255, 220, 114);
+    --warning-hover: rgba(142, 113, 71, 0.7);
+    --warning-active: rgba(142, 113, 71, 0.9);
+    
+    --error-bg: rgba(100, 50, 50, 0.5);
+    --error-text: rgb(255, 115, 115);
+    --error-hover: rgba(129, 64, 64, 0.7);
+    --error-active: rgba(129, 64, 64, 0.9);
+  }
+}
+
+/* Default style */
+.button-default {
+  background-color: var(--default-bg);
+  color: var(--default-text);
+  transition: transform 100ms ease-in-out, 
+                    background-color 0.2s ease;
+  transform-origin: center;
+}
+.button-default:hover {
+  background-color: var(--default-hover);
+}
+.button-default:active {
+  background-color: var(--default-active);
+  transform: scale(0.92);
+}
+
+/* Suggestion style */
+.button-suggestion {
+  background-color: var(--suggestion-bg);
+  color: var(--suggestion-text);
+  transition: transform 100ms ease-in-out, 
+                    background-color 0.2s ease;
+  transform-origin: center;
+}
+.button-suggestion:hover {
+  background-color: var(--suggestion-hover);
+}
+.button-suggestion:active {
+  background-color: var(--suggestion-active);
+  transform: scale(0.92);
+}
+
+/* Success style */
+.button-success {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+  transition: transform 100ms ease-in-out, 
+                    background-color 0.2s ease;
+  transform-origin: center;
+}
+.button-success:hover {
+  background-color: var(--success-hover);
+}
+.button-success:active {
+  background-color: var(--success-active);
+  transform: scale(0.92);
+}
+
+/* Warning style */
+.button-warning {
+  background-color: var(--warning-bg);
+  color: var(--warning-text);
+  transition: transform 100ms ease-in-out,
+                    background-color 0.2s ease;
+  transform-origin: center;
+}
+.button-warning:hover {
+  background-color: var(--warning-hover);
+}
+.button-warning:active {
+  background-color: var(--warning-active);
+  transform: scale(0.92);
+}
+
+/* Error style */
+.button-error {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+  transition: transform 100ms ease-in-out, 
+                    background-color 0.2s ease,
+                    border-radius 0.2s ease;
+  transform-origin: center;
+}
+.button-error:hover {
+  background-color: var(--error-hover);
+}
+.button-error:active {
+  background-color: var(--error-active);
+  transform: scale(0.92);
+}

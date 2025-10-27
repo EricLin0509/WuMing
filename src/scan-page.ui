@@ -34,6 +34,7 @@
                     </property>
                     <style>
                       <class name="pill"/>
+                      <class name="button-default"/>
                     </style>
                   </object>
                 </child>
@@ -51,6 +52,7 @@
                     </property>
                     <style>
                       <class name="pill"/>
+                      <class name="button-default"/>
                     </style>
                   </object>
                 </child>
