@@ -32,12 +32,12 @@
 
 typedef struct ScanContext {
   /* Protected by mutex */
-  GMutex mutex; // Only protect initialization, "completed", "success" and "cancellable" fields
+  GMutex mutex; // Only protect initialization, "completed", "success" fields
   gboolean completed;
   gboolean success;
-  GCancellable *cancellable;
 
   /* Protected by atomic operation */
+  gboolean should_cancel; // Whether the scan should be cancelled
   gint total_files; // Total files scanned
   gint total_threats; // Total threats found during scan
 
@@ -74,29 +74,29 @@ get_completion_state(ScanContext *ctx, gboolean *out_completed, gboolean *out_su
   g_mutex_unlock(&ctx->mutex);
 }
 
-/*thread-safe method to get/set the cancellable object*/
+/*thread-safe method to get/set/reset the cancellable object*/
 static gboolean
 get_cancel_scan(ScanContext *ctx)
 {
-  gboolean is_cancelled = FALSE;
-  g_mutex_lock(&ctx->mutex);
-  if (ctx->cancellable)
-  {
-    is_cancelled = g_cancellable_is_cancelled(ctx->cancellable);
-  }
-  g_mutex_unlock(&ctx->mutex);
-  return is_cancelled;
+  g_return_val_if_fail(ctx, FALSE);
+
+  return g_atomic_int_get(&ctx->should_cancel);
 }
 
 static void
 set_cancel_scan(ScanContext *ctx)
 {
-  g_mutex_lock(&ctx->mutex);
-  if (ctx->cancellable && !g_cancellable_is_cancelled(ctx->cancellable))
-  {
-    g_cancellable_cancel(ctx->cancellable);
-  }
-  g_mutex_unlock(&ctx->mutex);
+  g_return_if_fail(ctx);
+
+  g_atomic_int_set(&ctx->should_cancel, TRUE);
+}
+
+static void
+reset_cancel_scan(ScanContext *ctx)
+{
+  g_return_if_fail(ctx);
+
+  g_atomic_int_set(&ctx->should_cancel, FALSE);
 }
 
 /* thread-safe method to inc/get/reset total threats */
@@ -424,7 +424,7 @@ scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_p
   ctx->threat_page = threat_page;
   ctx->path = NULL;
 
-  ctx->cancellable = g_cancellable_new(); // Initialize the cancellable object
+  ctx->should_cancel = FALSE;
 
   /* Bind the signal */
   scanning_page_set_close_signal(scanning_page, (GCallback) clear_box_list_and_close, ctx);
@@ -448,16 +448,13 @@ scan_context_clear(ScanContext **ctx)
   scanning_page_revoke_close_signal((*ctx)->scanning_page);
   scanning_page_revoke_cancel_signal((*ctx)->scanning_page);
 
-  if ((*ctx)->cancellable) g_object_unref((*ctx)->cancellable);
-
   g_mutex_clear(&(*ctx)->mutex);
   g_mutex_clear(&(*ctx)->threats_mutex);
 
   if ((*ctx)->path) scan_context_clear_path(*ctx); // Clear the path if have one
   clear_threat_paths(*ctx); // Clear the list view
 
-  g_free(*ctx);
-  *ctx = NULL;
+  g_clear_pointer(ctx, g_free);
 }
 
 static void
@@ -466,7 +463,7 @@ scan_context_reset(ScanContext *ctx)
   g_return_if_fail(ctx);
 
   /* Reset `ScanContext` */
-  g_cancellable_reset(ctx->cancellable); // Reset the cancellable object
+  reset_cancel_scan(ctx); // Reset the cancel scan flag
   clear_threat_paths(ctx); // Clear the list view
   reset_total_files(ctx); // Reset the total files
   reset_total_threats(ctx); // Reset the total threats
