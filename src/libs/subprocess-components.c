@@ -107,9 +107,10 @@ handle_io_event(IOContext *io_ctx)
 static void
 resource_clean_up(gpointer user_data)
 {
+  g_return_if_fail(user_data != NULL);
+
   IdleData *data = (IdleData *)user_data; // Cast the data to IdleData struct
-  g_free(data->message);
-  g_free(data);
+  g_clear_pointer(&data, g_free);
 }
 
 /* Process the subprocess stdout message */
@@ -162,7 +163,7 @@ send_final_message(gpointer context, const char *message, gboolean is_success,
 
     /* Create final status message */
     IdleData *complete_data = g_new0(IdleData, 1);
-    complete_data->message = g_strdup(message);
+    complete_data->message = message;
     complete_data->context = context;
 
     /* Send the final message to the main process */
@@ -283,17 +284,4 @@ spawn_new_process_no_pipes(pid_t *pid, const char *path, const char *command, ..
     }
 
     return TRUE;
-}
-
-/* Check whether the subprocess is still alive */
-gboolean
-is_subprocess_alive(pid_t pid)
-{
-    int status;
-    pid_t result = waitpid(pid, &status, WNOHANG); // Use `WNOHANG` to check if the process is still alive
-
-    if (result == 0) return TRUE; // The process is still alive
-    if (result == -1) return FALSE; // Error occurred
-
-    return WIFEXITED(status) && WEXITSTATUS(status) == 0; // The process has exited with status 0
 }

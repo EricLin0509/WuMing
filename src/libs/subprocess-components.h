@@ -31,8 +31,6 @@
 #define BASE_TIMEOUT_MS 50
 #define MAX_TIMEOUT_MS 1000
 
-typedef void (*SetStatusFunc) (gpointer context, gboolean completed, gboolean success); // set the status of the context data
-
 typedef struct {
     int pipefd;
     RingBuffer *ring_buf;
@@ -40,7 +38,7 @@ typedef struct {
 
 typedef struct {
     gpointer context; // context that store some GTKWidgets or other data (e.g. some GTKWidgets you want to control it)
-    char *message; // message to send to the subprocess
+    const char *message; // message to send to the subprocess
 } IdleData;
 
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
@@ -93,7 +91,3 @@ spawn_new_process(int pipefd[2], pid_t *pid, const char *path, const char *comma
 // This function MUST end with a NULL argument to indicate the end of the arguments list
 gboolean
 spawn_new_process_no_pipes(pid_t *pid, const char *path, const char *command, ...);
-
-/* Check whether the subprocess is still alive */
-gboolean
-is_subprocess_alive(pid_t pid);
