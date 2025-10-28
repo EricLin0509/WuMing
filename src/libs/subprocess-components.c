@@ -30,6 +30,50 @@
 #include "subprocess-components.h"
 #include "ring-buffer.h"
 
+typedef struct IdleData {
+    gpointer context; // context that store some GTKWidgets or other data (e.g. some GTKWidgets you want to control it)
+    const char *message; // message to send to the subprocess
+} IdleData;
+
+/* Get the context from the `IdleData` */
+gpointer
+get_idle_context(IdleData *idle_data)
+{
+    g_return_val_if_fail(idle_data != NULL, NULL);
+
+    return idle_data->context;
+}
+
+/* Get the message from the `IdleData` */
+const char *
+get_idle_message(IdleData *idle_data)
+{
+    g_return_val_if_fail(idle_data != NULL, NULL);
+
+    return idle_data->message;
+}
+
+static IdleData *
+idle_data_new(void *context, const char *message)
+{
+    g_return_val_if_fail(context != NULL, NULL);
+
+    IdleData *data = g_new0(IdleData, 1);
+    data->context = context;
+    data->message = message;
+
+    return data;
+}
+
+static void
+idle_data_clear(gpointer user_data)
+{
+  g_return_if_fail(user_data != NULL);
+
+  IdleData *data = (IdleData *)user_data; // Cast the data to IdleData struct
+  g_clear_pointer(&data, g_free);
+}
+
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
 /*
   * ready_status: this is the result of `poll()`, it indicates whether the subprocess is ready to read/write
@@ -112,27 +156,25 @@ handle_io_event(IOContext *io_ctx)
   * destroy_notify: the cleanup function for the context data
 */
 void
-process_output_lines(IOContext *io_ctx, gpointer context, MessageSetterFunc message_setter,
+process_output_lines(IOContext *io_ctx, gpointer context,
                       GSourceFunc callback_function)
 {
     g_return_if_fail(io_ctx != NULL);
-    g_return_if_fail(message_setter != NULL);
     g_return_if_fail(callback_function != NULL);
     g_return_if_fail(context != NULL);
 
     char *line;
     while ((line = ring_buffer_find_new_line(io_ctx->ring_buf)) != NULL)
     {
-        /* Set the message to the context data */
-        message_setter(context, line);
+        IdleData *data = idle_data_new(context, line);
 
         /* Send the message to the main process */
         g_main_context_invoke_full( // Invoke the callback function in the main context
                        g_main_context_default(),
                        G_PRIORITY_HIGH_IDLE,
                        (GSourceFunc) callback_function,
-                       context,
-                       NULL);
+                       data,
+                       (GDestroyNotify)idle_data_clear);
     }
 }
 
@@ -145,24 +187,23 @@ process_output_lines(IOContext *io_ctx, gpointer context, MessageSetterFunc mess
   * destroy_notify: the cleanup function for the context data
 */
 void
-send_final_message(gpointer context, const char *message, gboolean is_success, MessageSetterFunc message_setter,
+send_final_message(gpointer context, const char *message, gboolean is_success,
                     GSourceFunc callback_function)
 {
     g_return_if_fail(message != NULL);
-    g_return_if_fail(message_setter != NULL);
     g_return_if_fail(callback_function != NULL);
     g_return_if_fail(context != NULL);
 
     /* Create final status message */
-    message_setter(context, message);
+    IdleData *complete_data = idle_data_new(context, message);
 
     /* Send the final message to the main process */
     g_main_context_invoke_full( // Invoke the callback function in the main context
                    g_main_context_default(),
                    G_PRIORITY_HIGH_IDLE,
                    (GSourceFunc) callback_function,
-                   context,
-                   NULL);
+                   complete_data,
+                   (GDestroyNotify)idle_data_clear);
 }
 
 /* Build the command arguments */

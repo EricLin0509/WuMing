@@ -36,7 +36,15 @@ typedef struct {
     RingBuffer *ring_buf;
 } IOContext;
 
-typedef void (*MessageSetterFunc)(void *context, const char *message); // The callback function to set the message
+typedef struct IdleData IdleData;
+
+/* Get the context from the `IdleData` */
+gpointer
+get_idle_context(IdleData *idle_data);
+
+/* Get the message from the `IdleData` */
+const char *
+get_idle_message(IdleData *idle_data);
 
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
 /*
@@ -61,7 +69,7 @@ handle_io_event(IOContext *io_ctx);
   * callback_function: the callback function to process the output lines
 */
 void
-process_output_lines(IOContext *io_ctx, gpointer context, MessageSetterFunc message_setter,
+process_output_lines(IOContext *io_ctx, gpointer context,
                       GSourceFunc callback_function);
 
 /* Send the final message from the subprocess to the main process */
@@ -71,7 +79,7 @@ process_output_lines(IOContext *io_ctx, gpointer context, MessageSetterFunc mess
   * is_success: whether the subprocess is exited successfully or not
 */
 void
-send_final_message(gpointer context, const char *message, gboolean is_success, MessageSetterFunc message_setter,
+send_final_message(gpointer context, const char *message, gboolean is_success,
                     GSourceFunc callback_function);
 
 /* Spawn a new process */

@@ -36,9 +36,6 @@ typedef struct ScanContext {
   gboolean completed;
   gboolean success;
 
-  GMutex message_mutex; // Only protect "message" field
-  char *message; // The final message to display after the scan is completed
-
   /* Protected by atomic operation */
   gboolean should_cancel; // Whether the scan should be cancelled
   gint total_files; // Total files scanned
@@ -61,8 +58,6 @@ typedef struct ScanContext {
 static void
 set_completion_state(ScanContext *ctx, gboolean completed, gboolean success)
 {
-  g_return_if_fail(ctx);
-
   g_mutex_lock(&ctx->mutex);
   ctx->completed = completed;
   ctx->success = success;
@@ -72,38 +67,11 @@ set_completion_state(ScanContext *ctx, gboolean completed, gboolean success)
 static void
 get_completion_state(ScanContext *ctx, gboolean *out_completed, gboolean *out_success)
 {
-  g_return_if_fail(ctx);
-
   g_mutex_lock(&ctx->mutex);
   /* If one of the output pointers is NULL, only return the another one */
   if (out_completed) *out_completed = ctx->completed;
   if (out_success) *out_success = ctx->success;
   g_mutex_unlock(&ctx->mutex);
-}
-
-/* thread-safe method to set/get the message */
-static void
-set_message(void *context, const char *message)
-{
-  g_return_if_fail(context);
-
-  ScanContext *ctx = (ScanContext *)context;
-
-  g_mutex_lock(&ctx->message_mutex);
-  ctx->message = (char *)message;
-  g_mutex_unlock(&ctx->message_mutex);
-}
-
-static const char *
-get_message(ScanContext *ctx)
-{
-  g_return_val_if_fail(ctx, NULL);
-
-  g_mutex_lock(&ctx->message_mutex);
-  const char *message = ctx->message;
-  g_mutex_unlock(&ctx->message_mutex);
-
-  return message;
 }
 
 /*thread-safe method to get/set/reset the cancellable object*/
@@ -267,11 +235,12 @@ clear_threat_paths(ScanContext *ctx)
 static gboolean
 scan_ui_callback(gpointer user_data)
 {
-  ScanContext *ctx = user_data;
+  IdleData *data = (IdleData *)user_data;
+  ScanContext *ctx = (ScanContext *)get_idle_context(data);
 
-  g_return_val_if_fail(ctx, G_SOURCE_REMOVE);
+  g_return_val_if_fail(data && ctx, G_SOURCE_REMOVE);
 
-  const char *message = get_message(ctx); // Get the message
+  const char *message = get_idle_message(data); // Get the message from the ring buffer
   char *status_marker = NULL; // Check file is OK or FOUND
 
   if ((status_marker = strstr(message, "FOUND")) != NULL)
@@ -304,9 +273,10 @@ scan_ui_callback(gpointer user_data)
 static gboolean
 scan_complete_callback(gpointer user_data)
 {
-  ScanContext *ctx = user_data;
+  IdleData *data = user_data;
+  ScanContext *ctx = (ScanContext *)get_idle_context(data);
 
-  g_return_val_if_fail(ctx, G_SOURCE_REMOVE);
+  g_return_val_if_fail(data && ctx, G_SOURCE_REMOVE);
 
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
@@ -314,7 +284,7 @@ scan_complete_callback(gpointer user_data)
   bool has_threat = (ctx->total_threats > 0);
   const char *is_canceled = get_cancel_scan(ctx) ? gettext("User cancelled the scan") : NULL;
   const char *icon_name = has_threat ? "status-warning-symbolic" : (is_success ? "status-ok-symbolic" : "status-error-symbolic");
-  const char *message = get_message(ctx); // Get the message
+  const char *message = get_idle_message(data); // Get the message
 
   scanning_page_set_final_result(ctx->scanning_page, has_threat, message, is_canceled, icon_name);
 
@@ -365,6 +335,7 @@ scan_thread(gpointer data)
         {
           g_warning("[INFO] User cancelled the scan");
           kill(pid, SIGTERM);
+          set_completion_state(ctx, TRUE, FALSE);
           break;
         }
 
@@ -373,7 +344,7 @@ scan_thread(gpointer data)
 
         if (ready > 0)
         {
-          process_output_lines(&io_ctx, ctx, set_message, scan_ui_callback);
+          process_output_lines(&io_ctx, ctx, scan_ui_callback);
 
           if (!handle_io_event(&io_ctx))
           {
@@ -401,7 +372,7 @@ scan_thread(gpointer data)
         status_text = gettext("Scan Failed");
     }
 
-    send_final_message((void *)ctx, status_text, success, set_message, scan_complete_callback);
+    send_final_message((void *)ctx, status_text, success, scan_complete_callback);
 
     close(pipefd[0]);
     return NULL;
@@ -441,12 +412,10 @@ scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_p
 
   ScanContext *ctx = g_new0(ScanContext, 1);
   g_mutex_init(&ctx->mutex);
-  g_mutex_init(&ctx->message_mutex);
   g_mutex_init(&ctx->threats_mutex);
 
   ctx->completed = FALSE;
   ctx->success = FALSE;
-  ctx->message = NULL;
   ctx->total_files = 0;
   ctx->total_threats = 0;
   ctx->threat_paths = NULL;
@@ -482,7 +451,6 @@ scan_context_clear(ScanContext **ctx)
   scanning_page_revoke_cancel_signal((*ctx)->scanning_page);
 
   g_mutex_clear(&(*ctx)->mutex);
-  g_mutex_clear(&(*ctx)->message_mutex);
   g_mutex_clear(&(*ctx)->threats_mutex);
 
   if ((*ctx)->path) scan_context_clear_path(*ctx); // Clear the path if have one
@@ -502,7 +470,6 @@ scan_context_reset(ScanContext *ctx)
   reset_total_files(ctx); // Reset the total files
   reset_total_threats(ctx); // Reset the total threats
   set_completion_state(ctx, FALSE, FALSE); // Reset the completion state
-  set_message(ctx, NULL); // Reset the message
 
   /* Reset Widgets */
   scanning_page_reset(ctx->scanning_page);
