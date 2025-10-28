@@ -133,10 +133,13 @@ wait_for_process(pid_t pid)
 gboolean
 handle_io_event(IOContext *io_ctx)
 {
-    char read_buf[512];
+    const size_t free_space = ring_buffer_available(io_ctx->ring_buf);
+    const size_t buf_size = CLAMP(buf_size, 512, 4096); // Set the buffer size to 512-4096 bytes
+
+    char read_buf[buf_size];
     ssize_t n = 0;
 
-    if ((n = read(io_ctx->pipefd, read_buf, sizeof(read_buf))) > 0) // Read from the pipe
+    if ((n = read(io_ctx->pipefd, read_buf, buf_size)) > 0) // Read from the pipe
     {
         size_t written = ring_buffer_write(io_ctx->ring_buf, read_buf, n); // Write to the ring buffer
         if (written < (size_t)n)

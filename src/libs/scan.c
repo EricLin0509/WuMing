@@ -335,7 +335,6 @@ scan_thread(gpointer data)
         {
           g_warning("[INFO] User cancelled the scan");
           kill(pid, SIGTERM);
-          set_completion_state(ctx, TRUE, FALSE);
           break;
         }
 
