@@ -36,6 +36,9 @@ typedef struct UpdateContext {
   gboolean completed;
   gboolean success;
 
+  GMutex message_mutex; // Only protect "message" field
+  char *message;
+
   /*No need to protect these fields because they always same after initialize*/
   WumingWindow *window;
   SecurityOverviewPage *security_overview_page;
@@ -43,6 +46,31 @@ typedef struct UpdateContext {
   UpdatingPage *updating_page;
 
 } UpdateContext;
+
+/* thread-safe method to set/get the message */
+static void
+set_message(void *context, const char *message)
+{
+  g_return_if_fail(context);
+
+  UpdateContext *ctx = (UpdateContext *)context;
+
+  g_mutex_lock(&ctx->message_mutex);
+  ctx->message = (char *)message;
+  g_mutex_unlock(&ctx->message_mutex);
+}
+
+static const char *
+get_message(UpdateContext *ctx)
+{
+  g_return_val_if_fail(ctx, NULL);
+
+  g_mutex_lock(&ctx->message_mutex);
+  const char *message = ctx->message;
+  g_mutex_unlock(&ctx->message_mutex);
+
+  return message;
+}
 
 /* thread-safe method to get/set states */
 void
@@ -67,16 +95,15 @@ get_completion_state(UpdateContext *ctx, gboolean *out_completed, gboolean *out_
 static gboolean
 update_complete_callback(gpointer user_data)
 {
-  IdleData *data = user_data;
-  UpdateContext *ctx = (UpdateContext *)get_idle_context(data);
+  UpdateContext *ctx = user_data;
 
-  g_return_val_if_fail(data && ctx, G_SOURCE_REMOVE);
+  g_return_val_if_fail(ctx, G_SOURCE_REMOVE);
 
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
   const char *icon_name = is_success ? "status-ok-symbolic" : "status-error-symbolic";
-  const char *message = get_idle_message(data);
+  const char *message = get_message(ctx);
 
   updating_page_set_final_result(ctx->updating_page, message, icon_name);
 
@@ -118,7 +145,7 @@ update_thread(gpointer data)
     const char *status_text = success ?
         gettext("Update Complete") : gettext("Update Failed");
 
-    send_final_message((void *)ctx, status_text, success, update_complete_callback);
+    send_final_message((void *)ctx, status_text, success, set_message, update_complete_callback);
 
     return NULL;
 }
@@ -130,9 +157,11 @@ update_context_new(WumingWindow *window, SecurityOverviewPage *security_overview
 
   UpdateContext *ctx = g_new0(UpdateContext, 1);
   g_mutex_init(&ctx->mutex);
+  g_mutex_init(&ctx->message_mutex);
 
   ctx->completed = FALSE;
   ctx->success = FALSE;
+  ctx->message = NULL;
   ctx->window = window;
   ctx->security_overview_page = security_overview_page;
   ctx->update_signature_page = update_signature_page;
@@ -147,8 +176,9 @@ update_context_clear(UpdateContext **ctx)
   g_return_if_fail(ctx && *ctx);
 
   g_mutex_clear(&(*ctx)->mutex);
-  g_free(*ctx);
-  *ctx = NULL;
+  g_mutex_clear(&(*ctx)->message_mutex);
+
+  g_clear_pointer(ctx, g_free);
 }
 
 static void
@@ -158,6 +188,7 @@ update_context_reset(UpdateContext *ctx)
 
   /* Reset `UpdateContext` */
   set_completion_state(ctx, FALSE, FALSE);
+  set_message(ctx, NULL);
 
   /* Reset Widgets */
   updating_page_reset(ctx->updating_page);
