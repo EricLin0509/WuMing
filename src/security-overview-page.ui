@@ -72,12 +72,9 @@
             <condition>max-width: 500px</condition>
             <setter object="clamp" property="maximum-size">300</setter>
             <setter object="clamp" property="tightening-threshold">150</setter>
-            <setter object="scan_overview_button" property="height-request">35</setter>
+            <setter object="service_overview_button" property="visible">false</setter>
             <setter object="box_main" property="orientation">vertical</setter>
-            <setter object="box_main" property="spacing">5</setter>
-            <setter object="box_main" property="homogeneous">false</setter>
-            <setter object="box_right" property="height-request">65</setter>
-            <setter object="box_right" property="spacing">5</setter>
+            <setter object="box_main" property="spacing">10</setter>
           </object>
         </child>
       </object>
