@@ -236,26 +236,27 @@ static gboolean
 scan_ui_callback(gpointer user_data)
 {
   IdleData *data = (IdleData *)user_data;
-  ScanContext *ctx = data->context;
+  ScanContext *ctx = (ScanContext *)get_idle_context(data);
 
   g_return_val_if_fail(data && ctx, G_SOURCE_REMOVE);
 
+  const char *message = get_idle_message(data); // Get the message from the ring buffer
   char *status_marker = NULL; // Check file is OK or FOUND
 
-  if ((status_marker = strstr(data->message, "FOUND")) != NULL)
+  if ((status_marker = strstr(message, "FOUND")) != NULL)
   {
     inc_total_files(ctx);
     inc_total_threats(ctx);
 
     /* Add threat path to the list */
-    char *colon = strchr(data->message, ':'); // Find the colon separator
+    char *colon = strchr(message, ':'); // Find the colon separator
     if (colon)
     {
       *colon = '\0'; // Replace the colon with null terminator
-      add_threat_path(ctx, data->message);
+      add_threat_path(ctx, message);
     }
   }
-  else if ((status_marker = strstr(data->message, "OK")) != NULL) inc_total_files(ctx);
+  else if ((status_marker = strstr(message, "OK")) != NULL) inc_total_files(ctx);
 
   gint total_files = get_total_files(ctx);
   gint total_threats = get_total_threats(ctx);
@@ -273,7 +274,7 @@ static gboolean
 scan_complete_callback(gpointer user_data)
 {
   IdleData *data = user_data;
-  ScanContext *ctx = data->context;
+  ScanContext *ctx = (ScanContext *)get_idle_context(data);
 
   g_return_val_if_fail(data && ctx, G_SOURCE_REMOVE);
 
@@ -283,8 +284,9 @@ scan_complete_callback(gpointer user_data)
   bool has_threat = (ctx->total_threats > 0);
   const char *is_canceled = get_cancel_scan(ctx) ? gettext("User cancelled the scan") : NULL;
   const char *icon_name = has_threat ? "status-warning-symbolic" : (is_success ? "status-ok-symbolic" : "status-error-symbolic");
+  const char *message = get_idle_message(data); // Get the message
 
-  scanning_page_set_final_result(ctx->scanning_page, has_threat, data->message, is_canceled, icon_name);
+  scanning_page_set_final_result(ctx->scanning_page, has_threat, message, is_canceled, icon_name);
 
   if (has_threat) // If threats found, push the page to the threat page
   {

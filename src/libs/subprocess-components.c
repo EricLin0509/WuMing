@@ -30,6 +30,50 @@
 #include "subprocess-components.h"
 #include "ring-buffer.h"
 
+typedef struct IdleData {
+    gpointer context; // context that store some GTKWidgets or other data (e.g. some GTKWidgets you want to control it)
+    const char *message; // message to send to the subprocess
+} IdleData;
+
+/* Get the context from the `IdleData` */
+gpointer
+get_idle_context(IdleData *idle_data)
+{
+    g_return_val_if_fail(idle_data != NULL, NULL);
+
+    return idle_data->context;
+}
+
+/* Get the message from the `IdleData` */
+const char *
+get_idle_message(IdleData *idle_data)
+{
+    g_return_val_if_fail(idle_data != NULL, NULL);
+
+    return idle_data->message;
+}
+
+static IdleData *
+idle_data_new(void *context, const char *message)
+{
+    g_return_val_if_fail(context != NULL, NULL);
+
+    IdleData *data = g_new0(IdleData, 1);
+    data->context = context;
+    data->message = message;
+
+    return data;
+}
+
+static void
+idle_data_clear(gpointer user_data)
+{
+  g_return_if_fail(user_data != NULL);
+
+  IdleData *data = (IdleData *)user_data; // Cast the data to IdleData struct
+  g_clear_pointer(&data, g_free);
+}
+
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
 /*
   * ready_status: this is the result of `poll()`, it indicates whether the subprocess is ready to read/write
@@ -104,15 +148,6 @@ handle_io_event(IOContext *io_ctx)
     return FALSE;
 }
 
-static void
-resource_clean_up(gpointer user_data)
-{
-  g_return_if_fail(user_data != NULL);
-
-  IdleData *data = (IdleData *)user_data; // Cast the data to IdleData struct
-  g_clear_pointer(&data, g_free);
-}
-
 /* Process the subprocess stdout message */
 /*
   * io_ctx: the IO context
@@ -131,9 +166,7 @@ process_output_lines(IOContext *io_ctx, gpointer context,
     char *line;
     while ((line = ring_buffer_find_new_line(io_ctx->ring_buf)) != NULL)
     {
-        IdleData *data = g_new0(IdleData, 1);
-        data->message = line;
-        data->context = context;
+        IdleData *data = idle_data_new(context, line);
 
         /* Send the message to the main process */
         g_main_context_invoke_full( // Invoke the callback function in the main context
@@ -141,7 +174,7 @@ process_output_lines(IOContext *io_ctx, gpointer context,
                        G_PRIORITY_HIGH_IDLE,
                        (GSourceFunc) callback_function,
                        data,
-                       (GDestroyNotify)resource_clean_up);
+                       (GDestroyNotify)idle_data_clear);
     }
 }
 
@@ -162,9 +195,7 @@ send_final_message(gpointer context, const char *message, gboolean is_success,
     g_return_if_fail(context != NULL);
 
     /* Create final status message */
-    IdleData *complete_data = g_new0(IdleData, 1);
-    complete_data->message = message;
-    complete_data->context = context;
+    IdleData *complete_data = idle_data_new(context, message);
 
     /* Send the final message to the main process */
     g_main_context_invoke_full( // Invoke the callback function in the main context
@@ -172,7 +203,7 @@ send_final_message(gpointer context, const char *message, gboolean is_success,
                    G_PRIORITY_HIGH_IDLE,
                    (GSourceFunc) callback_function,
                    complete_data,
-                   (GDestroyNotify)resource_clean_up);
+                   (GDestroyNotify)idle_data_clear);
 }
 
 /* Build the command arguments */

@@ -36,10 +36,15 @@ typedef struct {
     RingBuffer *ring_buf;
 } IOContext;
 
-typedef struct {
-    gpointer context; // context that store some GTKWidgets or other data (e.g. some GTKWidgets you want to control it)
-    const char *message; // message to send to the subprocess
-} IdleData;
+typedef struct IdleData IdleData;
+
+/* Get the context from the `IdleData` */
+gpointer
+get_idle_context(IdleData *idle_data);
+
+/* Get the message from the `IdleData` */
+const char *
+get_idle_message(IdleData *idle_data);
 
 /* Calculate the dynamic timeout based on the idle_counter and current_timeout */
 /*

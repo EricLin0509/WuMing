@@ -68,7 +68,7 @@ static gboolean
 update_complete_callback(gpointer user_data)
 {
   IdleData *data = user_data;
-  UpdateContext *ctx = data->context;
+  UpdateContext *ctx = (UpdateContext *)get_idle_context(data);
 
   g_return_val_if_fail(data && ctx, G_SOURCE_REMOVE);
 
@@ -76,8 +76,9 @@ update_complete_callback(gpointer user_data)
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
   const char *icon_name = is_success ? "status-ok-symbolic" : "status-error-symbolic";
+  const char *message = get_idle_message(data);
 
-  updating_page_set_final_result(ctx->updating_page, data->message, icon_name);
+  updating_page_set_final_result(ctx->updating_page, message, icon_name);
 
   if (is_success) // Re-scan the signature if update is successful
   {
