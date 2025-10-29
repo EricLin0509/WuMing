@@ -56,7 +56,7 @@ calculate_dynamic_timeout(int *idle_counter, int *current_timeout, int *ready_st
 
 /* Wait for the process to finish and return the exit status */
 gint
-wait_for_process(pid_t pid);
+wait_for_process(pid_t pid, int flags);
 
 /* Handle the input/output event */
 gboolean

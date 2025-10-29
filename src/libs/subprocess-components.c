@@ -106,22 +106,20 @@ calculate_dynamic_timeout(int *idle_counter, int *current_timeout, int *ready_st
 
 /* Wait for the process to finish and return the exit status */
 gint
-wait_for_process(pid_t pid)
+wait_for_process(pid_t pid, int flags)
 {
     int status;
-    if (waitpid(pid, &status, 0) == -1)
-    {
-        if (errno != EINTR) // Handle signal interruptions
-        {
-            g_warning("Process wait error: %s", g_strerror(errno));
-            return status; // Return the status if wait fails
-        }
-    }
 
-    if (WIFSIGNALED(status)) // Get termination signal
+    int wait_result = waitpid(pid, &status, flags); // Wait for the process to finish
+    switch (wait_result)
     {
-        g_warning("Process terminated by signal %d", WTERMSIG(status));
-        return status; // Return the status if the process is terminated by signal
+        case -1:
+            g_critical("Failed to wait for process: %s", strerror(errno));
+            return -1; // Return -1 if failed to wait for the process
+        case 0: // State not changed, the process is still running (Especially when `WNOHANG` is set)
+            return -1;
+        default: // The process is finished
+            break;
     }
 
     const gint exit_status = WEXITSTATUS(status);

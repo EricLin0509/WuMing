@@ -253,7 +253,7 @@ delete_threat_file_elevated(DeleteFileData *data)
     spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
                                     shm_name, data->path, key_str, NULL); // Spawn the helper process
 
-    int exit_status = pid == -1 ? FILE_SECURITY_UNKNOWN_ERROR : wait_for_process(pid); // Wait for the helper process to finish
+    int exit_status = pid == -1 ? FILE_SECURITY_UNKNOWN_ERROR : wait_for_process(pid, 0); // Wait for the helper process to finish
     exit_status = (exit_status < FILE_SECURITY_OK || exit_status > FILE_SECURITY_UNKNOWN_ERROR) ? FILE_SECURITY_UNKNOWN_ERROR : exit_status; // Check if the exit status is valid
 
     if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK)

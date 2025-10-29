@@ -111,7 +111,7 @@ update_thread(gpointer data)
     }
 
     /*Clean up*/
-    const gint exit_status = wait_for_process(pid);
+    const gint exit_status = wait_for_process(pid, 0);
     gboolean success = exit_status == 0;
     set_completion_state(ctx, TRUE, success);
 

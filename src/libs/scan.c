@@ -327,9 +327,9 @@ scan_thread(gpointer data)
     int idle_counter = 0;
     int dynamic_timeout = BASE_TIMEOUT_MS;
     int ready = 0; // Whether there is data to read from the pipe
-    gboolean eof_received = FALSE;
+    gint exit_status = -1;
 
-    while (!eof_received)
+    while ((exit_status = wait_for_process(pid, WNOHANG)) == -1)
     {
         if (get_cancel_scan(ctx)) // Check if the scan has been cancelled
         {
@@ -343,17 +343,12 @@ scan_thread(gpointer data)
 
         if (ready > 0)
         {
-          if (!handle_io_event(&io_ctx))
-          {
-              eof_received = TRUE;
-          }
-
+          handle_io_event(&io_ctx);
           process_output_lines(&io_ctx, ctx, scan_ui_callback);
         }
     }
 
     /*Clean up*/
-    const gint exit_status = wait_for_process(pid);
     gboolean success = (exit_status == 0) || (exit_status == 1);
     set_completion_state(ctx, TRUE, success);
 
