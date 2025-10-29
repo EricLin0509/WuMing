@@ -24,6 +24,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
 
@@ -243,6 +244,14 @@ spawn_new_process(int pipefd[2], pid_t *pid, const char *path, const char *comma
     if (pipe(pipefd) == -1) // Create a pipe for communication
     {
         g_critical("[ERROR] Failed to create pipe: %s", strerror(errno));
+        goto error_clean_up;
+    }
+
+    /* Set the read end of the pipe to non-blocking mode */
+    int curr_flags = fcntl(pipefd[0], F_GETFL, 0);
+    if (curr_flags == -1 || fcntl(pipefd[0], F_SETFL, curr_flags | O_NONBLOCK) == -1)
+    {
+        g_critical("[ERROR] Failed to set pipe read end to non-blocking mode: %s", strerror(errno));
         goto error_clean_up;
     }
 

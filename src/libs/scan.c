@@ -343,12 +343,12 @@ scan_thread(gpointer data)
 
         if (ready > 0)
         {
-          process_output_lines(&io_ctx, ctx, scan_ui_callback);
-
           if (!handle_io_event(&io_ctx))
           {
               eof_received = TRUE;
           }
+
+          process_output_lines(&io_ctx, ctx, scan_ui_callback);
         }
     }
 
