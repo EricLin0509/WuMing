@@ -278,6 +278,7 @@ scan_signature_date(signature_status *result)
     if (dirfd == -1)
     {
         g_critical("Failed to open %s: %s", database_dir, strerror(errno));
+        result->status |= SIGNATURE_STATUS_NOT_FOUND;
         return;
     }
 

@@ -115,9 +115,9 @@ wait_for_process(pid_t pid, int flags)
     {
         case -1:
             g_critical("Failed to wait for process: %s", strerror(errno));
-            return -1; // Return -1 if failed to wait for the process
+            return -2; // Return -2 if failed to wait for the process
         case 0: // State not changed, the process is still running (Especially when `WNOHANG` is set)
-            return -1;
+            return -1; // Return -1 if the process is still running
         default: // The process is finished
             break;
     }
