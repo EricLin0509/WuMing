@@ -209,20 +209,25 @@ send_final_message(gpointer context, const char *message, gboolean is_success,
 }
 
 /* Build the command arguments */
-static GPtrArray *
+static char **
 build_command_args(const char *command, va_list args)
 {
-    GPtrArray *argv = g_ptr_array_new();
-    g_ptr_array_add(argv, (gpointer)command);
+    va_list args_copy;
+    va_copy(args_copy, args); // Copy the original args to count the number of arguments
 
-    char *arg;
-    while ((arg = va_arg(args, char *)) != NULL)
+    int argc = 0;
+    while (va_arg(args_copy, char *) != NULL) argc++; // Count the number of arguments
+    argc++; // Add 1 for the NULL argument
+    va_end(args_copy);
+
+    char *argv[argc+1]; // Allocate the argument array
+    memset(argv, 0, sizeof(char*) * (argc+1)); // Initialize the argument array to NULL
+    argv[0] = (char *)command; // Set the command as the first argument
+
+    for (int i = 1; i <= argc; i++)
     {
-        g_ptr_array_add(argv, arg);
+        argv[i] = va_arg(args, char *); // Set the argument
     }
-
-    // Add a NULL argument to indicate the end of the arguments list
-    g_ptr_array_add(argv, NULL);
 
     return argv;
 }
@@ -268,13 +273,11 @@ spawn_new_process(int pipefd[2], pid_t *pid, const char *path, const char *comma
 
         va_list args;
         va_start(args, command);
-        GPtrArray *argv = build_command_args(command, args);
+        char **argv = build_command_args(command, args);
         va_end(args);
-        assert(g_ptr_array_index(argv, argv->len-1) == NULL); // Check whether the last argument is NULL
 
-        execv(path, (char **)argv->pdata);
+        execv(path, argv);
 
-        g_ptr_array_free(argv, TRUE);
         exit(EXIT_FAILURE);
     }
     
@@ -314,13 +317,11 @@ spawn_new_process_no_pipes(pid_t *pid, const char *path, const char *command, ..
 
         va_list args;
         va_start(args, command);
-        GPtrArray *argv = build_command_args(command, args);
+        char **argv = build_command_args(command, args);
         va_end(args);
-        assert(g_ptr_array_index(argv, argv->len-1) == NULL); // Check whether the last argument is NULL
 
-        execv(path, (char **)argv->pdata);
+        execv(path, argv);
 
-        g_ptr_array_free(argv, TRUE);
         exit(EXIT_FAILURE);
     }
 
