@@ -36,6 +36,63 @@ typedef struct IdleData {
     const char *message; // message to send to the subprocess
 } IdleData;
 
+/* Initialize the IO context */
+IOContext
+io_context_init(int pipefd, int poll_events, int idle_counter, int dynamic_timeout)
+{
+    IOContext io_ctx = {0};
+    io_ctx.pipefd = pipefd;
+    io_ctx.ring_buf = ring_buffer_init();
+    io_ctx.fds = (struct pollfd) {
+        .fd = pipefd,
+       .events = poll_events,
+    };
+
+    io_ctx.idle_counter = idle_counter;
+    io_ctx.dynamic_timeout = dynamic_timeout;
+
+    return io_ctx;
+}
+
+/* IO context handle poll events */
+int
+io_context_handle_poll_events(IOContext *io_ctx)
+{
+    int result = 0;
+
+    result = poll(&io_ctx->fds, 1, io_ctx->dynamic_timeout); // Poll the pipe for events
+
+    return result;
+}
+
+/* Calculate the dynamic timeout based on the idle_counter and current_timeout */
+/*
+  * ready_status: this is the result of `poll()`, it indicates whether the subprocess is ready to read/write
+  * This parameter can be NULL if you don't need to reset the idle_counter
+*/
+int
+calculate_dynamic_timeout(IOContext *io_ctx, int *ready_status)
+{
+    /* Check the input parameters */
+    g_return_val_if_fail(io_ctx != NULL, 0);
+
+    const int jitter = rand() % JITTER_RANGE; // Add random jitter to the timeout to minimize the wake up of threads at the same time
+
+    if (ready_status != NULL && *ready_status > 0) // Optional parameter, reset the idle_counter if the subprocess is ready to read/write
+    {
+        io_ctx->idle_counter = 0; // Reset the idle_counter if the subprocess is ready to read/write
+        io_ctx->dynamic_timeout = BASE_TIMEOUT_MS; // Reset the timeout to the base value
+    }
+
+    if (++io_ctx->idle_counter > MAX_IDLE_COUNT)
+    {
+        io_ctx->dynamic_timeout = MIN(io_ctx->dynamic_timeout * 2, MAX_TIMEOUT_MS); // Increase the timeout if the thread is idle for a long time
+        io_ctx->idle_counter = 0;
+    }
+
+    return CLAMP(io_ctx->dynamic_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
+}
+
 /* Get the context from the `IdleData` */
 gpointer
 get_idle_context(IdleData *idle_data)
@@ -75,35 +132,6 @@ idle_data_clear(gpointer user_data)
   g_clear_pointer(&data, g_free);
 }
 
-/* Calculate the dynamic timeout based on the idle_counter and current_timeout */
-/*
-  * ready_status: this is the result of `poll()`, it indicates whether the subprocess is ready to read/write
-  * This parameter can be NULL if you don't need to reset the idle_counter
-*/
-int
-calculate_dynamic_timeout(int *idle_counter, int *current_timeout, int *ready_status)
-{
-    /* Check the input parameters */
-    g_return_val_if_fail(idle_counter != NULL, 0);
-    g_return_val_if_fail(current_timeout != NULL, 0);
-
-    const int jitter = rand() % JITTER_RANGE; // Add random jitter to the timeout to minimize the wake up of threads at the same time
-
-    if (ready_status != NULL && *ready_status > 0) // Optional parameter, reset the idle_counter if the subprocess is ready to read/write
-    {
-        *idle_counter = 0; // Reset the idle_counter if the subprocess is ready to read/write
-        *current_timeout = BASE_TIMEOUT_MS; // Reset the timeout to the base value
-    }
-
-    if (++(*idle_counter) > MAX_IDLE_COUNT)
-    {
-        *current_timeout = MIN(*current_timeout * 2, MAX_TIMEOUT_MS); // Increase the timeout if the thread is idle for a long time
-        *idle_counter = 0;
-    }
-
-    return CLAMP(*current_timeout + jitter, BASE_TIMEOUT_MS, MAX_TIMEOUT_MS);
-}
-
 /* Wait for the process to finish and return the exit status */
 gint
 wait_for_process(pid_t pid, int flags)
@@ -128,11 +156,11 @@ wait_for_process(pid_t pid, int flags)
     return exit_status;
 }
 
-/* Handle the input/output event */
+/* Handle the input event */
 gboolean
-handle_io_event(IOContext *io_ctx)
+handle_input_event(IOContext *io_ctx)
 {
-    const size_t free_space = ring_buffer_available(io_ctx->ring_buf);
+    const size_t free_space = ring_buffer_available(&io_ctx->ring_buf);
     const size_t buf_size = CLAMP(buf_size, 512, 4096); // Set the buffer size to 512-4096 bytes
 
     char read_buf[buf_size];
@@ -140,7 +168,7 @@ handle_io_event(IOContext *io_ctx)
 
     if ((n = read(io_ctx->pipefd, read_buf, buf_size)) > 0) // Read from the pipe
     {
-        size_t written = ring_buffer_write(io_ctx->ring_buf, read_buf, n); // Write to the ring buffer
+        size_t written = ring_buffer_write(&io_ctx->ring_buf, read_buf, n); // Write to the ring buffer
         if (written < (size_t)n)
         {
             g_warning("Ring buffer overflow, lost %zd bytes", n - written);
@@ -166,7 +194,7 @@ process_output_lines(IOContext *io_ctx, gpointer context,
     g_return_if_fail(context != NULL);
 
     char *line;
-    while ((line = ring_buffer_find_new_line(io_ctx->ring_buf)) != NULL)
+    while ((line = ring_buffer_find_new_line(&io_ctx->ring_buf)) != NULL)
     {
         IdleData *data = idle_data_new(context, line);
 

@@ -24,21 +24,20 @@
 /* the buffer size MUST be a power of 2 */
 #define RING_BUFFER_SIZE 8192
 
-typedef struct {
+typedef struct RingBuffer {
     char data[RING_BUFFER_SIZE];
     size_t head;  // Read
     size_t tail;  // Write
     size_t count; // current data length
 } RingBuffer;
 
-
 /* Initialize the ring buffer */
 /*
   * @param ring
   * the ring buffer to be initialized
 */
-void
-ring_buffer_init(RingBuffer *ring);
+RingBuffer
+ring_buffer_init(void);
 
 /* Get the number of bytes available for reading */
 size_t

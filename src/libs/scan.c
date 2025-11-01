@@ -21,7 +21,6 @@
 #include <glib/gi18n.h>
 #include <limits.h>
 #include <fcntl.h>
-#include <poll.h>
 
 #include "subprocess-components.h"
 #include "scan.h"
@@ -305,10 +304,6 @@ scan_thread(gpointer data)
     int pipefd[2];
     pid_t pid;
 
-    /* Initialize ring buffer */
-    RingBuffer ring_buf;
-    ring_buffer_init(&ring_buf);
-
     /*Spawn scan process*/
     if (!spawn_new_process(pipefd, &pid, 
         CLAMSCAN_PATH, "clamscan", ctx->path, "--recursive", NULL))
@@ -317,17 +312,10 @@ scan_thread(gpointer data)
     }
 
     /*Initialize IO context*/
-    IOContext io_ctx = {
-        .pipefd = pipefd[0],
-        .ring_buf = &ring_buf,
-    };
+    IOContext io_ctx = io_context_init(pipefd[0], POLLIN, 0, BASE_TIMEOUT_MS);
 
-    /*Start scan thread*/
-    struct pollfd fds = { .fd = pipefd[0], .events = POLLIN };
-    int idle_counter = 0;
-    int dynamic_timeout = BASE_TIMEOUT_MS;
     int ready = 0; // Whether there is data to read from the pipe
-    gint exit_status = -1;
+    gint exit_status = -2;
 
     while ((exit_status = wait_for_process(pid, WNOHANG)) == -1)
     {
@@ -338,12 +326,12 @@ scan_thread(gpointer data)
           break;
         }
 
-        int timeout = calculate_dynamic_timeout(&idle_counter, &dynamic_timeout, &ready);
-        ready = poll(&fds, 1, timeout);
+        int timeout = calculate_dynamic_timeout(&io_ctx, &ready);
+        ready = io_context_handle_poll_events(&io_ctx);
 
         if (ready > 0)
         {
-          handle_io_event(&io_ctx);
+          handle_input_event(&io_ctx);
           process_output_lines(&io_ctx, ctx, scan_ui_callback);
         }
     }

@@ -38,13 +38,17 @@ G_STATIC_ASSERT((RING_BUFFER_SIZE & (RING_BUFFER_SIZE - 1)) == 0);
   * @param ring
   * the ring buffer to be initialized
 */
-void
-ring_buffer_init(RingBuffer *ring)
+RingBuffer
+ring_buffer_init(void)
 {
-    memset(ring->data, 0, sizeof(ring->data));
-    ring->head = 0;
-    ring->tail = 0;
-    ring->count = 0;
+    RingBuffer ring;
+
+    memset(ring.data, 0, sizeof(ring.data));
+    ring.head = 0;
+    ring.tail = 0;
+    ring.count = 0;
+
+    return ring;
 }
 
 /* Get the number of bytes available for reading */
