@@ -28,34 +28,7 @@
 #include <signal.h>
 #include <sys/mman.h>
 
-#include "wuming-unlinkat-helper.h"
-
-/* Verify the authentication key */
-static inline gboolean
-verify_key(uint32_t expected, uint32_t received)
-{
-    return expected == received;
-}
-
-/* Verify the magic number of the shared memory */
-static inline gboolean 
-verify_magic(uint32_t magic)
-{
-    return magic == SHM_MAGIC;
-}
-
-/* Get the authentication key from the command line argument */
-static uint32_t
-get_auth_key(const char *auth_key_str)
-{
-    uint32_t auth_key = 0;
-    if (sscanf(auth_key_str, "%" PRIu32, &auth_key) != 1)
-    {
-        g_critical("Invalid authentication key: %s", auth_key_str);
-        return 0;
-    }
-    return auth_key;
-}
+#include "file-security.h"
 
 /* Prevent handle `SIGTRAP` (breakpoint) and `SIGILL` (illegal instruction) signal when the program is running */
 void
@@ -86,10 +59,10 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     gchar **argv = g_application_command_line_get_arguments(command_line, &argc); // Get the command line arguments;
 
     // Check the number of command line arguments
-    if (argc != 4)
+    if (argc != 3)
     {
         g_critical("[ERROR] Invalid arguments");
-        g_critical("Usage: %s <shm_name> <file_path> <auth_key>", argv[0]);
+        g_critical("Usage: %s <shm_name> <file_path>", argv[0]);
         return FILE_SECURITY_INVALID_PATH;
     }
 
@@ -97,53 +70,25 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     const char *shm_name = argv[1];
     const char *file_path = argv[2];
 
-    int shm_fd = shm_open(shm_name, O_RDONLY, 0); // Open the shared memory
-    if (shm_fd < 0)
+    FileSecurityContext *security_context = file_security_context_open_shared_mem(shm_name);
+    if (security_context == NULL)
     {
-        g_critical("[ERROR] Failed to open the shared memory: %s", shm_name);
-        return FILE_SECURITY_INVALID_PATH;
-    }
-
-    HelperData *helper_data = mmap(NULL, HELPER_DATA_SIZE, PROT_READ, MAP_SHARED, shm_fd, 0); // Map the shared memory
-    if (helper_data == MAP_FAILED)
-    {
-        g_critical("[ERROR] Failed to map the shared memory: %s", shm_name);
-        close(shm_fd);
-        return FILE_SECURITY_INVALID_PATH;
-    }
-    g_print("[INFO] HelperData received!\n");
-
-    // Verify the magic number of the shared memory
-    if (!verify_magic(helper_data->shm_magic))
-    {
-        g_critical("[ERROR] Invalid magic number of the shared memory: %s", shm_name);
-        status = FILE_SECURITY_INVALID_CONTEXT;
-        goto clean_up;
-    }
-
-    // Get authentication key from the command line argument
-    const uint32_t auth_key = get_auth_key(argv[3]);
-    if (!verify_key(auth_key, helper_data->auth_key))
-    {
-        g_critical("[ERROR] Authentication key mismatch, aborting...");
-        status = FILE_SECURITY_INVALID_CONTEXT;
-        goto clean_up;
+        g_critical("[ERROR] Failed to open shared memory: %s", shm_name);
+        return FILE_SECURITY_UNKNOWN_ERROR;
     }
 
     /* Delete file */
-    status = delete_file_securely(&helper_data->security_context, file_path);
+    status = delete_file_securely(security_context, file_path);
+    file_security_context_close_shared_mem(&security_context); // Close the shared memory
     if (status != FILE_SECURITY_OK)
     {
         g_critical("[ERROR] Failed to unlink the file: %s", file_path);
-        goto clean_up;
+    }
+    else
+    {
+        g_print("[INFO] The file has been unlinked successfully with elevated privileges.\n");
     }
 
-    g_print("[INFO] The file has been unlinked successfully with elevated privileges.\n");
-
-clean_up:
-    g_strfreev (argv);
-    munmap(helper_data, HELPER_DATA_SIZE);
-    close(shm_fd);
     return status;
 }
 

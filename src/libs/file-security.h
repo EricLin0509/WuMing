@@ -23,10 +23,7 @@
 #include <sys/stat.h>
 #include <glib.h>
 
-typedef struct {
-    struct stat dir_stat; // Directory stat, used for checking whether the directory has been modified
-    struct stat file_stat; // File stat, used for checking whether the file has been modified
-} FileSecurityContext; // File security context
+typedef struct FileSecurityContext FileSecurityContext;
 
 typedef enum {
     FILE_SECURITY_OK, // File is safe
@@ -44,19 +41,47 @@ typedef enum {
 /*
   * @param path
   * The path of the file or directory to be checked
+  * @param need_shared
+  * Whether the returned context should using shared memory or not
+  * @param shared_mem_filepath [OUT]
+  * If `need_shared` is `TRUE`, the shared memory file path will be returned here
   * @return
   * The newly allocated file security context, or `NULL` if an error occurred
 */
 FileSecurityContext *
-file_security_context_new(const gchar *path);
+file_security_context_new(const gchar *path, gboolean need_shared, char **shared_mem_filepath);
+
+/* Copy the file security context to a new space */
+/*
+  * @param context
+  * The file security context to be copied
+  * @param need_shared
+  * Whether the returned context should using shared memory or not
+  * @param shared_mem_filepath [OUT]
+  * If `need_shared` is `TRUE`, the shared memory file path will be returned here
+  * @return
+  * The newly allocated file security context, or `NULL` if an error occurred
+*/
+FileSecurityContext *
+file_security_context_copy(FileSecurityContext *context, gboolean need_shared, char **shared_mem_filepath);
+
+/* Open a shared memory and get the file security context */
+FileSecurityContext *
+file_security_context_open_shared_mem(const gchar *shared_mem_filepath);
+
+/* Close the shared memory */
+void
+file_security_context_close_shared_mem(FileSecurityContext **context);
 
 /* Free the file security context */
 /*
   * @param context
   * The file security context to be freed
+  * @param shared_mem_filepath [OPTIONAL]
+  * The shared memory file path to be freed, if it is not `NULL`
 */
 void
-file_security_context_clear(FileSecurityContext *context);
+file_security_context_clear(FileSecurityContext **context, char **shared_mem_filepath);
 
 /* Validate the path safety */
 /*

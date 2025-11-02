@@ -24,6 +24,8 @@
 #include <inttypes.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/random.h>
 
 #ifndef O_PATH // Compatibility for some Linux distributions
 #define O_PATH 010000000
@@ -34,6 +36,12 @@
 // Use `O_NOFOLLOW` to avoid following symlinks
 #define DIRECTORY_OPEN_FLAGS (O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
 #define FILE_OPEN_FLAGS (O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+
+typedef struct FileSecurityContext {
+    struct stat dir_stat; // Directory stat, used for checking whether the directory has been modified
+    struct stat file_stat; // File stat, used for checking whether the file has been modified
+    gboolean is_shared_memory; // Whether this struct using shared memory
+} FileSecurityContext; // File security context
 
 /* Open the file securely store the stat information */
 static gboolean
@@ -104,37 +112,217 @@ clean_up:
     return result;
 }
 
+/* Create a new allocated memory */
+static FileSecurityContext *
+file_security_context_create_memory(void)
+{
+    FileSecurityContext *new_context = g_new0(FileSecurityContext, 1);
+    if (!new_context)
+    {
+        g_critical("[SECURITY] Failed to allocate memory for file security context");
+        return NULL;
+    }
+
+    new_context->is_shared_memory = FALSE;
+    return new_context;
+}
+
+/* Create a new shared memory */
+static FileSecurityContext *
+file_security_context_create_shared_memory(char **shared_mem_filepath)
+{
+    g_return_val_if_fail(shared_mem_filepath, NULL);
+
+    FileSecurityContext *new_context = NULL;
+
+    unsigned long long secure_rand;
+    getrandom(&secure_rand, sizeof(secure_rand), 0); // Create a random number for the shared memory name
+
+    *shared_mem_filepath = g_strdup_printf("/file_security_context_%llu", secure_rand); // Create the shared memory file path
+
+    int shm_fd = shm_open(*shared_mem_filepath, O_CREAT | O_EXCL | O_RDWR, 0600); // Create shared memory
+    if (shm_fd == -1)
+    {
+        g_critical("[SECURITY] Failed to create shared memory: %s", *shared_mem_filepath);
+        g_clear_pointer(shared_mem_filepath, g_free); // Free the shared memory file path
+        return NULL;
+    }
+    ftruncate(shm_fd, sizeof(FileSecurityContext)); // Resize the shared memory to fit the context
+
+    new_context = mmap(NULL, sizeof(FileSecurityContext), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); // Map the shared memory to the context
+
+    if (new_context == MAP_FAILED)
+    {
+        g_critical("[SECURITY] Failed to map shared memory: %s", *shared_mem_filepath);
+        close(shm_fd);
+        return NULL;
+    }
+
+    close(shm_fd); // Close the shared memory file descriptor
+    new_context->is_shared_memory = TRUE; // Set the flag to indicate that this context is using shared memory
+    return new_context;
+}
+
+static void
+file_security_context_destroy_memory(FileSecurityContext **context)
+{
+    g_return_if_fail(context && *context);
+
+    if ((*context)->is_shared_memory) return; // Check if the context is using shared memory
+
+    g_clear_pointer(context, g_free); // Free the memory
+}
+
+static void
+file_security_context_destroy_shared_memory(FileSecurityContext **context, char **shared_mem_filepath)
+{
+    g_return_if_fail(context);
+
+    if (!(*context)->is_shared_memory) return; // Check if the context is using shared memory
+
+    file_security_context_close_shared_mem(context);
+
+    if (shared_mem_filepath == NULL || *shared_mem_filepath == NULL) // If the shared memory file path is not provided, do not destroy the shared memory
+    {
+        g_warning("[SECURITY] Shared memory file path is not provided, skip destroying shared memory");
+        return;
+    }
+
+    shm_unlink(*shared_mem_filepath); // Destroy the shared memory
+    g_clear_pointer(shared_mem_filepath, g_free); // Free the shared memory file path
+}
+
 /* Initialize the file security context */
 /*
   * @param path
   * The path of the file or directory to be checked
+  * @param need_shared
+  * Whether the returned context should using shared memory or not
+  * @param shared_mem_filepath [OUT]
+  * If `need_shared` is `TRUE`, the shared memory file path will be returned here
   * @return
-  * The initialized file security context or NULL if failed to initialize.
+  * The newly allocated file security context, or `NULL` if an error occurred
 */
 FileSecurityContext *
-file_security_context_new(const gchar *path)
+file_security_context_new(const gchar *path, gboolean need_shared, char **shared_mem_filepath)
 {
     g_return_val_if_fail(path, NULL);
 
-    FileSecurityContext *new_context = g_new0(FileSecurityContext, 1);
+    FileSecurityContext *new_context = NULL;
+
+    // Allocate memory for the context
+    if (need_shared)
+    {
+        new_context = file_security_context_create_shared_memory(shared_mem_filepath);
+    }
+    else
+    {
+        new_context = file_security_context_create_memory();
+    }
+
+    if (!new_context) return NULL; // Failed to allocate memory for the context
 
     if (!secure_open_and_store_stat(new_context, path))
     {
         g_critical("[SECURITY] Failed to initialize file security context");
-        file_security_context_clear(new_context);
+        file_security_context_clear(&new_context, shared_mem_filepath);
         return NULL;
     }
     
     return new_context;
 }
 
+/* Copy the file security context to a new space */
+/*
+  * @param context
+  * The file security context to be copied
+  * @param need_shared
+  * Whether the returned context should using shared memory or not
+  * @param shared_mem_filepath [OUT]
+  * If `need_shared` is `TRUE`, the shared memory file path will be returned here
+  * @return
+  * The newly allocated file security context, or `NULL` if an error occurred
+*/
+FileSecurityContext *
+file_security_context_copy(FileSecurityContext *context, gboolean need_shared, char **shared_mem_filepath)
+{
+    g_return_val_if_fail(context, NULL);
+
+    FileSecurityContext *new_context = NULL;
+
+    if (need_shared)
+    {
+        new_context = file_security_context_create_shared_memory(shared_mem_filepath);
+    }
+    else
+    {
+        new_context = file_security_context_create_memory();
+    }
+
+    if (!new_context) return NULL; // Failed to allocate memory for the context
+
+    // Copy the data
+    new_context->dir_stat = context->dir_stat;
+    new_context->file_stat = context->file_stat;
+
+    return new_context;
+}
+
+/* Open a shared memory and get the file security context */
+FileSecurityContext *
+file_security_context_open_shared_mem(const gchar *shared_mem_filepath)
+{
+    g_return_val_if_fail(shared_mem_filepath, NULL);
+
+    FileSecurityContext *new_context = NULL;
+
+    int shm_fd = shm_open(shared_mem_filepath, O_RDWR, 0600); // Open shared memory
+    if (shm_fd == -1)
+    {
+        g_critical("[SECURITY] Failed to open shared memory: %s", shared_mem_filepath);
+        return NULL;
+    }
+
+    new_context = mmap(NULL, sizeof(FileSecurityContext), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); // Map the shared memory to the context
+
+    if (new_context == MAP_FAILED)
+    {
+        g_critical("[SECURITY] Failed to map shared memory: %s", shared_mem_filepath);
+        close(shm_fd);
+        return NULL;
+    }
+
+    close(shm_fd); // Close the shared memory file descriptor
+    return new_context;
+}
+
+/* Close the shared memory */
+void
+file_security_context_close_shared_mem(FileSecurityContext **context)
+{
+    g_return_if_fail(context && *context);
+
+    if (!(*context)->is_shared_memory) return; // Check if the context is using shared memory
+
+    munmap(*context, sizeof(FileSecurityContext)); // Unmap the shared memory
+
+    *context = NULL; // Set the context to NULL to indicate that the shared memory is closed
+}
+
 /* Free the file security context */
 void
-file_security_context_clear(FileSecurityContext *context)
+file_security_context_clear(FileSecurityContext **context, char **shared_mem_filepath)
 {
-    g_return_if_fail(context);
+    g_return_if_fail(context && *context);
 
-    g_clear_pointer(&context, g_free);
+    if ((*context)->is_shared_memory)
+    {
+        file_security_context_destroy_shared_memory(context, shared_mem_filepath);
+    }
+    else
+    {
+        file_security_context_destroy_memory(context);
+    }
 }
 
 /* Pattern for matching protected directories */
@@ -282,7 +470,7 @@ static FileSecurityStatus
 validate_file_integrity(FileSecurityContext *orig_context, const gchar *path)
 {
     // Create a new context for the file
-    FileSecurityContext *new_context = file_security_context_new(path);
+    FileSecurityContext *new_context = file_security_context_new(path, FALSE, NULL);
     if (!new_context) return FILE_SECURITY_INVALID_PATH;
 
     // Check if the context is valid
@@ -334,7 +522,7 @@ delete_file_securely(FileSecurityContext *orig_context, const gchar *path)
     /* Delete the file */
     if (unlink(path) == -1)
     {
-        g_critical("[SECURITY] Failed to delete file: %s", path);
+        g_critical("[SECURITY] Failed to delete %s: %s", path, strerror(errno));
         status = FILE_SECURITY_UNKNOWN_ERROR;
         return status;
     }

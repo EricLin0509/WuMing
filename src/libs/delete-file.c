@@ -32,7 +32,6 @@
 
 #include "delete-file.h"
 #include "file-security.h"
-#include "wuming-unlinkat-helper.h"
 #include "subprocess-components.h"
 
 #include "threat-page.h"
@@ -68,7 +67,7 @@ delete_file_data_new(GtkWidget *threat_page, GtkWidget *action_row)
     data->path = adw_action_row_get_subtitle(ADW_ACTION_ROW(action_row)), // This string SHOULDN'T be freed because it's owned by the action row
     data->threat_page = threat_page;
     data->action_row = action_row;
-    data->security_context = file_security_context_new(data->path);
+    data->security_context = file_security_context_new(data->path, FALSE, NULL);
 
     return data;
 }
@@ -80,7 +79,7 @@ delete_file_data_clear(DeleteFileData *data)
 {
     g_return_if_fail(data != NULL);
 
-    file_security_context_clear(data->security_context);
+    file_security_context_clear(&data->security_context, NULL);
     g_free(data);
 
     data = NULL;
@@ -185,73 +184,25 @@ log_deletion_attempt(const char *path)
     g_free(log_entry);
 }
 
-/* Generate a random key for authentication */
-static uint32_t
-generate_auth_key(void)
-{
-    uint32_t key = 0;
-    if (getrandom(&key, sizeof(key), 0) != sizeof(key))
-    {
-        g_warning("[WARNING] Failed to generate random key, using default key!");
-        return DEFAULT_AUTH_KEY;
-    }
-    return key;
-}
-
 /* Delete threat files in elevated mode */
 static void
 delete_threat_file_elevated(DeleteFileData *data)
 {
     g_return_if_fail(data && data->security_context);
 
-    // Generate the auth key for authentication
-    uint32_t gen_key = generate_auth_key();
-
-    char key_str[16]; // Use for passing the key through the command line
-    snprintf(key_str, sizeof(key_str), "%" PRIu32, gen_key);
-
-    /* Prepare the data to send */
-    HelperData helper_data = {
-        .auth_key = gen_key,
-        .shm_magic = SHM_MAGIC,
-
-        .security_context = *(data->security_context),
-    };
-
-    // Create a shared memory for passing data between the helper process and the main process
-    unsigned short secure_rand;
-    getrandom(&secure_rand, sizeof(secure_rand), 0); // Create a random number for the shared memory name
-
-    char shm_name[256];
-    snprintf(shm_name, sizeof(shm_name), "/wuming_shm_%d_%d", getpid(), secure_rand);
-
-    // Configure the shared memory
-    int shm_fd = shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, 0600);
-    if (shm_fd == -1)
+    char *shm_name = NULL;
+    FileSecurityContext *copied_context = file_security_context_copy(data->security_context, TRUE, &shm_name); // Copy the security context to shared memory
+    if (!copied_context)
     {
-        g_critical("[ERROR] Failed to create shared memory: %s", strerror(errno));
+        g_critical("[ERROR] Failed to copy security context to shared memory");
         error_operation(data, FILE_SECURITY_UNKNOWN_ERROR);
         return;
     }
-    ftruncate(shm_fd, HELPER_DATA_SIZE); // Set the size of the shared memory
-
-    HelperData *shm_data = mmap(NULL, HELPER_DATA_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); // Map the shared memory
-    if (shm_data == MAP_FAILED) // Check if the mapping is successful
-    {
-        g_critical("[ERROR] Failed to map shared memory: %s", strerror(errno));
-        error_operation(data, FILE_SECURITY_UNKNOWN_ERROR);
-        shm_unlink(shm_name);
-        return;
-    }
-
-    *shm_data = helper_data; // Copy the helper data to the shared memory
-    munmap(shm_data, HELPER_DATA_SIZE); // Unmap the shared memory
-    close(shm_fd);
 
     pid_t pid;
 
     spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
-                                    shm_name, data->path, key_str, NULL); // Spawn the helper process
+                                    shm_name, data->path, NULL); // Spawn the helper process
 
     int exit_status = pid == -1 ? FILE_SECURITY_UNKNOWN_ERROR : wait_for_process(pid, 0); // Wait for the helper process to finish
     exit_status = (exit_status < FILE_SECURITY_OK || exit_status > FILE_SECURITY_UNKNOWN_ERROR) ? FILE_SECURITY_UNKNOWN_ERROR : exit_status; // Check if the exit status is valid
@@ -259,18 +210,13 @@ delete_threat_file_elevated(DeleteFileData *data)
     if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK)
     {
         g_critical("[ERROR] Helper process returned error: %d", exit_status);
-        goto error_clean_up;
+        error_operation(data, (FileSecurityStatus)exit_status);
     }
 
     // Clean up
-    shm_unlink(shm_name);
+    file_security_context_clear(&copied_context, &shm_name);
     threat_page_remove_threat(THREAT_PAGE(data->threat_page), data->action_row); // Remove the action row from the list view
     log_deletion_attempt(data->path);
-    return;
-
-error_clean_up:
-    shm_unlink(shm_name);
-    error_operation(data, (FileSecurityStatus)exit_status);
     return;
 }
 
