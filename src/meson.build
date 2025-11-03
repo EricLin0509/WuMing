@@ -26,6 +26,7 @@ add_project_arguments(['-DHELPER_PATH="@0@"'.format(helper_path)], language: 'c'
 wuming_unlink_helper_sources = [
   'libs/file-security.c',
   'libs/wuming-unlinkat-helper.c',
+  'libs/path-operations.c',
 ]
 
 executable('wuming-unlinkat-helper', wuming_unlink_helper_sources,

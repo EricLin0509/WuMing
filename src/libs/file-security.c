@@ -18,165 +18,205 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "file-security.h"
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <inttypes.h>
-#include <sys/types.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/random.h>
+
+#include "file-security.h"
+#include "path-operations.h"
 
 #ifndef O_PATH // Compatibility for some Linux distributions
 #define O_PATH 010000000
 #endif
 
-#define PROTECTED_DIRS_PATTERN "^/(etc|dev|sys|proc|var/log)(/|$)" // Pattern for matching protected directories
+#define SHARED_MEM_FALLBACK_RANDOM_NUM 4519921969881885362 // Fallback random number for shared memory if getrandom() is failed
+#define SHARED_MEM_FILE_PATH_LEN 44 // 23 ("/file_security_context") + (20 random number) + (null terminator)
 
 // Use `O_NOFOLLOW` to avoid following symlinks
 #define DIRECTORY_OPEN_FLAGS (O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
 #define FILE_OPEN_FLAGS (O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
 
 typedef struct FileSecurityContext {
-    struct stat dir_stat; // Directory stat, used for checking whether the directory has been modified
-    struct stat file_stat; // File stat, used for checking whether the file has been modified
-    gboolean is_shared_memory; // Whether this struct using shared memory
-} FileSecurityContext; // File security context
+    struct stat dir_stat; // Directory status
+    struct stat file_stat; // file status
 
-/* Open the file securely store the stat information */
-static gboolean
-secure_open_and_store_stat(FileSecurityContext *context, const gchar *path)
+    bool is_shared_memory; // Indicate whether is shared memory
+} FileSecurityContext;
+
+/* Take the snapshot of the directory and file status */
+static bool file_security_context_take_snapshot(FileSecurityContext *context, const char *path, int *need_dir_fd)
 {
-    gboolean result = FALSE;
+    if (context == NULL || path == NULL || *path == '\0') return false;
 
-    // Check if the path is valid
-    if (!context || !path || !*path)
-    {
-       g_critical("[SECURITY] Invalid params: ctx:%p path:%s", context, path ? path : "(null)");
-       return result;
-    }
+    char *dir_name = NULL;
+    char *file_name = NULL;
 
-    // Initialize the common fields
-    g_autofree gchar *dir_path = NULL;
-    g_autofree gchar *base_name = NULL;
+    bool is_operation_success = true;
+
     int dir_fd = -1;
     int file_fd = -1;
 
-    dir_path = g_path_get_dirname(path); // Get the directory path
-    base_name = g_path_get_basename(path); // Get the base name of the file
-
-    // Open parent directory
-    dir_fd = open(dir_path, DIRECTORY_OPEN_FLAGS);
-    if (dir_fd == -1)
+    if (is_operation_success && !get_file_dir_name(path, &file_name, &dir_name))
     {
-        g_critical("[SECURITY] Failed to open directory: %s", dir_path);
-        goto clean_up;
+        fprintf(stderr, "[ERROR] Failed to get file and directory name\n");
+        is_operation_success = false;
     }
 
-    // Get directory stat
-    if (fstat(dir_fd, &context->dir_stat) == -1)
+    if (is_operation_success && (dir_fd = open(dir_name, DIRECTORY_OPEN_FLAGS)) == -1)
     {
-        g_critical("[SECURITY] Failed to get directory stat: %s", dir_path);
-        goto clean_up;
+        fprintf(stderr, "[ERROR] Failed to open directory: %s\n", dir_name);
+        is_operation_success = false;
+    }
+    
+    /* Get directory status */
+    if (is_operation_success && fstat(dir_fd, &context->dir_stat) == -1)
+    {
+        fprintf(stderr, "[ERROR] Failed to get directory status: %s\n", dir_name);
+        is_operation_success = false;
     }
 
-    // Check again whether the file is symlink
-    struct stat symlink_check_stat;
-    if (fstatat(dir_fd, base_name, &symlink_check_stat, AT_SYMLINK_NOFOLLOW) == -1)
+    /* Get file status */
+    if (is_operation_success && (file_fd = openat(dir_fd, file_name, FILE_OPEN_FLAGS)) == -1)
     {
-        g_critical("[SECURITY] Symlink detected: %s", path);
-        goto clean_up;
+        fprintf(stderr, "[ERROR] Failed to open file: %s\n", file_name);
+        is_operation_success = false;
     }
 
-    // Open file
-    file_fd = openat(dir_fd, base_name, FILE_OPEN_FLAGS);
-    if (file_fd == -1)
+    if (is_operation_success && fstat(file_fd, &context->file_stat) == -1)
     {
-        g_critical("[SECURITY] Failed to open file: %s", path);
-        goto clean_up;
+        fprintf(stderr, "[ERROR] Failed to get file status: %s\n", file_name);
+        is_operation_success = false;
     }
 
-    // Get file stat
-    if (fstat(file_fd, &context->file_stat) == -1)
+    /* Get the file descriptor if needed */
+    if ((need_dir_fd == NULL || !is_operation_success) && dir_fd != -1) // If the file descriptor is not needed or the operation is failed, close the file descriptor
     {
-        g_critical("[SECURITY] Failed to get file stat: %s", path);
-        goto clean_up;
+        close(dir_fd);
     }
+    else *need_dir_fd = dir_fd;
+    dir_fd = -1; // Reset the file descriptor
 
-    result = TRUE;
-
-clean_up:
-    if (dir_fd != -1) close(dir_fd);
-    if (file_fd != -1) close(file_fd);
-
-    return result;
+    /* Clean up */
+    if (file_fd != -1)
+    {
+        close(file_fd);
+        file_fd = -1;
+    }
+    if (dir_name != NULL)
+    {
+        free(dir_name);
+        dir_name = NULL;
+    }
+    if (file_name != NULL)
+    {
+        free(file_name);
+        file_name = NULL;
+    }
+    
+    return is_operation_success;
 }
 
 /* Create a new allocated memory */
-static FileSecurityContext *
-file_security_context_create_memory(void)
+static FileSecurityContext *file_security_context_create_memory(void)
 {
-    FileSecurityContext *new_context = g_new0(FileSecurityContext, 1);
-    if (!new_context)
+    FileSecurityContext *context = calloc(1, sizeof(FileSecurityContext));
+    if (context == NULL)
     {
-        g_critical("[SECURITY] Failed to allocate memory for file security context");
+        fprintf(stderr, "[ERROR] Failed to allocate memory for file security context\n");
         return NULL;
     }
 
-    new_context->is_shared_memory = FALSE;
-    return new_context;
+    context->is_shared_memory = false;
+
+    return context;
 }
 
 /* Create a new shared memory */
-static FileSecurityContext *
-file_security_context_create_shared_memory(char **shared_mem_filepath)
+static FileSecurityContext *file_security_context_create_shared_memory(char **shared_mem_filepath)
 {
-    g_return_val_if_fail(shared_mem_filepath, NULL);
+    if (shared_mem_filepath == NULL) return NULL;
 
-    FileSecurityContext *new_context = NULL;
+    FileSecurityContext *context = NULL;
 
-    unsigned long long secure_rand;
-    getrandom(&secure_rand, sizeof(secure_rand), 0); // Create a random number for the shared memory name
+    /* Create a new random number */
+    uint64_t secure_rand;
+    if (getrandom(&secure_rand, sizeof(secure_rand), 0) != sizeof(secure_rand)) // Create a random number for the shared memory name
+    {
+        fprintf(stderr, "[WARNING] getrandom() failed, using fallback random number\n");
+        secure_rand = SHARED_MEM_FALLBACK_RANDOM_NUM;
+    }
 
-    *shared_mem_filepath = g_strdup_printf("/file_security_context_%llu", secure_rand); // Create the shared memory file path
+    *shared_mem_filepath = calloc(SHARED_MEM_FILE_PATH_LEN, sizeof(char));
+    snprintf(*shared_mem_filepath, SHARED_MEM_FILE_PATH_LEN, "/file_security_context_%" PRIu64, secure_rand);
 
-    int shm_fd = shm_open(*shared_mem_filepath, O_CREAT | O_EXCL | O_RDWR, 0600); // Create shared memory
+    /* Create the shared memory */
+    int shm_fd = shm_open(*shared_mem_filepath, O_CREAT | O_EXCL | O_RDWR, 0600);
     if (shm_fd == -1)
     {
-        g_critical("[SECURITY] Failed to create shared memory: %s", *shared_mem_filepath);
-        g_clear_pointer(shared_mem_filepath, g_free); // Free the shared memory file path
+        fprintf(stderr, "[ERROR] Failed to create shared memory\n");
+        free(*shared_mem_filepath);
         return NULL;
     }
-    ftruncate(shm_fd, sizeof(FileSecurityContext)); // Resize the shared memory to fit the context
 
-    new_context = mmap(NULL, sizeof(FileSecurityContext), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); // Map the shared memory to the context
-
-    if (new_context == MAP_FAILED)
+    /* Set the secure flags for shm_fd */
+    if (fcntl(shm_fd, F_SETFD, FD_CLOEXEC) == -1)
     {
-        g_critical("[SECURITY] Failed to map shared memory: %s", *shared_mem_filepath);
+        fprintf(stderr, "[ERROR] Failed to set secure flags for shared memory\n");
         close(shm_fd);
+        shm_unlink(*shared_mem_filepath);
+        free(*shared_mem_filepath);
         return NULL;
     }
 
-    close(shm_fd); // Close the shared memory file descriptor
-    new_context->is_shared_memory = TRUE; // Set the flag to indicate that this context is using shared memory
-    return new_context;
+    /* Set the size of the shared memory */
+    if (ftruncate(shm_fd, sizeof(FileSecurityContext)) == -1)
+    {
+        fprintf(stderr, "[ERROR] Failed to set size of shared memory\n");
+        close(shm_fd);
+        shm_unlink(*shared_mem_filepath);
+        free(*shared_mem_filepath);
+        return NULL;
+    }
+
+    /* Map the shared memory */
+    context = mmap(NULL, sizeof(FileSecurityContext), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    if (context == MAP_FAILED)
+    {
+        fprintf(stderr, "[ERROR] Failed to map shared memory\n");
+        close(shm_fd);
+        shm_unlink(*shared_mem_filepath);
+        free(*shared_mem_filepath);
+        return NULL;
+    }
+
+    /* Mark the context as shared memory */
+    context->is_shared_memory = true;
+
+    return context;
 }
 
-static void
-file_security_context_destroy_memory(FileSecurityContext **context)
+/* Clear the memory of the file security context */
+static void file_security_context_destroy_memory(FileSecurityContext **context)
 {
-    g_return_if_fail(context && *context);
+    if (context == NULL || *context == NULL) return; // Check if the context is valid
 
-    if ((*context)->is_shared_memory) return; // Check if the context is using shared memory
+    if ((*context)->is_shared_memory) return; // Check if the context is using dynamic allocated memory
 
-    g_clear_pointer(context, g_free); // Free the memory
+    free(*context); // Free the memory
+    *context = NULL; // Set the context to NULL to indicate that the memory is freed
 }
 
-static void
-file_security_context_destroy_shared_memory(FileSecurityContext **context, char **shared_mem_filepath)
+/* Clear the shared memory of the file security context */
+static void file_security_context_destroy_shared_memory(FileSecurityContext **context, char **shared_mem_filepath)
 {
-    g_return_if_fail(context);
+    if (context == NULL || *context == NULL) return; // Check if the context is valid
 
     if (!(*context)->is_shared_memory) return; // Check if the context is using shared memory
 
@@ -184,12 +224,14 @@ file_security_context_destroy_shared_memory(FileSecurityContext **context, char 
 
     if (shared_mem_filepath == NULL || *shared_mem_filepath == NULL) // If the shared memory file path is not provided, do not destroy the shared memory
     {
-        g_warning("[SECURITY] Shared memory file path is not provided, skip destroying shared memory");
+        fprintf(stderr, "[WARNING] Shared memory file path is not provided, skip destroying shared memory\n");
         return;
     }
 
     shm_unlink(*shared_mem_filepath); // Destroy the shared memory
-    g_clear_pointer(shared_mem_filepath, g_free); // Free the shared memory file path
+
+    free(*shared_mem_filepath); // Free the shared memory file path
+    *shared_mem_filepath = NULL; // Set the shared memory file path to NULL to indicate that the memory is freed
 }
 
 /* Initialize the file security context */
@@ -200,17 +242,17 @@ file_security_context_destroy_shared_memory(FileSecurityContext **context, char 
   * Whether the returned context should using shared memory or not
   * @param shared_mem_filepath [OUT]
   * If `need_shared` is `TRUE`, the shared memory file path will be returned here
+  * @param  need_dir_fd [OUT] [OPTIONAL]
+  * If this parameter is not `NULL`, the file descriptor of the file will be returned here, especially for the case that need further operations on the file
   * @return
   * The newly allocated file security context, or `NULL` if an error occurred
 */
-FileSecurityContext *
-file_security_context_new(const gchar *path, gboolean need_shared, char **shared_mem_filepath)
+FileSecurityContext *file_security_context_new(const char *path, bool need_shared, char **shared_mem_filepath, int *need_dir_fd)
 {
-    g_return_val_if_fail(path, NULL);
+    if (path == NULL) return NULL;
 
     FileSecurityContext *new_context = NULL;
 
-    // Allocate memory for the context
     if (need_shared)
     {
         new_context = file_security_context_create_shared_memory(shared_mem_filepath);
@@ -220,15 +262,14 @@ file_security_context_new(const gchar *path, gboolean need_shared, char **shared
         new_context = file_security_context_create_memory();
     }
 
-    if (!new_context) return NULL; // Failed to allocate memory for the context
+    if (new_context == NULL) return NULL; // Check if the context is allocated successfully
 
-    if (!secure_open_and_store_stat(new_context, path))
+    /* Snapshot the directory and file status */
+    if (!file_security_context_take_snapshot(new_context, path, need_dir_fd))
     {
-        g_critical("[SECURITY] Failed to initialize file security context");
-        file_security_context_clear(&new_context, shared_mem_filepath);
-        return NULL;
+        file_security_context_clear(&new_context, shared_mem_filepath, need_dir_fd);
     }
-    
+
     return new_context;
 }
 
@@ -243,10 +284,9 @@ file_security_context_new(const gchar *path, gboolean need_shared, char **shared
   * @return
   * The newly allocated file security context, or `NULL` if an error occurred
 */
-FileSecurityContext *
-file_security_context_copy(FileSecurityContext *context, gboolean need_shared, char **shared_mem_filepath)
+FileSecurityContext *file_security_context_copy(FileSecurityContext *context, bool need_shared, char **shared_mem_filepath)
 {
-    g_return_val_if_fail(context, NULL);
+    if (context == NULL) return NULL;
 
     FileSecurityContext *new_context = NULL;
 
@@ -261,59 +301,25 @@ file_security_context_copy(FileSecurityContext *context, gboolean need_shared, c
 
     if (!new_context) return NULL; // Failed to allocate memory for the context
 
-    // Copy the data
+    /* Copy the data */
     new_context->dir_stat = context->dir_stat;
     new_context->file_stat = context->file_stat;
 
     return new_context;
 }
 
-/* Open a shared memory and get the file security context */
-FileSecurityContext *
-file_security_context_open_shared_mem(const gchar *shared_mem_filepath)
-{
-    g_return_val_if_fail(shared_mem_filepath, NULL);
-
-    FileSecurityContext *new_context = NULL;
-
-    int shm_fd = shm_open(shared_mem_filepath, O_RDWR, 0600); // Open shared memory
-    if (shm_fd == -1)
-    {
-        g_critical("[SECURITY] Failed to open shared memory: %s", shared_mem_filepath);
-        return NULL;
-    }
-
-    new_context = mmap(NULL, sizeof(FileSecurityContext), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); // Map the shared memory to the context
-
-    if (new_context == MAP_FAILED)
-    {
-        g_critical("[SECURITY] Failed to map shared memory: %s", shared_mem_filepath);
-        close(shm_fd);
-        return NULL;
-    }
-
-    close(shm_fd); // Close the shared memory file descriptor
-    return new_context;
-}
-
-/* Close the shared memory */
-void
-file_security_context_close_shared_mem(FileSecurityContext **context)
-{
-    g_return_if_fail(context && *context);
-
-    if (!(*context)->is_shared_memory) return; // Check if the context is using shared memory
-
-    munmap(*context, sizeof(FileSecurityContext)); // Unmap the shared memory
-
-    *context = NULL; // Set the context to NULL to indicate that the shared memory is closed
-}
-
 /* Free the file security context */
-void
-file_security_context_clear(FileSecurityContext **context, char **shared_mem_filepath)
+/*
+  * @param context
+  * The file security context to be freed
+  * @param shared_mem_filepath [OPTIONAL]
+  * The shared memory file path to be freed, if it is not `NULL`
+  * @param need_dir_fd [OPTIONAL]
+  * The file descriptor to be closed, if it is not `NULL`
+*/
+void file_security_context_clear(FileSecurityContext **context, char **shared_mem_filepath, int *need_dir_fd)
 {
-    g_return_if_fail(context && *context);
+    if (context == NULL || *context == NULL) return; // Check if the context is valid
 
     if ((*context)->is_shared_memory)
     {
@@ -323,104 +329,51 @@ file_security_context_clear(FileSecurityContext **context, char **shared_mem_fil
     {
         file_security_context_destroy_memory(context);
     }
+
+    if (need_dir_fd != NULL && *need_dir_fd != -1) // Close the file descriptor if it is provided
+    {
+        close(*need_dir_fd);
+        *need_dir_fd = -1;
+    }
 }
 
-/* Pattern for matching protected directories */
-static gboolean
-check_protected_dirs(const gchar *path)
+/* Open a shared memory and get the file security context */
+FileSecurityContext *file_security_context_open_shared_mem(const char *shared_mem_filepath)
 {
-    GRegex *regex = g_regex_new(PROTECTED_DIRS_PATTERN, G_REGEX_DEFAULT, G_REGEX_MATCH_DEFAULT, NULL);
-    gboolean matched = g_regex_match(regex, path, 0, NULL);
-    g_regex_unref(regex);
-    return matched;
+    if (shared_mem_filepath == NULL) return NULL;
+
+    FileSecurityContext *context = NULL;
+
+    int shm_fd = shm_open(shared_mem_filepath, O_RDWR, 0600); // Open shared memory
+    if (shm_fd == -1)
+    {
+        fprintf(stderr, "[SECURITY] Failed to open shared memory: %s", shared_mem_filepath);
+        return NULL;
+    }
+
+    context = mmap(NULL, sizeof(FileSecurityContext), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0); // Map the shared memory to the context
+
+    if (context == MAP_FAILED)
+    {
+        fprintf(stderr, "[SECURITY] Failed to map shared memory: %s", shared_mem_filepath);
+        close(shm_fd);
+        return NULL;
+    }
+
+    close(shm_fd); // Close the shared memory file descriptor
+    return context;
 }
 
-/* Calculate the depth of the path */
-static gint
-calculate_path_depth(const gchar *path)
+/* Close the shared memory */
+void file_security_context_close_shared_mem(FileSecurityContext **context)
 {
-    gchar *temp = g_strdup(path);
-    gint depth = g_strrstr(temp, "/") ? (gint)g_strv_length(g_strsplit(temp, "/", 0)) - 1 : 0;
-    g_free(temp);
-    return depth;
-}
+    if (context == NULL || *context == NULL) return; // Check if the context is valid
 
-/* Validate the path safety */
-/*
-  * @param path
-  * The path to be validated
-  * @return
-  * `TRUE` if the path is safe, `FALSE` otherwise
-*/
-/*
-  * These paths should be blocked:
-  * Default policies:
-  * - / (root directory)
-  * - original path contains ".."
-  * - /var/log
-  * - /etc
-  *  - /sys, /proc and other virtual file systems
-  * - symlinks
-  *  - paths over 10 depths
-  * 
-  * User configurations (Later versions will add support for this, use GSettings to manage this)
-*/
-gboolean
-validate_path_safety(const char *path)
-{
-    if (!path || !*path) return FALSE; // Check if the path is valid
+    if (!(*context)->is_shared_memory) return; // Check if the context is using shared memory
 
-    /* Check if the original path contains ".." */
-    if (strstr(path, "..") != NULL)
-    {
-        g_critical("[ERROR] Path contains '..': %s", path);
-        return FALSE;
-    }
+    munmap(*context, sizeof(FileSecurityContext)); // Unmap the shared memory
 
-    /* Normalize the path */
-    gchar *normalized_path = g_canonicalize_filename(path, NULL);
-    if (!normalized_path)
-    {
-        g_critical("[ERROR] Failed to normalize path: %s", path);
-        return FALSE;
-    }
-
-    /* Check if the path is root directory `/` */
-    if (strcmp(normalized_path, "/") == 0)
-    {
-        g_critical("[ERROR] Attempted to delete file in root directory: %s", path);
-        goto error_clean_up;
-    }
-
-    /* Check if the path is in protected directories */
-    if (check_protected_dirs(normalized_path))
-    {
-        g_critical("[ERROR] Attempted to delete file in protected directory: %s", normalized_path);
-        goto error_clean_up;
-    }
-
-    /* Check if the path is too deep */
-    if (calculate_path_depth(normalized_path) > 10)
-    {
-        g_critical("[ERROR] Path is too deep: %s", normalized_path);
-        goto error_clean_up;
-    }
-
-    /* Check if the path is a symlink */
-    if (g_file_test(normalized_path, G_FILE_TEST_IS_SYMLINK)) // Check if the path is a symlink
-    {
-        g_critical("[ERROR] Attempted to delete symlink: %s", normalized_path);
-        goto error_clean_up;
-    }
-
-    /* TODO: Check if the path is in user configuration blacklist */
-
-    g_free(normalized_path);
-    return TRUE;
-
-error_clean_up:
-    g_free(normalized_path);
-    return FALSE;
+    *context = NULL; // Set the context to NULL to indicate that the shared memory is closed
 }
 
 /* Compare the original file stat with the current file stat */
@@ -428,107 +381,134 @@ error_clean_up:
   * If `TRUE`, the file has not been modified since the last time it was opened
   * If `FALSE`, the file has been modified since the last time it was opened or the invalid parameters were provided
 */
-static gboolean
-context_compare(const struct stat *original_stat, const struct stat *current_stat, const gboolean is_check_directory)
+static bool
+context_compare(const struct stat *original_stat, const struct stat *current_stat, const bool is_check_directory, int flags)
 {
-    if (!original_stat || !current_stat)
-    {
-        g_critical("[SECURITY] Invalid params! original_stat:%p current_stat:%p", original_stat, current_stat);
-        return FALSE;
-    }
+    if (original_stat == NULL || current_stat == NULL) return false;
 
-    /* If checking a directory, only compare the device ID */
-    if (is_check_directory) return (original_stat->st_dev == current_stat->st_dev);
-
+    /* If checking a directory and not use strict mode, only compare the device ID */
+    if (is_check_directory && (flags & FILE_SECURITY_VALIDATE_STRICT) == 0)
+        return (original_stat->st_dev == current_stat->st_dev);
+    
     /* Otherwise, compare all the metadata, content, create time, modification time */
 
     // Metadata comparison
-    const gboolean descriptor_match = 
+    const bool descriptor_match = 
         (original_stat->st_dev == current_stat->st_dev &&
          original_stat->st_ino == current_stat->st_ino);
 
     // Content comparison
-    const gboolean content_match = 
+    const bool content_match = 
         (original_stat->st_nlink == current_stat->st_nlink &&
          original_stat->st_size == current_stat->st_size);
 
     // Create time comparison
-    const gboolean create_time_match = 
+    const bool create_time_match = 
         (original_stat->st_ctime == current_stat->st_ctime &&
          original_stat->st_ctim.tv_nsec == current_stat->st_ctim.tv_nsec);
 
     // Modification time comparison
-    const gboolean modification_time_match = 
+    const bool modification_time_match = 
         (original_stat->st_mtime == current_stat->st_mtime &&
          original_stat->st_mtim.tv_nsec == current_stat->st_mtim.tv_nsec);
 
     return descriptor_match && content_match && create_time_match && modification_time_match;
 }
 
-/* Check file integrity by comparing the original file stat with the current file stat */
-static FileSecurityStatus
-validate_file_integrity(FileSecurityContext *orig_context, const gchar *path)
+/* Validate the file integrity */
+/*
+  * @param orig_context
+  * The original file security context
+  * @param new_context
+  * The new file security context, or `NULL` to create a new context
+  * @param path
+  * The path of the file or directory to be checked
+  * @param flags
+  * The validation flags
+  * @return
+  * The validation status code
+  * 
+  * @warning
+  * if `new_context` is `NULL` and `path` is not a valid, the function will return `FILE_SECURITY_INVALID_PATH`
+*/
+FileSecurityStatus file_security_validate(FileSecurityContext *orig_context, FileSecurityContext *new_context, const char *path, int flags)
 {
-    // Create a new context for the file
-    FileSecurityContext *new_context = file_security_context_new(path, FALSE, NULL);
-    if (!new_context) return FILE_SECURITY_INVALID_PATH;
-
-    // Check if the context is valid
-    g_return_val_if_fail(orig_context && new_context, FILE_SECURITY_UNKNOWN_ERROR);
-
-    // Compare the original directory stat with the current directory stat
-    const gboolean dir_match = context_compare(&orig_context->dir_stat, &new_context->dir_stat, TRUE);
-    if (!dir_match)
+    if (orig_context == NULL) return FILE_SECURITY_INVALID_CONTEXT;
+    if (flags & FILE_SECURITY_VALIDATE_STRICT)
     {
-        g_critical("[SECURITY] Directory has been modified");
-        file_security_context_clear(&new_context, NULL);
-        return FILE_SECURITY_DIR_MODIFIED;
+        fprintf(stdout, "[INFO] Using strict mode for file validation\n");
+    }
+
+    bool is_valid = true; // Check if the file is valid
+    FileSecurityStatus status = FILE_SECURITY_OK; // The validation status code
+
+    bool has_new_context = (new_context != NULL); // Check if the new context is provided
+    new_context = has_new_context ? new_context : file_security_context_new(path, false, NULL, NULL); // Create a new context if needed
+
+    if (new_context == NULL) return FILE_SECURITY_INVALID_PATH; // Failed to take a new snapshot of the directory and file status
+
+    /* Check if the directory and file status has changed */
+    // Compare the original directory stat with the current directory stat
+    const bool dir_match = context_compare(&orig_context->dir_stat, &new_context->dir_stat, true, flags);
+    if (is_valid && !dir_match)
+    {
+        fprintf(stderr, "[SECURITY] Directory has been modified\n");
+        is_valid = false;
+        status = FILE_SECURITY_DIR_MODIFIED;
     }
 
     // Compare the original file stat with the current file stat
-    const gboolean file_match = context_compare(&orig_context->file_stat, &new_context->file_stat, FALSE);
-    if (!file_match)
+    const bool file_match = context_compare(&orig_context->file_stat, &new_context->file_stat, false, flags);
+    if (is_valid && !file_match)
     {
-        g_critical("[SECURITY] File has been modified");
-        file_security_context_clear(&new_context, NULL);
-        return FILE_SECURITY_FILE_MODIFIED;
+        fprintf(stderr, "[SECURITY] File has been modified\n");
+        is_valid = false;
+        status = FILE_SECURITY_FILE_MODIFIED;
     }
 
-    file_security_context_clear(&new_context, NULL);
-    return FILE_SECURITY_OK;
+    if (!has_new_context) file_security_context_clear(&new_context, NULL, NULL); // Free the new context if it is not provided
+    return status;
 }
 
-/* Delete file securely */
+/* Secure delete the file */
 /*
-  * @param orig_context
-  * The `FileSecurityContext` you store before deleting the file
-  * @param path
-  * The path of the file to be deleted
-  * @return
-  * the security status code
+ * @param orig_context
+ * The original file security context to be used for validation
+ * @param path
+ * The path of the file or directory to be deleted
+ * @param flags
+ * The validation flags
+ * @return
+ * File security status code
 */
-FileSecurityStatus
-delete_file_securely(FileSecurityContext *orig_context, const gchar *path)
+FileSecurityStatus file_security_secure_delete(FileSecurityContext *orig_context, const char *path, int flags)
 {
-    FileSecurityStatus status = FILE_SECURITY_OK;
+    if (orig_context == NULL || path == NULL || *path == '\0') return FILE_SECURITY_INVALID_CONTEXT;
 
-    g_return_val_if_fail(orig_context && path, FILE_SECURITY_INVALID_CONTEXT);
+    bool is_valid = true; // Check if the file is valid
+    FileSecurityStatus status = FILE_SECURITY_OK; // The validation status code
 
-    /* Check if the file has been modified since the last time it was opened */
-    status = validate_file_integrity(orig_context, path);
-    if (status != FILE_SECURITY_OK)
+    /* Create a new context for the file or directory to be deleted */
+    int dir_fd = -1; // Store the file descriptor for `unlinkat`
+    FileSecurityContext *new_context = file_security_context_new(path, false, NULL, &dir_fd);
+
+    if (new_context == NULL) return FILE_SECURITY_INVALID_PATH; // Failed to take a new snapshot of the directory and file status
+
+    /* Check if the directory and file status has changed */
+    status =  file_security_validate(orig_context, new_context, NULL, flags);
+    if (is_valid && status != FILE_SECURITY_OK)
     {
-        g_critical("[SECURITY] Validation failed: %s", path);
-        return status;
+        fprintf(stderr, "[SECURITY] Failed to validate the file: %s\n", path);
+        is_valid = false;
     }
 
-    /* Delete the file */
-    if (unlink(path) == -1)
+    if (is_valid && unlinkat(dir_fd, path, 0) == -1)
     {
-        g_critical("[SECURITY] Failed to delete %s: %s", path, strerror(errno));
-        status = FILE_SECURITY_UNKNOWN_ERROR;
-        return status;
+        fprintf(stderr, "[SECURITY] Failed to delete the file: %s\n", path);
+        status = FILE_SECURITY_OPERATION_FAILED;
+        is_valid = false;
     }
 
+    file_security_context_clear(&new_context, NULL, &dir_fd); // Free the new context and the file descriptor
     return status;
 }

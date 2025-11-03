@@ -78,7 +78,7 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     }
 
     /* Delete file */
-    status = delete_file_securely(security_context, file_path);
+    status = file_security_secure_delete(security_context, file_path, 0); // Delete the file with elevated privileges
     file_security_context_close_shared_mem(&security_context); // Close the shared memory
     if (status != FILE_SECURITY_OK)
     {

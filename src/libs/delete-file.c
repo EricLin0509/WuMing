@@ -67,7 +67,7 @@ delete_file_data_new(GtkWidget *threat_page, GtkWidget *action_row)
     data->path = adw_action_row_get_subtitle(ADW_ACTION_ROW(action_row)), // This string SHOULDN'T be freed because it's owned by the action row
     data->threat_page = threat_page;
     data->action_row = action_row;
-    data->security_context = file_security_context_new(data->path, FALSE, NULL);
+    data->security_context = file_security_context_new(data->path, FALSE, NULL, NULL);
 
     return data;
 }
@@ -79,7 +79,7 @@ delete_file_data_clear(DeleteFileData *data)
 {
     g_return_if_fail(data != NULL);
 
-    file_security_context_clear(&data->security_context, NULL);
+    file_security_context_clear(&data->security_context, NULL, NULL);
     g_free(data);
 
     data = NULL;
@@ -214,7 +214,7 @@ delete_threat_file_elevated(DeleteFileData *data)
     }
 
     // Clean up
-    file_security_context_clear(&copied_context, &shm_name);
+    file_security_context_clear(&copied_context, &shm_name, NULL);
     threat_page_remove_threat(THREAT_PAGE(data->threat_page), data->action_row); // Remove the action row from the list view
     log_deletion_attempt(data->path);
     return;
@@ -233,15 +233,8 @@ delete_threat_file(DeleteFileData *data)
 
     if (!data->action_row || !GTK_IS_WIDGET(data->action_row)) return; // Check if the action row is valid
 
-    /* First check if the path is safe to delete */
-    if (!validate_path_safety(data->path))
-    {
-        policy_forbid_operation(data);
-        return;
-    }
-
     /* Delete file */
-    FileSecurityStatus result = delete_file_securely(data->security_context, data->path);
+    FileSecurityStatus result = file_security_secure_delete(data->security_context, data->path, 0);
     if (result != FILE_SECURITY_OK)
     {
         switch (errno)

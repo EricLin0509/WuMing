@@ -18,14 +18,17 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#pragma once
+#ifndef FILE_SECURITY_H
+#define FILE_SECURITY_H
 
+#include <stdbool.h>
 #include <sys/stat.h>
-#include <glib.h>
+
+#define FILE_SECURITY_VALIDATE_STRICT 0x10 // Validate the file integrity strictly
 
 typedef struct FileSecurityContext FileSecurityContext;
 
-typedef enum {
+typedef enum FileSecurityStatus {
     FILE_SECURITY_OK, // File is safe
     FILE_SECURITY_DIR_MODIFIED, // Directory has been modified
     FILE_SECURITY_FILE_MODIFIED, // File has been modified
@@ -34,6 +37,7 @@ typedef enum {
     FILE_SECURITY_INVALID_PATH, // Invalid path
     FILE_SECURITY_INVALID_CONTEXT, // Invalid file security context
     FILE_SECURITY_PERMISSION_DENIED, // Permission denied
+    FILE_SECURITY_OPERATION_FAILED, // Operation failed
     FILE_SECURITY_UNKNOWN_ERROR // Unknown error
 } FileSecurityStatus; // File security status code
 
@@ -45,11 +49,12 @@ typedef enum {
   * Whether the returned context should using shared memory or not
   * @param shared_mem_filepath [OUT]
   * If `need_shared` is `TRUE`, the shared memory file path will be returned here
+  * @param  need_dir_fd [OUT] [OPTIONAL]
+  * If this parameter is not `NULL`, the file descriptor of the file will be returned here, especially for the case that need further operations on the file
   * @return
   * The newly allocated file security context, or `NULL` if an error occurred
 */
-FileSecurityContext *
-file_security_context_new(const gchar *path, gboolean need_shared, char **shared_mem_filepath);
+FileSecurityContext *file_security_context_new(const char *path, bool need_shared, char **shared_mem_filepath, int *need_dir_fd);
 
 /* Copy the file security context to a new space */
 /*
@@ -62,16 +67,13 @@ file_security_context_new(const gchar *path, gboolean need_shared, char **shared
   * @return
   * The newly allocated file security context, or `NULL` if an error occurred
 */
-FileSecurityContext *
-file_security_context_copy(FileSecurityContext *context, gboolean need_shared, char **shared_mem_filepath);
+FileSecurityContext *file_security_context_copy(FileSecurityContext *context, bool need_shared, char **shared_mem_filepath);
 
 /* Open a shared memory and get the file security context */
-FileSecurityContext *
-file_security_context_open_shared_mem(const gchar *shared_mem_filepath);
+FileSecurityContext *file_security_context_open_shared_mem(const char *shared_mem_filepath);
 
 /* Close the shared memory */
-void
-file_security_context_close_shared_mem(FileSecurityContext **context);
+void file_security_context_close_shared_mem(FileSecurityContext **context);
 
 /* Free the file security context */
 /*
@@ -79,28 +81,38 @@ file_security_context_close_shared_mem(FileSecurityContext **context);
   * The file security context to be freed
   * @param shared_mem_filepath [OPTIONAL]
   * The shared memory file path to be freed, if it is not `NULL`
+  * @param need_dir_fd [OPTIONAL]
+  * The file descriptor to be closed, if it is not `NULL`
 */
-void
-file_security_context_clear(FileSecurityContext **context, char **shared_mem_filepath);
+void file_security_context_clear(FileSecurityContext **context, char **shared_mem_filepath, int *need_dir_fd);
 
-/* Validate the path safety */
-/*
-  * @param path
-  * The path to be validated
-  * @return
-  * `TRUE` if the path is safe, `FALSE` otherwise
-*/
-gboolean
-validate_path_safety(const char *path);
-
-/* Delete file securely */
+/* Validate the file integrity */
 /*
   * @param orig_context
-  * The `FileSecurityContext` you store before deleting the file
+  * The original file security context
+  * @param new_context
+  * The new file security context, or `NULL` to create a new context
   * @param path
-  * The path of the file to be deleted
+  * The path of the file or directory to be checked
+  * @param flags
+  * The validation flags
   * @return
-  * the security status code
+  * The validation status code
+  * 
+  * @warning
+  * if `new_context` is `NULL` and `path` is not a valid, the function will return `FILE_SECURITY_INVALID_PATH`
 */
-FileSecurityStatus
-delete_file_securely(FileSecurityContext *orig_context, const gchar *path);
+FileSecurityStatus file_security_validate(FileSecurityContext *orig_context, FileSecurityContext *new_context, const char *path, int flags);
+
+/* Secure delete the file */
+/*
+ * @param orig_context
+ * The original file security context to be used for validation
+ * @param path
+ * The path of the file or directory to be deleted
+ * @return
+ * File security status code
+*/
+FileSecurityStatus file_security_secure_delete(FileSecurityContext *orig_context, const char *path, int flags);
+
+#endif // FILE_SECURITY_H
