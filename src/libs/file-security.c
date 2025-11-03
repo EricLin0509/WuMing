@@ -481,6 +481,7 @@ validate_file_integrity(FileSecurityContext *orig_context, const gchar *path)
     if (!dir_match)
     {
         g_critical("[SECURITY] Directory has been modified");
+        file_security_context_clear(&new_context, NULL);
         return FILE_SECURITY_DIR_MODIFIED;
     }
 
@@ -489,9 +490,11 @@ validate_file_integrity(FileSecurityContext *orig_context, const gchar *path)
     if (!file_match)
     {
         g_critical("[SECURITY] File has been modified");
+        file_security_context_clear(&new_context, NULL);
         return FILE_SECURITY_FILE_MODIFIED;
     }
 
+    file_security_context_clear(&new_context, NULL);
     return FILE_SECURITY_OK;
 }
 
