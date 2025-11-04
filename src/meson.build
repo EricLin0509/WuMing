@@ -22,15 +22,17 @@ subdir('libs')
 helper_path = get_option('prefix') / get_option('bindir') / 'wuming-unlinkat-helper'
 add_project_arguments(['-DHELPER_PATH="@0@"'.format(helper_path)], language: 'c')
 
-# wuming-unlinkat-helper
-wuming_unlink_helper_sources = [
-  'libs/file-security.c',
-  'libs/wuming-unlinkat-helper.c',
-  'libs/path-operations.c',
-]
-
-executable('wuming-unlinkat-helper', wuming_unlink_helper_sources,
+# file-security library
+file_security_lib = static_library('file-security',
+  ['libs/file-security.c', 'libs/path-operations.c'],
   dependencies: [dependency('glib-2.0'), dependency('gio-2.0')],
+)
+
+# wuming-unlinkat-helper
+executable('wuming-unlinkat-helper',
+  'libs/wuming-unlinkat-helper.c',
+  dependencies: [dependency('glib-2.0'), dependency('gio-2.0')],
+  link_with: [file_security_lib],
   install: true,
   install_dir: get_option('bindir'),
   build_by_default: true,
@@ -44,5 +46,6 @@ wuming_sources += gnome.compile_resources('wuming-resources',
 
 executable('wuming', wuming_sources,
   dependencies: wuming_deps,
+  link_with: [file_security_lib],
        install: true,
 )
