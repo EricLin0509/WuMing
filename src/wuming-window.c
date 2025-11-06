@@ -77,6 +77,7 @@ struct _WumingWindow
     GDBusConnection       *notification;
     gboolean             is_hide;
     gulong              close_request_id;
+    gulong              activate_request_id;
     UpdateContext       *update_context;
     ScanContext         *scan_context;
 };
@@ -152,6 +153,16 @@ wuming_window_is_hide (WumingWindow *self)
     return is_hide; // Use atomic operation to get the value
 }
 
+static void
+wuming_window_on_show (GtkWidget *window, gpointer user_data)
+{
+    WumingWindow *self = WUMING_WINDOW (window);
+
+    g_atomic_int_set (&self->is_hide, FALSE);
+
+    realtime_notification_close (self->notification);
+}
+
 static gboolean
 wuming_window_on_close_hide (GtkWindow *window, gpointer user_data)
 {
@@ -171,6 +182,7 @@ wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close)
     if (hide_on_close)
     {
         self->close_request_id = g_signal_connect (self, "close-request", G_CALLBACK (wuming_window_on_close_hide), NULL);
+        self->activate_request_id = g_signal_connect (self, "show", G_CALLBACK (wuming_window_on_show), NULL);
     }
     else
     {
@@ -178,6 +190,11 @@ wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close)
         {
             g_signal_handler_disconnect (self, self->close_request_id);
             self->close_request_id = 0;
+        }
+        if (self->activate_request_id > 0)
+        {
+            g_signal_handler_disconnect (self, self->activate_request_id);
+            self->activate_request_id = 0;
         }
         g_atomic_int_set (&self->is_hide, FALSE);
     }

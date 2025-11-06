@@ -73,6 +73,22 @@ realtime_notification_init(void)
     return connection;
 }
 
+/* Make the notification muted */
+static GVariantBuilder
+realtime_notification_muted(void)
+{
+    GVariantBuilder hints_builder;
+    g_variant_builder_init(&hints_builder, G_VARIANT_TYPE("a{sv}"));
+
+    g_variant_builder_add(&hints_builder, "{sv}", "urgency", 
+                            g_variant_new_byte(0));
+
+    g_variant_builder_add(&hints_builder, "{sv}", "suppress-sound",
+                            g_variant_new_boolean(TRUE));
+
+    return hints_builder;
+}
+
 /* Send a notification */
 /*
   * @note
@@ -88,6 +104,8 @@ realtime_notification_send(GDBusConnection *connection, const char *icon_name, c
     const char *notify_title = title == NULL ? "" : title;
     const char *notify_body = body == NULL ? "" : body;
 
+    GVariantBuilder hints_builder = realtime_notification_muted();
+
     /* Send a notification */
     GVariant *reply = g_dbus_connection_call_sync(connection,
         "org.freedesktop.Notifications",
@@ -101,13 +119,15 @@ realtime_notification_send(GDBusConnection *connection, const char *icon_name, c
             notify_title,
             notify_body,
             NULL,
-            NULL,
+            &hints_builder,
             -1),
         G_VARIANT_TYPE("(u)"),
         G_DBUS_CALL_FLAGS_NONE,
         -1,
         NULL,
         &error);
+
+    g_variant_builder_clear(&hints_builder);
 
     if (error != NULL)
     {
@@ -157,9 +177,7 @@ realtime_notification_close(GDBusConnection *connection)
 void
 realtime_notification_clear(GDBusConnection **connection)
 {
-    if (connection == NULL || *connection == NULL) {
-        return;
-    }
+    g_return_if_fail(connection != NULL && *connection != NULL);
 
     realtime_notification_close(*connection);
 
