@@ -262,7 +262,11 @@ scan_ui_callback(gpointer user_data)
 
   char *status_text = g_strdup_printf(gettext("%d files scanned\n%d threats found"), total_files, total_threats);
   
-  wuming_window_set_notification_body(ctx->window, status_text);
+  if (wuming_window_is_hide(ctx->window))
+  {
+    wuming_window_send_notification(ctx->window, gettext("Scanning..."), status_text); // Send notification if the window is not active
+  }
+
   scanning_page_set_progress(ctx->scanning_page, status_text);
 
   g_free(status_text);
@@ -293,9 +297,9 @@ scan_complete_callback(gpointer user_data)
     wuming_window_push_page_by_tag(ctx->window, "threat_nav_page");
   }
 
-  if (!wuming_window_is_active(ctx->window))
+  if (wuming_window_is_hide(ctx->window))
   {
-    wuming_window_send_notification(ctx->window, G_NOTIFICATION_PRIORITY_URGENT, message, is_canceled); // Send notification if the window is not active
+    wuming_window_send_notification(ctx->window, message, is_canceled); // Send notification if the window is not active
   }
 
   wuming_window_set_hide_on_close(ctx->window, FALSE); // Allow the window to be closed when the scan is complete

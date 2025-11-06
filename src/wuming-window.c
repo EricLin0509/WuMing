@@ -18,8 +18,11 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include <glib/gi18n.h>
+
 #include "config.h"
 
+#include "libs/realtime-notification.h"
 #include "libs/systemd-control.h"
 #include "libs/update-signature.h"
 #include "libs/scan.h"
@@ -71,7 +74,9 @@ struct _WumingWindow
     ThreatPage          *threat_page;
 
     /* Private */
-    GNotification       *notification;
+    GDBusConnection       *notification;
+    gboolean             is_hide;
+    gulong              close_request_id;
     UpdateContext       *update_context;
     ScanContext         *scan_context;
 };
@@ -118,7 +123,7 @@ wuming_window_is_in_main_page (WumingWindow *self)
 void *
 wuming_window_get_update_context (WumingWindow *self)
 {
-    g_return_val_if_fail(self, NULL);
+    g_return_val_if_fail (self, NULL);
 
     return (void *)self->update_context;
 }
@@ -138,9 +143,23 @@ wuming_window_get_scan_context (WumingWindow *self)
 
 /* Get hide the window on close */
 gboolean
-wuming_window_is_active (WumingWindow *self)
+wuming_window_is_hide (WumingWindow *self)
 {
-    return gtk_window_is_active (GTK_WINDOW (self));
+    g_return_val_if_fail (self != NULL, FALSE); // Check if the object is valid
+
+    gboolean is_hide = g_atomic_int_get (&self->is_hide);
+
+    return is_hide; // Use atomic operation to get the value
+}
+
+static gboolean
+wuming_window_on_close_hide (GtkWindow *window, gpointer user_data)
+{
+    WumingWindow *self = WUMING_WINDOW (window);
+
+    g_atomic_int_set (&self->is_hide, TRUE);
+
+    return FALSE; // Don't close the window
 }
 
 /* Set hide the window on close */
@@ -148,29 +167,29 @@ void
 wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close)
 {
     gtk_window_set_hide_on_close (GTK_WINDOW (self), hide_on_close);
-}
 
-/* Set the notification body */
-void
-wuming_window_set_notification_body (WumingWindow *self, const char *body)
-{
-    g_return_if_fail (self != NULL); // Check if the object is valid
-
-    if (body != NULL) g_notification_set_body (self->notification, body);
+    if (hide_on_close)
+    {
+        self->close_request_id = g_signal_connect (self, "close-request", G_CALLBACK (wuming_window_on_close_hide), NULL);
+    }
+    else
+    {
+        if (self->close_request_id > 0)
+        {
+            g_signal_handler_disconnect (self, self->close_request_id);
+            self->close_request_id = 0;
+        }
+        g_atomic_int_set (&self->is_hide, FALSE);
+    }
 }
 
 /* Send the notification */
 void
-wuming_window_send_notification (WumingWindow *self, GNotificationPriority priority, const char *title, const char *message)
+wuming_window_send_notification (WumingWindow *self, const char *title, const char *message)
 {
     g_return_if_fail (self != NULL); // Check if the object is valid
 
-    if (title != NULL) g_notification_set_title (self->notification, title);
-    wuming_window_set_notification_body (self, message);
-    g_notification_set_priority (self->notification, priority);
-
-    GApplication *app = g_application_get_default ();
-    g_application_send_notification (app, "WuMing", self->notification);
+    realtime_notification_send (self->notification, "com.ericlin.wuming", gettext("WuMing"), title, message);
 }
 
 /* GObject essential functions */
@@ -182,7 +201,9 @@ wuming_window_dispose (GObject *object)
     update_context_clear (&self->update_context);
     scan_context_clear (&self->scan_context);
 
-    g_clear_object (&self->notification);
+    wuming_window_set_hide_on_close (self, FALSE); // Reset the `close-request` signal
+
+    realtime_notification_clear(&self->notification);
 
     GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
     g_clear_pointer (&navigation_view, gtk_widget_unparent);
@@ -325,6 +346,5 @@ wuming_window_init (WumingWindow *self)
     self->update_context = update_context_new(self, self->security_overview_page, self->update_signature_page, self->updating_page);
     self->scan_context = scan_context_new(self, self->security_overview_page, self->scan_page, self->scanning_page, self->threat_page);
 
-    self->notification = g_notification_new ("WuMing");
-    g_object_ref_sink (self->notification); // Keep the reference count
+    self->notification = realtime_notification_init ();
 }

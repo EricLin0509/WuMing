@@ -132,4 +132,7 @@ wuming_application_init (WumingApplication *self)
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
 	                                       "app.update",
 	                                       (const char *[]) { "<primary>u", NULL });
+	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
+	                                       "app.about",
+	                                       (const char *[]) { "F1", NULL });
 }
