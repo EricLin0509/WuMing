@@ -151,7 +151,7 @@ realtime_notification_close(GDBusConnection *connection)
     do
     {
         current_notify_id = g_atomic_int_get(&notify_id);
-        if (current_notify_id == 0) break;
+        if (current_notify_id == 0) return; // If there's no notification to close, return
     } while (!g_atomic_int_compare_and_exchange(&notify_id, current_notify_id, 0));
 
     GError *error = NULL;
