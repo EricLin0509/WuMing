@@ -36,12 +36,7 @@ on_notification_closed(
     guint32 closed_id;
     g_variant_get(params, "(uu)", &closed_id);
 
-    guint32 real_notify_id = g_atomic_int_get(&notify_id); // Get the real notification ID
-
-    if (closed_id == real_notify_id) // If the closed notification ID matches the current notification ID
-    {
-        g_atomic_int_set(&notify_id, 0); // Reset the notification ID
-    }
+    g_atomic_int_compare_and_exchange(&notify_id, closed_id, 0); // Reset the notification ID if the closed notification ID matches the current notification ID
 }
 
 /* Init the notification */
@@ -152,13 +147,16 @@ realtime_notification_close(GDBusConnection *connection)
 {
     g_return_if_fail(connection != NULL);
 
-    guint32 current_notify_id = g_atomic_int_get(&notify_id); // Get the current notification ID
-
-    if (current_notify_id != 0)
+    guint32 current_notify_id = 0;
+    do
     {
-        GError *error = NULL;
+        current_notify_id = g_atomic_int_get(&notify_id);
+        if (current_notify_id == 0) break;
+    } while (!g_atomic_int_compare_and_exchange(&notify_id, current_notify_id, 0));
+
+    GError *error = NULL;
         
-        g_dbus_connection_call_sync(connection,
+    g_dbus_connection_call_sync(connection,
             "org.freedesktop.Notifications",
             "/org/freedesktop/Notifications",
             "org.freedesktop.Notifications",
@@ -170,13 +168,10 @@ realtime_notification_close(GDBusConnection *connection)
             NULL,
             &error);
             
-        if (error != NULL)
-        {
-            g_warning("Failed to close notification: %s", error->message);
-            g_error_free(error);
-        }
-        
-        g_atomic_int_set(&notify_id, 0); // Reset the notification ID
+    if (error != NULL)
+    {
+        g_warning("Failed to close notification: %s", error->message);
+        g_error_free(error);
     }
 }
 
