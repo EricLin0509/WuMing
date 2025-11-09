@@ -36,9 +36,11 @@ on_notification_closed(
     guint32 closed_id;
     g_variant_get(params, "(uu)", &closed_id);
 
-    if (closed_id == notify_id) // If the closed notification ID matches the current notification ID
+    guint32 real_notify_id = g_atomic_int_get(&notify_id); // Get the real notification ID
+
+    if (closed_id == real_notify_id) // If the closed notification ID matches the current notification ID
     {
-        notify_id = 0; // Reset the notification ID
+        g_atomic_int_set(&notify_id, 0); // Reset the notification ID
     }
 }
 
@@ -104,6 +106,8 @@ realtime_notification_send(GDBusConnection *connection, const char *icon_name, c
     const char *notify_title = title == NULL ? "" : title;
     const char *notify_body = body == NULL ? "" : body;
 
+    guint32 current_notify_id = g_atomic_int_get(&notify_id); // Get the current notification ID
+
     GVariantBuilder hints_builder = realtime_notification_muted();
 
     /* Send a notification */
@@ -114,7 +118,7 @@ realtime_notification_send(GDBusConnection *connection, const char *icon_name, c
         "Notify",
         g_variant_new("(susssasa{sv}i)",
             app_name,
-            notify_id,
+            current_notify_id,
             icon_name,
             notify_title,
             notify_body,
@@ -136,7 +140,8 @@ realtime_notification_send(GDBusConnection *connection, const char *icon_name, c
         return;
     }
 
-    if (notify_id == 0) g_variant_get(reply, "(u)", &notify_id); // Get the notification ID if it's the first time sending a notification
+    if (current_notify_id == 0) g_variant_get(reply, "(u)", &current_notify_id); // Get the notification ID if it's the first time sending a notification
+    g_atomic_int_set(&notify_id, current_notify_id); // Update the notification ID
     
     if (reply != NULL) g_variant_unref(reply); // Release the reply object
 }
@@ -147,7 +152,9 @@ realtime_notification_close(GDBusConnection *connection)
 {
     g_return_if_fail(connection != NULL);
 
-    if (notify_id != 0)
+    guint32 current_notify_id = g_atomic_int_get(&notify_id); // Get the current notification ID
+
+    if (current_notify_id != 0)
     {
         GError *error = NULL;
         
@@ -156,7 +163,7 @@ realtime_notification_close(GDBusConnection *connection)
             "/org/freedesktop/Notifications",
             "org.freedesktop.Notifications",
             "CloseNotification",
-            g_variant_new("(u)", notify_id),
+            g_variant_new("(u)", current_notify_id),
             NULL,
             G_DBUS_CALL_FLAGS_NONE,
             -1,
@@ -169,7 +176,7 @@ realtime_notification_close(GDBusConnection *connection)
             g_error_free(error);
         }
         
-        notify_id = 0;
+        g_atomic_int_set(&notify_id, 0); // Reset the notification ID
     }
 }
 
