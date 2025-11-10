@@ -60,16 +60,20 @@ wuming_window_get_update_context (WumingWindow *self);
 void *
 wuming_window_get_scan_context (WumingWindow *self);
 
-/* Get the window is hide */
+/* Get hide the window on close */
 gboolean
-wuming_window_is_hide (WumingWindow *self);
+wuming_window_is_active (WumingWindow *self);
 
 /* Set hide the window on close */
 void
 wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close);
 
+/* Set the notification body */
+void
+wuming_window_set_notification_body (WumingWindow *self, const char *body);
+
 /* Send the notification */
 void
-wuming_window_send_notification (WumingWindow *self, const char *title, const char *message);
+wuming_window_send_notification (WumingWindow *self, GNotificationPriority priority, const char *title, const char *message);
 
 G_END_DECLS

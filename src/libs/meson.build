@@ -7,5 +7,4 @@ wuming_sources += [
  'libs/update-signature.c',
  'libs/check-scan-time.c',
  'libs/scan.c',
- 'libs/realtime-notification.c',
 ]

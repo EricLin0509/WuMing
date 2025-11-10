@@ -92,9 +92,9 @@ update_complete_callback(gpointer user_data)
     signature_status_clear(&result);
   }
 
-  if (wuming_window_is_hide(ctx->window))
+  if (!wuming_window_is_active(ctx->window))
   {
-    wuming_window_send_notification(ctx->window, message, ""); // Send notification if the window is not active
+    wuming_window_send_notification(ctx->window, G_NOTIFICATION_PRIORITY_URGENT, message, ""); // Send notification if the window is not active
   }
 
   wuming_window_set_hide_on_close(ctx->window, FALSE); // Allow the window to be closed when update is complete
