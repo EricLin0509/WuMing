@@ -205,13 +205,21 @@ delete_threat_file_elevated(DeleteFileData *data)
                                     shm_name, data->path, NULL); // Spawn the helper process
 
     int exit_status = pid == -1 ? FILE_SECURITY_UNKNOWN_ERROR : wait_for_process(pid, 0); // Wait for the helper process to finish
-    if (exit_status == 126) return; // Pkexec user request dismiss
+
+    if (exit_status == 126) // Pkexec user request dismiss
+    {
+        file_security_context_clear(&copied_context, &shm_name, NULL);
+        return;
+    }
+
     exit_status = (exit_status < FILE_SECURITY_OK || exit_status > FILE_SECURITY_UNKNOWN_ERROR) ? FILE_SECURITY_UNKNOWN_ERROR : exit_status; // Check if the exit status is valid
 
     if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK)
     {
         g_critical("[ERROR] Helper process returned error: %d", exit_status);
         error_operation(data, (FileSecurityStatus)exit_status);
+        file_security_context_clear(&copied_context, &shm_name, NULL);
+        return;
     }
 
     // Clean up
