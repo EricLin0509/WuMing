@@ -18,6 +18,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include <glib/gi18n.h>
+
 #include "config.h"
 
 #include "libs/systemd-control.h"
@@ -32,6 +34,8 @@
 #include "scanning-page.h"
 #include "threat-page.h"
 #include "security-overview-page.h"
+
+#define WUMING_WINDOW_NOTIFICATION_ID "wuming-notification"
 
 struct _WumingWindow
 {
@@ -72,6 +76,10 @@ struct _WumingWindow
 
     /* Private */
     GNotification       *notification;
+    GApplication        *app;
+    gboolean            is_hidden;
+    gulong              close_request_signal_id;
+    gulong              show_signal_id;
     UpdateContext       *update_context;
     ScanContext         *scan_context;
 };
@@ -138,25 +146,58 @@ wuming_window_get_scan_context (WumingWindow *self)
 
 /* Get hide the window on close */
 gboolean
-wuming_window_is_active (WumingWindow *self)
+wuming_window_is_hide (WumingWindow *self)
 {
     return gtk_window_is_active (GTK_WINDOW (self));
 }
 
-/* Set hide the window on close */
-void
-wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close)
+static gboolean
+wuming_window_on_close_request (GtkWindow *self, gpointer user_data)
 {
-    gtk_window_set_hide_on_close (GTK_WINDOW (self), hide_on_close);
+    WumingWindow *window = WUMING_WINDOW (self);
+
+    const char *message = (const char *)user_data;
+
+    g_atomic_int_set (&window->is_hidden, TRUE);
+
+    wuming_window_send_notification (window, G_NOTIFICATION_PRIORITY_LOW, message, gettext("Click to show details"));
+
+    return FALSE;
 }
 
-/* Set the notification body */
-void
-wuming_window_set_notification_body (WumingWindow *self, const char *body)
+static void
+wuming_window_on_show (GtkWindow *self, gpointer user_data)
 {
-    g_return_if_fail (self != NULL); // Check if the object is valid
+    WumingWindow *window = WUMING_WINDOW (self);
 
-    if (body != NULL) g_notification_set_body (self->notification, body);
+    g_atomic_int_set (&window->is_hidden, FALSE);
+
+    wuming_window_close_notification (window);
+}
+
+/* Set hide the window on close */
+void
+wuming_window_set_hide_on_close (WumingWindow *self, gboolean hide_on_close, const char *message)
+{
+    gtk_window_set_hide_on_close (GTK_WINDOW (self), hide_on_close);
+
+    if (hide_on_close)
+    {
+        self->close_request_signal_id = g_signal_connect (self, "close-request", G_CALLBACK (wuming_window_on_close_request), (void *)message);
+        self->show_signal_id = g_signal_connect (self, "show", G_CALLBACK (wuming_window_on_show), NULL);
+        return;
+    }
+
+    if (self->close_request_signal_id > 0)
+    {
+        g_signal_handler_disconnect (self, self->close_request_signal_id);
+        self->close_request_signal_id = 0;
+    }
+    if (self->show_signal_id > 0)
+    {
+        g_signal_handler_disconnect (self, self->show_signal_id);
+        self->show_signal_id = 0;
+    }
 }
 
 /* Send the notification */
@@ -165,12 +206,23 @@ wuming_window_send_notification (WumingWindow *self, GNotificationPriority prior
 {
     g_return_if_fail (self != NULL); // Check if the object is valid
 
-    if (title != NULL) g_notification_set_title (self->notification, title);
-    wuming_window_set_notification_body (self, message);
+    const char *real_title = title == NULL ? "" : title;
+    const char *real_message = message == NULL ? "" : message;
+
+    g_notification_set_title (self->notification, real_title);
+    g_notification_set_body (self->notification, real_message);
     g_notification_set_priority (self->notification, priority);
 
-    GApplication *app = g_application_get_default ();
-    g_application_send_notification (app, "WuMing", self->notification);
+    g_application_send_notification (self->app, WUMING_WINDOW_NOTIFICATION_ID, self->notification);
+}
+
+/* Close the notification */
+void
+wuming_window_close_notification (WumingWindow *self)
+{
+    g_return_if_fail (self != NULL); // Check if the object is valid
+
+    g_application_withdraw_notification (self->app, WUMING_WINDOW_NOTIFICATION_ID);
 }
 
 /* GObject essential functions */
@@ -181,6 +233,8 @@ wuming_window_dispose (GObject *object)
 
     update_context_clear (&self->update_context);
     scan_context_clear (&self->scan_context);
+
+    wuming_window_set_hide_on_close (self, FALSE, NULL);
 
     g_clear_object (&self->notification);
 
@@ -327,4 +381,8 @@ wuming_window_init (WumingWindow *self)
 
     self->notification = g_notification_new ("WuMing");
     g_object_ref_sink (self->notification); // Keep the reference count
+
+    self->is_hidden = FALSE;
+
+    self->app = g_application_get_default ();
 }

@@ -230,6 +230,19 @@ clear_threat_paths(ScanContext *ctx)
   g_mutex_unlock(&ctx->threats_mutex);
 }
 
+static char *
+get_status_text(ScanContext *ctx)
+{
+  g_return_val_if_fail(ctx, NULL);
+
+  gint total_files = get_total_files(ctx);
+  gint total_threats = get_total_threats(ctx);
+
+  char *status_text = g_strdup_printf(gettext("%d files scanned\n%d threats found"), total_files, total_threats);
+
+  return g_steal_pointer(&status_text);
+}
+
 /* The ui callback function for `process_output_lines()` */
 static gboolean
 scan_ui_callback(gpointer user_data)
@@ -257,15 +270,11 @@ scan_ui_callback(gpointer user_data)
   }
   else if ((status_marker = strstr(message, "OK")) != NULL) inc_total_files(ctx);
 
-  gint total_files = get_total_files(ctx);
-  gint total_threats = get_total_threats(ctx);
+  char *status_text = get_status_text(ctx);
 
-  char *status_text = g_strdup_printf(gettext("%d files scanned\n%d threats found"), total_files, total_threats);
-  
-  wuming_window_set_notification_body(ctx->window, status_text);
   scanning_page_set_progress(ctx->scanning_page, status_text);
 
-  g_free(status_text);
+  g_clear_pointer(&status_text, g_free);
 
   return G_SOURCE_REMOVE;
 }
@@ -282,23 +291,27 @@ scan_complete_callback(gpointer user_data)
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
   bool has_threat = (ctx->total_threats > 0);
-  const char *is_canceled = get_cancel_scan(ctx) ? gettext("User cancelled the scan") : NULL;
+
+  char *status_text = get_status_text(ctx);
+
   const char *icon_name = has_threat ? "status-warning-symbolic" : (is_success ? "status-ok-symbolic" : "status-error-symbolic");
   const char *message = get_idle_message(data); // Get the message
 
-  scanning_page_set_final_result(ctx->scanning_page, has_threat, message, is_canceled, icon_name);
+  scanning_page_set_final_result(ctx->scanning_page, has_threat, message, status_text, icon_name);
 
   if (has_threat) // If threats found, push the page to the threat page
   {
     wuming_window_push_page_by_tag(ctx->window, "threat_nav_page");
   }
 
-  if (!wuming_window_is_active(ctx->window))
+  if (!wuming_window_is_hide(ctx->window))
   {
-    wuming_window_send_notification(ctx->window, G_NOTIFICATION_PRIORITY_URGENT, message, is_canceled); // Send notification if the window is not active
+    wuming_window_send_notification(ctx->window, G_NOTIFICATION_PRIORITY_URGENT, message, status_text); // Send notification if the window is not active
   }
 
-  wuming_window_set_hide_on_close(ctx->window, FALSE); // Allow the window to be closed when the scan is complete
+  g_clear_pointer(&status_text, g_free);
+
+  wuming_window_set_hide_on_close(ctx->window, FALSE, NULL); // Allow the window to be closed when the scan is complete
 
   return G_SOURCE_REMOVE;
 }
@@ -481,7 +494,7 @@ start_scan(ScanContext *ctx, const char *path)
   scan_context_reset(ctx);
 
   wuming_window_push_page_by_tag(ctx->window, "scanning_nav_page");
-  wuming_window_set_hide_on_close(ctx->window, TRUE); // Hide the window instead of closing it
+  wuming_window_set_hide_on_close(ctx->window, TRUE, gettext("Scanning...")); // Hide the window instead of closing it
 
   /* Start scan thread */
   g_thread_new("scan-thread", scan_thread, ctx);

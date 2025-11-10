@@ -92,12 +92,12 @@ update_complete_callback(gpointer user_data)
     signature_status_clear(&result);
   }
 
-  if (!wuming_window_is_active(ctx->window))
+  if (!wuming_window_is_hide(ctx->window))
   {
-    wuming_window_send_notification(ctx->window, G_NOTIFICATION_PRIORITY_URGENT, message, ""); // Send notification if the window is not active
+    wuming_window_send_notification(ctx->window, G_NOTIFICATION_PRIORITY_URGENT, message, NULL); // Send notification if the window is not active
   }
 
-  wuming_window_set_hide_on_close(ctx->window, FALSE); // Allow the window to be closed when update is complete
+  wuming_window_set_hide_on_close(ctx->window, FALSE, NULL); // Allow the window to be closed when update is complete
 
   return G_SOURCE_REMOVE;
 }
@@ -177,7 +177,7 @@ start_update(UpdateContext *ctx)
   update_context_reset(ctx);
 
   wuming_window_push_page_by_tag (ctx->window, "updating_nav_page");
-  wuming_window_set_hide_on_close(ctx->window, TRUE); // Hide the window instead of closing it
+  wuming_window_set_hide_on_close(ctx->window, TRUE, gettext("Updating...")); // Hide the window instead of closing it
 
   /* Start update thread */
   g_thread_new("update-thread", update_thread, ctx);
