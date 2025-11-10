@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-04 16:25+0800\n"
+"POT-Creation-Date: 2025-11-10 15:38+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -89,6 +89,10 @@ msgstr "Update Signature"
 msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr "Update Signature"
+
+#: src/wuming-window.c:163
+msgid "Click to show details"
+msgstr "Click to show details"
 
 #: src/wuming-window.ui:42
 msgid "Main Menu"
@@ -229,7 +233,7 @@ msgstr "Scan file"
 msgid "Scan folder"
 msgstr "Scan folder"
 
-#: src/scanning-page.c:46
+#: src/scanning-page.c:46 src/libs/scan.c:497
 msgid "Scanning..."
 msgstr "Scanning..."
 
@@ -298,7 +302,7 @@ msgstr "Disabled"
 msgid "Failed to check!"
 msgstr "Failed to check!"
 
-#: src/updating-page.c:43
+#: src/updating-page.c:43 src/libs/update-signature.c:180
 msgid "Updating..."
 msgstr "Updating..."
 
@@ -354,7 +358,7 @@ msgstr "Delete"
 msgid "Failed to set file properties"
 msgstr "Failed to set file properties"
 
-#: src/libs/scan.c:263
+#: src/libs/scan.c:241
 #, c-format
 msgid ""
 "%d files scanned\n"
@@ -363,19 +367,15 @@ msgstr ""
 "%d files scanned\n"
 "%d threats found"
 
-#: src/libs/scan.c:285
-msgid "User cancelled the scan"
-msgstr "User cancelled the scan"
-
-#: src/libs/scan.c:352
+#: src/libs/scan.c:365
 msgid "Scan Canceled"
 msgstr "Scan Canceled"
 
-#: src/libs/scan.c:356
+#: src/libs/scan.c:369
 msgid "Scan Complete"
 msgstr "Scan Complete"
 
-#: src/libs/scan.c:360
+#: src/libs/scan.c:373
 msgid "Scan Failed"
 msgstr "Scan Failed"
 
