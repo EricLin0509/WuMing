@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-10 15:38+0800\n"
+"POT-Creation-Date: 2025-11-10 18:29+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -59,29 +59,34 @@ msgstr ""
 
 #: src/shortcuts-dialog.ui:15
 msgctxt "shortcut window"
+msgid "Show About Dialog"
+msgstr ""
+
+#: src/shortcuts-dialog.ui:21
+msgctxt "shortcut window"
 msgid "Quit"
 msgstr ""
 
-#: src/shortcuts-dialog.ui:23 src/wuming-window.ui:78 src/wuming-window.ui:83
+#: src/shortcuts-dialog.ui:29 src/wuming-window.ui:78 src/wuming-window.ui:83
 #: src/wuming-window.ui:141
 msgid "Scan"
 msgstr ""
 
-#: src/shortcuts-dialog.ui:26
+#: src/shortcuts-dialog.ui:32
 msgctxt "shortcut window"
 msgid "Scan file"
 msgstr ""
 
-#: src/shortcuts-dialog.ui:32
+#: src/shortcuts-dialog.ui:38
 msgctxt "shortcut window"
 msgid "Scan folder"
 msgstr ""
 
-#: src/shortcuts-dialog.ui:40 src/wuming-window.ui:95
+#: src/shortcuts-dialog.ui:46 src/wuming-window.ui:95
 msgid "Update Signature"
 msgstr ""
 
-#: src/shortcuts-dialog.ui:43
+#: src/shortcuts-dialog.ui:49
 msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr ""

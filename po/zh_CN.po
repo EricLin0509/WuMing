@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-10 15:38+0800\n"
+"POT-Creation-Date: 2025-11-10 18:29+0800\n"
 "PO-Revision-Date: 2025-08-07 20:36+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -58,29 +58,34 @@ msgstr "显示快捷键"
 
 #: src/shortcuts-dialog.ui:15
 msgctxt "shortcut window"
+msgid "Show About Dialog"
+msgstr "显示关于对话框"
+
+#: src/shortcuts-dialog.ui:21
+msgctxt "shortcut window"
 msgid "Quit"
 msgstr "退出程序"
 
-#: src/shortcuts-dialog.ui:23 src/wuming-window.ui:78 src/wuming-window.ui:83
+#: src/shortcuts-dialog.ui:29 src/wuming-window.ui:78 src/wuming-window.ui:83
 #: src/wuming-window.ui:141
 msgid "Scan"
 msgstr "扫描"
 
-#: src/shortcuts-dialog.ui:26
+#: src/shortcuts-dialog.ui:32
 msgctxt "shortcut window"
 msgid "Scan file"
 msgstr "扫描文件"
 
-#: src/shortcuts-dialog.ui:32
+#: src/shortcuts-dialog.ui:38
 msgctxt "shortcut window"
 msgid "Scan folder"
 msgstr "扫描文件夹"
 
-#: src/shortcuts-dialog.ui:40 src/wuming-window.ui:95
+#: src/shortcuts-dialog.ui:46 src/wuming-window.ui:95
 msgid "Update Signature"
 msgstr "更新病毒库"
 
-#: src/shortcuts-dialog.ui:43
+#: src/shortcuts-dialog.ui:49
 msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr "更新病毒库"

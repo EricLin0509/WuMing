@@ -58,6 +58,18 @@
   </screenshots>
 
   <releases>
+    <release version="0.3.1" date="2025-11-10">
+      <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.3.1</url>
+      <description translate="no">
+        <p>Add notification support</p>
+        <ul>
+          <li>Add notification support</li>
+          <li>Add Application icon</li>
+          <li>Minor fixes and some optimizations</li>
+          <li></li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3" date="2025-10-20">
       <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.3</url>
       <description translate="no">

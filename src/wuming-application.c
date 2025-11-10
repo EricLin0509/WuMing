@@ -87,7 +87,7 @@ wuming_application_about_action (GSimpleAction *action,
 	                       "application-icon", "com.ericlin.wuming",
 	                       "developer-name", "EricLin",
 	                       "translator-credits", _("translator-credits"),
-	                       "version", "0.3",
+	                       "version", "0.3.1",
 	                       "developers", developers,
 	                       "copyright", "© 2025 EricLin",
                            "license-type", GTK_LICENSE_GPL_3_0,
@@ -120,6 +120,9 @@ wuming_application_init (WumingApplication *self)
 	                                 app_actions,
 	                                 G_N_ELEMENTS (app_actions),
 	                                 self);
+	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
+	                                       "app.about",
+	                                       (const char *[]) { "F1", NULL });
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
 	                                       "app.quit",
 	                                       (const char *[]) { "<primary>q", NULL });
