@@ -235,6 +235,7 @@ wuming_window_dispose (GObject *object)
     scan_context_clear (&self->scan_context);
 
     wuming_window_set_hide_on_close (self, FALSE, NULL);
+    wuming_window_close_notification (self);
 
     g_clear_object (&self->notification);
 
