@@ -154,11 +154,9 @@ delete_file_data_list_prepend(DeleteFileData *data, GtkWidget *threat_page, GtkW
             return NULL;
         }
     }
-    GList *new_list = g_list_prepend(delete_file_data_list, data);
+    delete_file_data_list = g_list_prepend(delete_file_data_list, data);
 
-    if (new_list != NULL) delete_file_data_list = new_list;
-
-    return new_list;
+    return delete_file_data_list;
 }
 
 /* Clear the delete file data structure */
@@ -194,13 +192,11 @@ delete_file_data_list_remove(DeleteFileData *data)
 {
     g_return_val_if_fail(data != NULL, NULL);
 
-    GList *new_list = g_list_remove(delete_file_data_list, data);
-
-    if (new_list != NULL) delete_file_data_list = new_list;
+    delete_file_data_list = g_list_remove(delete_file_data_list, data);
 
     delete_file_data_clear(&data);
 
-    return new_list;
+    return delete_file_data_list;
 }
 
 /* Policy forbid the operation to delete the file */
@@ -295,8 +291,8 @@ delete_threat_file_elevated(DeleteFileData *data)
 
     // Clean up
     file_security_context_clear(&copied_context, &shm_name, NULL);
-    threat_page_remove_threat(THREAT_PAGE(data->threat_page), data->action_row); // Remove the action row from the list view
     log_deletion_attempt(data->path);
+    delete_file_data_list_remove(data); // Remove the data structure from the list
     return;
 }
 
@@ -331,9 +327,6 @@ delete_threat_file(DeleteFileData *data)
     {
         g_print("[INFO] File deleted: %s\n", data->path);
         log_deletion_attempt(data->path);
-        if (delete_file_data_list_remove(data) == NULL)
-        {
-            g_critical("[ERROR] Failed to remove delete file data structure from the list");
-        }
+        delete_file_data_list_remove(data); // Remove the data structure from the list
     }
 }
