@@ -26,16 +26,6 @@
 
 typedef struct DeleteFileData DeleteFileData;
 
-/* Set file properties */
-/*
-  * first initialize the file security context using `secure_open_and_verify()`
-  * check file whether is a file inside the system directory
-  * and set the properties of the AdwActionRow
-  * Warning: the AdwActionRow widget MUST have `subtitle` property
-*/
-gboolean
-set_file_properties(DeleteFileData *data);
-
 /* Create a new delete file data structure */
 // Tips: this also creates a new security context for the file
 // Warning: the AdwActionRow MUST be added to the GtkListBox before calling this function

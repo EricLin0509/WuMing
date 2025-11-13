@@ -67,7 +67,7 @@ clear_list_elements_func(void *data)
   * and set the properties of the AdwActionRow
   * Warning: the AdwActionRow widget MUST have `subtitle` property
 */
-gboolean
+static gboolean
 set_file_properties(DeleteFileData *data)
 {
     g_return_val_if_fail(data != NULL, FALSE);
@@ -169,6 +169,7 @@ delete_file_data_clear(DeleteFileData **data)
     g_return_if_fail(data != NULL && *data != NULL);
 
     file_security_context_clear(&(*data)->security_context, NULL, NULL);
+    threat_page_remove_threat(THREAT_PAGE((*data)->threat_page), (*data)->action_row); // Remove the action row from the list view
     g_free(*data);
 
     *data = NULL;
@@ -329,7 +330,6 @@ delete_threat_file(DeleteFileData *data)
     else // If the file is deleted successfully, show the success message and add audit log
     {
         g_print("[INFO] File deleted: %s\n", data->path);
-        threat_page_remove_threat(THREAT_PAGE(data->threat_page), data->action_row); // Remove the action row from the list view
         log_deletion_attempt(data->path);
         if (delete_file_data_list_remove(data) == NULL)
         {
