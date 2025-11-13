@@ -40,8 +40,7 @@ typedef struct ScanContext {
   gint total_files; // Total files scanned
   gint total_threats; // Total threats found during scan
 
-  GMutex threats_mutex; // Only protect "threat_paths" and "ThreatPage" fields
-  GList *threat_paths; // List of threat paths found during scan
+  GMutex threats_mutex; // Only protect and "ThreatPage" fields
   ThreatPage *threat_page; // The threat page
 
   /*No need to protect these fields because they always same after initialize*/
@@ -178,54 +177,17 @@ add_threat_path(ScanContext *ctx, const char *path)
   /* Add the action row to the list view */
   threat_page_add_threat (ctx->threat_page, action_row);
 
-  /* Set file properties and connect signal */
-  DeleteFileData *delete_data = delete_file_data_new(GTK_WIDGET(ctx->threat_page), action_row);
-  if (!set_file_properties(delete_data)) // Set the file properties for the action row
+  /* Add the threat path to the list */
+  DeleteFileData *delete_data = delete_file_data_new(GTK_WIDGET(ctx->threat_page), action_row); // Create the delete data for the threat path
+  if (delete_file_data_list_prepend(delete_data, NULL, NULL) == NULL) // Add the delete data to the list
   {
-    /* If failed to set file properties, disable the AdwActionRow */
-    g_critical("Failed to set file properties");
-    delete_file_data_clear(delete_data); // Free the delete data
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(action_row), gettext("Failed to set file properties"));
-    gtk_widget_set_sensitive(action_row, FALSE);
-
-    g_mutex_unlock(&ctx->threats_mutex); // Release the lock before return
-    return; // Otherwize, will cause double free when `clear_threat_paths` called.
+    g_critical("Failed to add delete data to list");
+    delete_file_data_clear(&delete_data);
+    g_mutex_unlock(&ctx->threats_mutex);
+    return;
   }
-
-  // Add `DeleteFileData` to the GList
-  // This shouldn't be freed by `delete_file_data_clear`, instead free it in `clear_threat_paths` using `g_list_free_full`
-  // Otherwize, will cause double free when `clear_threat_paths` is called.
-  ctx->threat_paths = g_list_prepend(ctx->threat_paths, delete_data);
 
   g_signal_connect_swapped(delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
-
-  g_mutex_unlock(&ctx->threats_mutex);
-}
-
-/* clear the GList `data` field callback function */
-static inline void
-clear_list_elements_func(void *data)
-{
-  g_return_if_fail(data);
-  DeleteFileData *delete_data = data; // Cast the data to `DeleteFileData` pointer
-  delete_file_data_clear(delete_data);
-}
-
-/* clear all the threat paths in the list view and the list of threat paths */
-static void
-clear_threat_paths(ScanContext *ctx)
-{
-  g_debug("Clearing threat paths\n");
-
-  g_return_if_fail(ctx);
-
-  g_mutex_lock(&ctx->threats_mutex);
-
-  if (ctx->threat_paths)
-  {
-    g_list_free_full(g_steal_pointer(&ctx->threat_paths), (GDestroyNotify)clear_list_elements_func); // Free the threat paths list
-    ctx->threat_paths = NULL;
-  }
 
   g_mutex_unlock(&ctx->threats_mutex);
 }
@@ -383,7 +345,7 @@ scan_thread(gpointer data)
 static void
 clear_box_list_and_close(ScanContext *ctx)
 {
-  clear_threat_paths(ctx); // Clear the list view
+  delete_file_data_list_clear(); // Clear the list of delete data
 
   wuming_window_pop_page(ctx->window); // Pop the scanning page
 }
@@ -419,7 +381,6 @@ scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_p
   ctx->success = FALSE;
   ctx->total_files = 0;
   ctx->total_threats = 0;
-  ctx->threat_paths = NULL;
   ctx->window = window;
   ctx->security_overview_page = security_overview_page;
   ctx->scan_page = scan_page;
@@ -455,7 +416,6 @@ scan_context_clear(ScanContext **ctx)
   g_mutex_clear(&(*ctx)->threats_mutex);
 
   if ((*ctx)->path) scan_context_clear_path(*ctx); // Clear the path if have one
-  clear_threat_paths(*ctx); // Clear the list view
 
   g_clear_pointer(ctx, g_free);
 }
@@ -467,7 +427,6 @@ scan_context_reset(ScanContext *ctx)
 
   /* Reset `ScanContext` */
   reset_cancel_scan(ctx); // Reset the cancel scan flag
-  clear_threat_paths(ctx); // Clear the list view
   reset_total_files(ctx); // Reset the total files
   reset_total_threats(ctx); // Reset the total threats
   set_completion_state(ctx, FALSE, FALSE); // Reset the completion state
