@@ -20,6 +20,7 @@
 
 #include <glib/gi18n.h>
 
+#include "wuming-window.h"
 #include "threat-page.h"
 
 struct _ThreatPage {
@@ -41,6 +42,12 @@ void
 threat_page_remove_threat (ThreatPage *self, GtkWidget *row)
 {
     gtk_list_box_remove (self->threat_list, row);
+
+    if (gtk_list_box_get_row_at_index (self->threat_list, 0) == NULL) // If the list is empty, pop this page from the stack
+    {
+        WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
+        wuming_window_pop_page (window);
+    }
 }
 
 void
