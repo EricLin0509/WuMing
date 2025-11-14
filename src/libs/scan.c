@@ -178,11 +178,10 @@ add_threat_path(ScanContext *ctx, const char *path)
   threat_page_add_threat (ctx->threat_page, action_row);
 
   /* Add the threat path to the list */
-  DeleteFileData *delete_data = delete_file_data_new(GTK_WIDGET(ctx->threat_page), action_row); // Create the delete data for the threat path
-  if (delete_file_data_list_prepend(delete_data, NULL, NULL) == NULL) // Add the delete data to the list
+  DeleteFileData *delete_data = delete_file_data_list_prepend(GTK_WIDGET(ctx->threat_page), action_row); // Add the delete data to the list
+  if (delete_data == NULL) // Failed to add delete data to list
   {
     g_critical("Failed to add delete data to list");
-    delete_file_data_clear(&delete_data);
     g_mutex_unlock(&ctx->threats_mutex);
     return;
   }
