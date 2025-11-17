@@ -120,7 +120,7 @@ update_signature_cb (GSimpleAction *action,
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE(user_data);
   WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
-  UpdateContext *context = (UpdateContext *)wuming_window_get_update_context(window);
+  UpdateContext *context = (UpdateContext *)wuming_window_get_component(window, "update_context");
 
   if (!wuming_window_is_in_main_page (window)) return; // Prevent multiple tasks running at the same time
 

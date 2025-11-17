@@ -44,22 +44,6 @@ wuming_window_get_current_page_tag (WumingWindow *self);
 gboolean
 wuming_window_is_in_main_page (WumingWindow *self);
 
-/* Get `UpdateContext` */
-/*
-  * @warning
-  * This return a void pointer, which need to be cast to the `UpdateContext` pointer type.
-*/
-void *
-wuming_window_get_update_context (WumingWindow *self);
-
-/* Get `ScanContext` */
-/*
-  * @warning
-  * This return a void pointer, which need to be cast to the `ScanContext` pointer type.
-*/
-void *
-wuming_window_get_scan_context (WumingWindow *self);
-
 /* Get Widgets from the `WumingWindow` */
 void *
 wuming_window_get_component(WumingWindow *self, const char *component_name);

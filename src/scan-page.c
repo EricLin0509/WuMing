@@ -227,7 +227,7 @@ file_chooser (GSimpleAction *action,
 
   if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
 
-  ScanContext *context = (ScanContext *)wuming_window_get_scan_context (window);
+  ScanContext *context = (ScanContext *)wuming_window_get_component (window, "scan_context");
 
   g_print("[INFO] Choose a file\n");
 
@@ -251,7 +251,7 @@ folder_chooser (GSimpleAction *action,
 
   if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
 
-  ScanContext *context = (ScanContext *)wuming_window_get_scan_context (window);
+  ScanContext *context = (ScanContext *)wuming_window_get_component (window, "scan_context");
 
   g_print("[INFO] Choose a folder\n");
 

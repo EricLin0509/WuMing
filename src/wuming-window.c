@@ -122,32 +122,6 @@ wuming_window_is_in_main_page (WumingWindow *self)
     return g_strcmp0 (current_page_tag, "main_nav_page") == 0;
 }
 
-/* Get `UpdateContext` */
-/*
-  * @warning
-  * This return a void pointer, which need to be cast to the `UpdateContext` pointer type.
-*/
-void *
-wuming_window_get_update_context (WumingWindow *self)
-{
-    g_return_val_if_fail(self, NULL);
-
-    return (void *)self->update_context;
-}
-
-/* Get `ScanContext` */
-/*
-  * @warning
-  * This return a void pointer, which need to be cast to the `ScanContext` pointer type.
-*/
-void *
-wuming_window_get_scan_context (WumingWindow *self)
-{
-    g_return_val_if_fail(self, NULL);
-
-    return (void *)self->scan_context;
-}
-
 /* Get Widgets from the `WumingWindow` */
 void *
 wuming_window_get_component(WumingWindow *self, const char *component_name)
@@ -167,6 +141,8 @@ wuming_window_get_component(WumingWindow *self, const char *component_name)
         WUMING_WINDOW_COMPONENT_ENTRY(scan_page),
         WUMING_WINDOW_COMPONENT_ENTRY(scanning_page),
         WUMING_WINDOW_COMPONENT_ENTRY(update_signature_page),
+        WUMING_WINDOW_COMPONENT_ENTRY(update_context),
+        WUMING_WINDOW_COMPONENT_ENTRY(scan_context),
     };
 
     for (size_t i = 0; i < G_N_ELEMENTS(components); i++)
