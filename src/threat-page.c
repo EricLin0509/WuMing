@@ -21,6 +21,7 @@
 #include <glib/gi18n.h>
 
 #include "wuming-window.h"
+#include "scanning-page.h"
 #include "threat-page.h"
 
 struct _ThreatPage {
@@ -43,11 +44,15 @@ threat_page_remove_threat (ThreatPage *self, GtkWidget *row)
 {
     gtk_list_box_remove (self->threat_list, row);
 
-    if (gtk_list_box_get_row_at_index (self->threat_list, 0) == NULL) // If the list is empty, pop this page from the stack
-    {
-        WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
-        wuming_window_pop_page (window);
-    }
+    if (gtk_list_box_get_row_at_index (self->threat_list, 0) != NULL) return;
+
+    // If the list is empty, pop this page from the stack
+    WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
+    wuming_window_pop_page (window);
+
+    ScanningPage *scanning_page = wuming_window_get_component (window, "scanning_page");
+    scanning_page_disable_threat_button (scanning_page);
+    scanning_page_set_final_result (scanning_page, FALSE, gettext("All Clear"), gettext("All threats have been removed!"), "status-ok-symbolic");
 }
 
 void

@@ -29,6 +29,9 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (ScanningPage, scanning_page, SCANNING, PAGE, GtkWidget)
 
 void
+scanning_page_disable_threat_button (ScanningPage *self);
+
+void
 scanning_page_reset (ScanningPage *self);
 
 void

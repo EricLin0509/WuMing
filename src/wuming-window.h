@@ -60,6 +60,10 @@ wuming_window_get_update_context (WumingWindow *self);
 void *
 wuming_window_get_scan_context (WumingWindow *self);
 
+/* Get Widgets from the `WumingWindow` */
+void *
+wuming_window_get_component(WumingWindow *self, const char *component_name);
+
 /* Get hide the window on close */
 gboolean
 wuming_window_is_hide (WumingWindow *self);

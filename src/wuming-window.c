@@ -19,6 +19,7 @@
  */
 
 #include <glib/gi18n.h>
+#include <stddef.h>
 
 #include "config.h"
 
@@ -36,6 +37,9 @@
 #include "security-overview-page.h"
 
 #define WUMING_WINDOW_NOTIFICATION_ID "wuming-notification"
+
+#define WUMING_WINDOW_COMPONENT_ENTRY(name) \
+    { #name, offsetof(WumingWindow, name) } // Define the component entry for the `WumingWindow` struct
 
 struct _WumingWindow
 {
@@ -143,6 +147,39 @@ wuming_window_get_scan_context (WumingWindow *self)
 
     return (void *)self->scan_context;
 }
+
+/* Get Widgets from the `WumingWindow` */
+void *
+wuming_window_get_component(WumingWindow *self, const char *component_name)
+{
+    g_return_val_if_fail(self != NULL, NULL);
+
+    typedef struct {
+        const char *name;
+        size_t offset;
+    } ComponentEntry;
+
+    static const ComponentEntry components[] = {
+        WUMING_WINDOW_COMPONENT_ENTRY(navigation_view),
+        WUMING_WINDOW_COMPONENT_ENTRY(main_nav_page),
+        WUMING_WINDOW_COMPONENT_ENTRY(view_stack),
+        WUMING_WINDOW_COMPONENT_ENTRY(security_overview_page),
+        WUMING_WINDOW_COMPONENT_ENTRY(scan_page),
+        WUMING_WINDOW_COMPONENT_ENTRY(scanning_page),
+        WUMING_WINDOW_COMPONENT_ENTRY(update_signature_page),
+    };
+
+    for (size_t i = 0; i < G_N_ELEMENTS(components); i++)
+    {
+        if (g_strcmp0(components[i].name, component_name) == 0)
+        {
+            return *(void **)((char *)self + components[i].offset);
+        }
+    }
+    g_critical("Component '%s' not found in WumingWindow", component_name);
+    return NULL;
+}
+
 
 /* Get hide the window on close */
 gboolean

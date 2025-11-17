@@ -41,6 +41,13 @@ struct _ScanningPage {
 G_DEFINE_FINAL_TYPE(ScanningPage, scanning_page, GTK_TYPE_WIDGET)
 
 void
+scanning_page_disable_threat_button (ScanningPage *self)
+{
+    gtk_widget_set_sensitive(GTK_WIDGET(self->threat_button), FALSE);
+    gtk_widget_set_visible(GTK_WIDGET(self->threat_button), FALSE);
+}
+
+void
 scanning_page_reset (ScanningPage *self)
 {
     adw_status_page_set_title(self->status_page, gettext("Scanning..."));
@@ -52,8 +59,7 @@ scanning_page_reset (ScanningPage *self)
     gtk_widget_set_visible(GTK_WIDGET(self->close_button), FALSE);
 
     /* Disable threat button */
-    gtk_widget_set_sensitive(GTK_WIDGET(self->threat_button), FALSE);
-    gtk_widget_set_visible(GTK_WIDGET(self->threat_button), FALSE);
+    scanning_page_disable_threat_button(self);
 
     /* Enable cancel button */
     gtk_widget_set_sensitive(GTK_WIDGET(self->cancel_button), TRUE);
