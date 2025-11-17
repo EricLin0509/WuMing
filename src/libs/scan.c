@@ -178,7 +178,7 @@ add_threat_path(ScanContext *ctx, const char *path)
   threat_page_add_threat (ctx->threat_page, action_row);
 
   /* Add the threat path to the list */
-  DeleteFileData *delete_data = delete_file_data_list_prepend(GTK_WIDGET(ctx->threat_page), action_row); // Add the delete data to the list
+  DeleteFileData *delete_data = delete_file_data_table_insert(GTK_WIDGET(ctx->threat_page), action_row); // Add the delete data to the list
   if (delete_data == NULL) // Failed to add delete data to list
   {
     g_critical("Failed to add delete data to list");
@@ -344,7 +344,7 @@ scan_thread(gpointer data)
 static void
 clear_box_list_and_close(ScanContext *ctx)
 {
-  delete_file_data_list_clear(); // Clear the list of delete data
+  delete_file_data_table_clear(); // Clear the list of delete data
 
   wuming_window_pop_page(ctx->window); // Pop the scanning page
 }

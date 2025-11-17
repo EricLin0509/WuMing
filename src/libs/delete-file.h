@@ -26,20 +26,20 @@
 
 typedef struct DeleteFileData DeleteFileData;
 
-/* Prepend a new delete file data structure to the list */
+/* Insert a new delete file data structure to the hash table */
 // @return a new created DeleteFileData structure
 DeleteFileData *
-delete_file_data_list_prepend(GtkWidget *threat_page, GtkWidget *action_row);
+delete_file_data_table_insert(GtkWidget *threat_page, GtkWidget *action_row);
 
-/* Remove a delete file data structure from the list */
-// @warning this also clear the DeleteFileData structure and the security context in the list
+/* Remove a delete file data structure from the hash table */
+// @warning this also clear the DeleteFileData structure and the security context in the hash table
 void
-delete_file_data_list_remove(DeleteFileData *data);
+delete_file_data_table_remove(DeleteFileData *data);
 
-/* Clear the delete file data structure list */
-// Tips: this also clears the DeleteFileData structures and the security contexts in the list
+/* Clear the delete file data structure hash table */
+// Tips: this also clears the DeleteFileData structures and the security contexts in the hash table
 void
-delete_file_data_list_clear(void);
+delete_file_data_table_clear(void);
 
 /* Delete threat files */
 /*

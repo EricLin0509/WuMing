@@ -41,7 +41,7 @@
 
 #define PKEXEC_PATH "/usr/bin/pkexec" // Path to the `pkexec` binary
 
-static GList *delete_file_data_list = NULL; // List of delete file data structures
+static GHashTable *delete_file_table = NULL; // Use to store the information of files to be deleted
 
 typedef struct DeleteFileData {
     const char *path;
@@ -65,13 +65,31 @@ delete_file_data_clear(DeleteFileData **data)
     *data = NULL;
 }
 
-/* clear the GList `data` field callback function */
+/* The GDestroyNotify function to clear the DeleteFileData structure */
 static inline void
-clear_list_elements_func(void *data)
+clear_hash_table_element(gpointer data)
 {
-    g_return_if_fail(data);
-    DeleteFileData *delete_data = data; // Cast the data to `DeleteFileData` pointer
-    delete_file_data_clear(&delete_data);
+    DeleteFileData *delete_file_data = (DeleteFileData *)data;
+
+    if (!delete_file_data) return; // Check if the data is valid
+
+    delete_file_data_clear(&delete_file_data);
+}
+
+/* Ensure the GHashTable exists */
+static GHashTable *
+ensure_delete_file_table(void)
+{
+    if (!delete_file_table)
+    {
+        delete_file_table = g_hash_table_new_full(
+                                    g_direct_hash,
+                                    g_direct_equal,
+                                    NULL,
+                                    (GDestroyNotify) clear_hash_table_element);
+    }
+
+    return delete_file_table;
 }
 
 /* Set file properties */
@@ -151,10 +169,10 @@ delete_file_data_new(GtkWidget *threat_page, GtkWidget *action_row)
     return data;
 }
 
-/* Prepend a new delete file data structure to the list */
+/* Insert a new delete file data structure to the hash table */
 // @return a new created DeleteFileData structure
 DeleteFileData *
-delete_file_data_list_prepend(GtkWidget *threat_page, GtkWidget *action_row)
+delete_file_data_table_insert(GtkWidget *threat_page, GtkWidget *action_row)
 {
     DeleteFileData *data = delete_file_data_new(threat_page, action_row);
     if (!data)
@@ -163,32 +181,34 @@ delete_file_data_list_prepend(GtkWidget *threat_page, GtkWidget *action_row)
         return NULL;
     }
 
-    delete_file_data_list = g_list_prepend(delete_file_data_list, data);
+    delete_file_table = ensure_delete_file_table();
+
+    g_hash_table_insert(delete_file_table, data, data); // Insert the data structure to the hash table
 
     return data;
 }
 
-/* Clear the delete file data structure list */
-// Tips: this also clears the DeleteFileData structures and the security contexts in the list
+/* Remove a delete file data structure from the hash table */
+// @warning this also clear the DeleteFileData structure and the security context in the hash table
 void
-delete_file_data_list_clear(void)
-{
-    if (!delete_file_data_list) return;
-
-    g_list_free_full(delete_file_data_list, clear_list_elements_func);
-    delete_file_data_list = NULL;
-}
-
-/* Remove a delete file data structure from the list */
-// @warning this also clear the DeleteFileData structure and the security context in the list
-void
-delete_file_data_list_remove(DeleteFileData *data)
+delete_file_data_table_remove(DeleteFileData *data)
 {
     g_return_if_fail(data != NULL);
 
-    delete_file_data_list = g_list_remove(delete_file_data_list, data);
+    if (!delete_file_table) return; // Hash table doesn't initialized, return
 
-    delete_file_data_clear(&data);
+    g_hash_table_remove(delete_file_table, data); // This also clears the delete file data structure and the security context
+}
+
+/* Clear the delete file data structure hash table */
+// Tips: this also clears the DeleteFileData structures and the security contexts in the hash table
+void
+delete_file_data_table_clear(void)
+{
+    if (!delete_file_table) return;
+
+    g_hash_table_remove_all(delete_file_table);
+    delete_file_table = NULL;
 }
 
 /* Policy forbid the operation to delete the file */
@@ -284,7 +304,7 @@ delete_threat_file_elevated(DeleteFileData *data)
     // Clean up
     file_security_context_clear(&copied_context, &shm_name, NULL);
     log_deletion_attempt(data->path);
-    delete_file_data_list_remove(data); // Remove the data structure from the list
+    delete_file_data_table_remove(data); // Remove the data structure from the list
     return;
 }
 
@@ -319,6 +339,6 @@ delete_threat_file(DeleteFileData *data)
     {
         g_print("[INFO] File deleted: %s\n", data->path);
         log_deletion_attempt(data->path);
-        delete_file_data_list_remove(data); // Remove the data structure from the list
+        delete_file_data_table_remove(data); // Remove the data structure from the list
     }
 }
