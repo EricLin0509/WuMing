@@ -63,9 +63,6 @@ struct _WumingWindow
     /* Update Signature Page */
     UpdateSignaturePage *update_signature_page;
 
-    /* Check History Page */
-    AdwStatusPage       *check_history_page;
-
     /* Updating Navigation Page */
     AdwNavigationPage   *updating_nav_page;
     UpdatingPage        *updating_page;
@@ -270,7 +267,6 @@ wuming_window_finalize (GObject *object)
     self->security_overview_page = NULL;
     self->scan_page = NULL;
     self->update_signature_page = NULL;
-    self->check_history_page = NULL;
     self->updating_nav_page = NULL;
     self->updating_page = NULL;
     self->scanning_nav_page = NULL;
@@ -308,9 +304,6 @@ wuming_window_class_init (WumingWindowClass *klass)
 
     /* Update Database Page */
     gtk_widget_class_bind_template_child (widget_class, WumingWindow, update_signature_page);
-
-    /* Check History Page */
-    gtk_widget_class_bind_template_child (widget_class, WumingWindow, check_history_page);
 
     /* Updating Navigation Page */
     gtk_widget_class_bind_template_child (widget_class, WumingWindow, updating_nav_page);

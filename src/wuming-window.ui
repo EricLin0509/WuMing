@@ -105,19 +105,6 @@
                       </object>
                     </child>
 
-                    <!-- Check History Page -->
-                    <child>
-                      <object class="AdwViewStackPage">
-                        <property name="title" translatable="yes">Check History</property>
-                        <property name="name">check-history</property>
-                        <property name="icon-name">preferences-system-time-symbolic</property>
-                        <property name="child">
-                          <object class="AdwStatusPage" id="check_history_page">
-                            <property name="title" translatable="yes">Coming Soon...</property>
-                          </object>
-                        </property>
-                      </object>
-                    </child>
                   </object>
                 </property>
               </object>
