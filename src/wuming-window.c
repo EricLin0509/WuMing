@@ -29,7 +29,6 @@
 
 #include "wuming-window.h"
 
-#include "check-history-page.h"
 #include "update-signature-page.h"
 #include "scan-page.h"
 #include "updating-page.h"
@@ -65,7 +64,7 @@ struct _WumingWindow
     UpdateSignaturePage *update_signature_page;
 
     /* Check History Page */
-    CheckHistoryPage    *check_history_page;
+    AdwStatusPage       *check_history_page;
 
     /* Updating Navigation Page */
     AdwNavigationPage   *updating_nav_page;
@@ -331,7 +330,6 @@ wuming_window_class_init (WumingWindowClass *klass)
     g_type_ensure (THREAT_TYPE_PAGE);
     g_type_ensure (UPDATE_SIGNATURE_TYPE_PAGE);
     g_type_ensure (UPDATING_TYPE_PAGE);
-    g_type_ensure (CHECK_HISTORY_TYPE_PAGE);
 }
 
 static void

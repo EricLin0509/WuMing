@@ -112,11 +112,8 @@
                         <property name="name">check-history</property>
                         <property name="icon-name">preferences-system-time-symbolic</property>
                         <property name="child">
-                          <object class="AdwStatusPage">
-                            <property name="title" translatable="yes">Check History</property>
-                            <child>
-                              <object class="CheckHistoryPage" id="check_history_page"/>
-                            </child>
+                          <object class="AdwStatusPage" id="check_history_page">
+                            <property name="title" translatable="yes">Coming Soon...</property>
                           </object>
                         </property>
                       </object>
