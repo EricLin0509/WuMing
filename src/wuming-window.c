@@ -28,6 +28,7 @@
 #include "libs/scan.h"
 
 #include "wuming-window.h"
+#include "wuming-preferences-dialog.h"
 
 #include "update-signature-page.h"
 #include "scan-page.h"
@@ -76,6 +77,7 @@ struct _WumingWindow
     ThreatPage          *threat_page;
 
     /* Private */
+    WumingPreferencesDialog *prefrences_dialog;
     GNotification       *notification;
     GApplication        *app;
     gboolean            is_hidden;
@@ -248,6 +250,7 @@ wuming_window_dispose (GObject *object)
     wuming_window_close_notification (self);
 
     g_clear_object (&self->notification);
+    g_clear_object (&self->prefrences_dialog);
 
     GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
     g_clear_pointer (&navigation_view, gtk_widget_unparent);
@@ -388,6 +391,9 @@ wuming_window_init (WumingWindow *self)
 
     self->notification = g_notification_new ("WuMing");
     g_object_ref_sink (self->notification); // Keep the reference count
+
+    self->prefrences_dialog = wuming_preferences_dialog_new (GTK_WIDGET (self));
+    g_object_ref_sink (self->prefrences_dialog); // Keep the reference count
 
     self->is_hidden = FALSE;
 

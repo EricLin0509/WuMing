@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk" version="4.0"/>
+  <requires lib="Adw" version="1.0"/>
+  <template class="WumingPreferencesDialog" parent="AdwPreferencesDialog">
+    <property name="content-width">600</property>
+    <child>
+      <object class="AdwPreferencesPage">
+        <child>
+          <object class="AdwPreferencesGroup">
+            <property name="title" translatable="yes">Scan</property>
+          </object>
+        </child>
+        <child>
+          <object class="AdwPreferencesGroup">
+            <property name="title" translatable="yes">Signature</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

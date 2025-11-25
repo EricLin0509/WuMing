@@ -121,6 +121,9 @@ wuming_application_init (WumingApplication *self)
 	                                 G_N_ELEMENTS (app_actions),
 	                                 self);
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
+	                                       "app.preferences",
+	                                       (const char *[]) { "<primary>comma", NULL });
+	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
 	                                       "app.about",
 	                                       (const char *[]) { "F1", NULL });
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),

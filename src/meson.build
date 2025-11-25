@@ -2,6 +2,7 @@ wuming_sources = [
   'main.c',
   'wuming-application.c',
   'wuming-window.c',
+  'wuming-preferences-dialog.c',
   'update-signature-page.c',
   'updating-page.c',
   'scan-page.c',

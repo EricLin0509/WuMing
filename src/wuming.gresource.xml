@@ -2,6 +2,7 @@
 <gresources>
   <gresource prefix="/com/ericlin/wuming">
     <file preprocess="xml-stripblanks">wuming-window.ui</file>
+    <file preprocess="xml-stripblanks">wuming-preferences-dialog.ui</file>
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
     <file>style.css</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/scan-folder-symbolic.svg</file>
