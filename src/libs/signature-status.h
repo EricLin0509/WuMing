@@ -43,6 +43,9 @@ signature_status_new(gint signature_expiration_time);
   * @param signature_expiration_time
   * The expiration time of the signature.
   * 
+  * @warning
+  * If `signature_expiration_time` is less than or equal to 0, this argument will be ignored.
+  * 
   * @return
   * `true` if the signature status has changed, `false` otherwise.
 */

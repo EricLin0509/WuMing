@@ -47,6 +47,8 @@ typedef struct signature_status {
     int day;
     int hour;
     int minute;
+    int signature_day_diff;
+    int expiration_day;
     unsigned short status;
 } signature_status;
 
@@ -313,22 +315,25 @@ scan_signature_date(signature_status *result)
 
 /*Check whether the signature is up to date*/
 static gint
-is_signature_uptodate(signature_status *result, gint signature_expiration_time)
+is_signature_uptodate(signature_status *result, gboolean need_compare_day_diff)
 {
     g_return_val_if_fail(result != NULL, SIGNATURE_STATUS_NOT_FOUND);
     if (result->status & SIGNATURE_STATUS_NOT_FOUND) return SIGNATURE_STATUS_NOT_FOUND; // Signature not found, no need to check
 
-    /* Get Current Time */
-    time_t t = time(NULL);
-    struct tm current_time;
-    gmtime_r(&t, &current_time);
+    if (need_compare_day_diff)
+    {
+        /* Get Current Time */
+        time_t t = time(NULL);
+        struct tm current_time;
+        gmtime_r(&t, &current_time);
 
-    /* Get day diff */
-    int day_diff = date_to_days(current_time.tm_year + 1900, current_time.tm_mon + 1, current_time.tm_mday) -
+        /* Get day diff */
+        result->signature_day_diff = date_to_days(current_time.tm_year + 1900, current_time.tm_mon + 1, current_time.tm_mday) -
                     date_to_days(result->year, result->month, result->day);
-    g_print("[INFO] Signature day diff: %d\n", day_diff);
+        g_print("[INFO] Signature day diff: %d\n", result->signature_day_diff);
+    }
 
-    if (day_diff > signature_expiration_time) return 0; // Signature is not up to date
+    if (result->signature_day_diff > result->expiration_day) return 0; // Signature is not up to date
     return SIGNATURE_STATUS_UPTODATE;
 }
 
@@ -337,10 +342,12 @@ signature_status_new(gint signature_expiration_time)
 {
     signature_status *status = g_new0(signature_status, 1);
 
+    status->expiration_day = signature_expiration_time > 0 ? signature_expiration_time : 5; // Default expiration time is 5 days
+
     gint temp_status = 0;
 
     scan_signature_date(status);
-    temp_status = is_signature_uptodate(status, signature_expiration_time);
+    temp_status = is_signature_uptodate(status, TRUE);
 
     status->status = temp_status;
 
@@ -358,6 +365,9 @@ signature_status_new(gint signature_expiration_time)
   * @param signature_expiration_time
   * The expiration time of the signature.
   * 
+  * @warning
+  * If `signature_expiration_time` is less than or equal to 0, this argument will be ignored.
+  * 
   * @return
   * `true` if the signature status has changed, `false` otherwise.
 */
@@ -368,12 +378,14 @@ signature_status_update(signature_status *status, gboolean need_rescan_database,
 
     gint temp_status = 0;
 
+    if (signature_expiration_time > 0) status->expiration_day = signature_expiration_time;
+
     if (need_rescan_database)
     {
         scan_signature_date(status);
     }
 
-    temp_status = is_signature_uptodate(status, signature_expiration_time);
+    temp_status = is_signature_uptodate(status, need_rescan_database);
 
     if (temp_status == status->status) return FALSE;
 
