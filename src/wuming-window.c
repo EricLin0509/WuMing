@@ -405,7 +405,7 @@ wuming_window_init (WumingWindow *self)
     /* Initialize the settings */
     wuming_window_init_settings (self);
 
-    self->update_context = update_context_new(self, self->security_overview_page, self->update_signature_page, self->updating_page);
+    self->update_context = update_context_new(self, self->updating_page);
     self->scan_context = scan_context_new(self, self->security_overview_page, self->scan_page, self->scanning_page, self->threat_page);
 
     self->notification = g_notification_new ("WuMing");

@@ -23,14 +23,12 @@
 #include <adwaita.h>
 
 #include "wuming-window.h"
-#include "security-overview-page.h"
 #include "updating-page.h"
-#include "update-signature-page.h"
 
 typedef struct UpdateContext UpdateContext;
 
 UpdateContext*
-update_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_page, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page);
+update_context_new(WumingWindow *window, UpdatingPage *updating_page);
 
 void
 update_context_clear(UpdateContext **ctx);

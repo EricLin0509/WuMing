@@ -59,7 +59,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
   switch (status)
   {
     case 0: // Signature is oudated
-      date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), year, month, day, hour, minute);
+      date_msg = g_strdup_printf (gettext("Current Signature Date: %d.%d.%d %d:%2d"), year, month, day, hour, minute);
 
       signature_msg = gettext("Signature Is Outdated");
       row_subtitle = gettext("Outdated!");
@@ -75,7 +75,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
       icon_name = "status-error-symbolic";
       break;
     case 16: // Signature is up-to-date
-      date_msg = g_strdup_printf (gettext("Current signature date: %d.%d.%d %d:%d"), year, month, day, hour, minute);
+      date_msg = g_strdup_printf (gettext("Current Signature Date: %d.%d.%d %d:%2d"), year, month, day, hour, minute);
 
       signature_msg = gettext("Signature Is Up To Date");
       row_subtitle = gettext("Is Up To Date");
@@ -83,7 +83,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
       icon_name = "status-ok-symbolic";
       break;
     default: // Bit mask is invalid (because these two bit mask cannot be set at the same time)
-      date_msg = g_strdup_printf (gettext("Signature status: %d"), status);
+      date_msg = g_strdup_printf (gettext("Signature Status: %d"), status);
 
       signature_msg = gettext("Unknown Signature Status");
       row_subtitle = gettext("Unknown Signature Status");

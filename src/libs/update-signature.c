@@ -38,8 +38,6 @@ typedef struct UpdateContext {
 
   /*No need to protect these fields because they always same after initialize*/
   WumingWindow *window;
-  SecurityOverviewPage *security_overview_page;
-  UpdateSignaturePage *update_signature_page;
   UpdatingPage *updating_page;
 
 } UpdateContext;
@@ -122,10 +120,10 @@ update_thread(gpointer data)
     return NULL;
 }
 
-UpdateContext *
-update_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_page, UpdateSignaturePage *update_signature_page, UpdatingPage *updating_page)
+UpdateContext*
+update_context_new(WumingWindow *window, UpdatingPage *updating_page)
 {
-  g_return_val_if_fail(window && security_overview_page && update_signature_page && updating_page, NULL);
+  g_return_val_if_fail(window && updating_page, NULL);
 
   UpdateContext *ctx = g_new0(UpdateContext, 1);
   g_mutex_init(&ctx->mutex);
@@ -133,8 +131,6 @@ update_context_new(WumingWindow *window, SecurityOverviewPage *security_overview
   ctx->completed = FALSE;
   ctx->success = FALSE;
   ctx->window = window;
-  ctx->security_overview_page = security_overview_page;
-  ctx->update_signature_page = update_signature_page;
   ctx->updating_page = updating_page;
 
   return ctx;
