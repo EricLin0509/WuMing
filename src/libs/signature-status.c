@@ -271,6 +271,8 @@ scan_signature_date(signature_status *result)
 {
     g_return_if_fail(result != NULL);
 
+    result->status &= ~SIGNATURE_STATUS_NOT_FOUND; // Reset the status
+
     gboolean has_daily = FALSE;
 
     const char *database_dir = CLAMAV_CVD_PATH;
@@ -307,8 +309,6 @@ scan_signature_date(signature_status *result)
 
     g_free (cvd_date);
     g_free (cld_date);
-
-    result->status = 0; // If signature is found, set the status to 0
 }
 
 /*Check whether the signature is up to date*/

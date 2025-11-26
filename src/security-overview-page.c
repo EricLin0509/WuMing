@@ -91,6 +91,8 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, G
 {
     g_return_if_fail(self != NULL);
 
+    self->health_level &= ~LAST_SCAN_TIME_VALID; // Reset the last scan time valid bit
+
     GtkWidget *button_content = gtk_button_get_child (self->scan_overview_button);
 
     gboolean is_null = (setting == NULL);
@@ -134,6 +136,8 @@ void
 security_overview_page_show_signature_status (SecurityOverviewPage *self, const signature_status *result)
 {
     g_return_if_fail(self != NULL);
+
+    self->health_level &= ~SIGNATURE_VALID; // Reset the signature valid bit
 
     GtkWidget *button_content = gtk_button_get_child (self->signature_overview_button);
 

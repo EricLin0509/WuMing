@@ -78,6 +78,7 @@ struct _WumingWindow
 
     /* Private */
     WumingPreferencesDialog *prefrences_dialog;
+    GSettings            *settings;
     GNotification       *notification;
     GApplication        *app;
     gboolean            is_hidden;
@@ -143,6 +144,7 @@ wuming_window_get_component(WumingWindow *self, const char *component_name)
         WUMING_WINDOW_COMPONENT_ENTRY(update_signature_page),
         WUMING_WINDOW_COMPONENT_ENTRY(update_context),
         WUMING_WINDOW_COMPONENT_ENTRY(scan_context),
+        WUMING_WINDOW_COMPONENT_ENTRY(settings),
     };
 
     for (size_t i = 0; i < G_N_ELEMENTS(components); i++)
@@ -244,7 +246,9 @@ wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_
 {
     g_return_if_fail (self != NULL); // Check if the object is valid
 
-    if (!signature_status_update (self->status, need_rescan_signature, 1)) return; // Status not changed, no need to update
+    gint signature_expiration_time = g_settings_get_int (self->settings, "signature-expiration-time");
+
+    if (!signature_status_update (self->status, need_rescan_signature, signature_expiration_time)) return; // Status not changed, no need to update
 
     update_signature_page_show_isuptodate (self->update_signature_page, self->status);
     security_overview_page_show_signature_status (self->security_overview_page, self->status);
@@ -264,8 +268,9 @@ wuming_window_dispose (GObject *object)
     wuming_window_set_hide_on_close (self, FALSE, NULL);
     wuming_window_close_notification (self);
 
-    g_clear_object (&self->notification);
     g_clear_object (&self->prefrences_dialog);
+    g_clear_object (&self->settings);
+    g_clear_object (&self->notification);
 
     GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
     g_clear_pointer (&navigation_view, gtk_widget_unparent);
@@ -347,32 +352,49 @@ static void
 wuming_window_init_settings (WumingWindow *self)
 {
     /* Setting the window size */
-    GSettings *settings = g_settings_new ("com.ericlin.wuming");
+    self->settings = g_settings_new ("com.ericlin.wuming");
 
-    g_settings_bind (settings, "width",
+    g_settings_bind (self->settings, "width",
                      self, "default-width",
                      G_SETTINGS_BIND_DEFAULT);
 
-    g_settings_bind (settings, "height",
+    g_settings_bind (self->settings, "height",
                      self, "default-height",
                       G_SETTINGS_BIND_DEFAULT);
 
-    g_settings_bind (settings, "is-maximized",
+    g_settings_bind (self->settings, "is-maximized",
                      self, "maximized",
                      G_SETTINGS_BIND_DEFAULT);
 
-    g_settings_bind (settings, "is-fullscreen",
+    g_settings_bind (self->settings, "is-fullscreen",
                      self, "fullscreened",
                      G_SETTINGS_BIND_DEFAULT);
 
-    g_autofree gchar *last_scan_time = g_settings_get_string (settings, "last-scan-time");
+    g_autofree gchar *last_scan_time = g_settings_get_string (self->settings, "last-scan-time");
     gboolean is_expired = is_scan_time_expired(last_scan_time, NULL);
+
+    /* Update the `ScanPage` */
     scan_page_show_last_scan_time (self->scan_page, NULL, last_scan_time);
     scan_page_show_last_scan_time_status (self->scan_page, NULL, is_expired);
 
-    security_overview_page_show_last_scan_time_status (self->security_overview_page, NULL, is_expired);
+    gint signature_expiration_time = g_settings_get_int (self->settings, "signature-expiration-time");
 
-    g_object_unref (settings); // Free the GSettings object
+    /* Check systemd service status */
+    int status = is_service_enabled ("clamav-freshclam.service");
+
+    /* Scan the Database */
+    self->status = signature_status_new (signature_expiration_time);
+
+    /* Update the `UpdateSignaturePage` */
+    update_signature_page_show_isuptodate (self->update_signature_page, self->status);
+    update_signature_page_show_servicestat (self->update_signature_page, status);
+
+    /* Update the `SecurityOverviewPage` */
+    security_overview_page_show_signature_status (self->security_overview_page, self->status);
+    security_overview_page_show_last_scan_time_status (self->security_overview_page, NULL, is_expired);
+    security_overview_page_connect_goto_scan_page_signal (self->security_overview_page);
+    security_overview_page_show_servicestat (self->security_overview_page, status);
+    security_overview_page_show_health_level (self->security_overview_page);
 }
 
 static void
@@ -382,23 +404,6 @@ wuming_window_init (WumingWindow *self)
 
     /* Initialize the settings */
     wuming_window_init_settings (self);
-
-    /* Check systemd service status */
-    int status = is_service_enabled ("clamav-freshclam.service");
-
-    /* Scan the Database */
-    self->status = signature_status_new (1);
-
-    /* Update the `UpdateSignaturePage` */
-    update_signature_page_show_isuptodate (self->update_signature_page, self->status);
-    update_signature_page_show_servicestat (self->update_signature_page, status);
-
-    /* Update the `SecurityOverviewPage` */
-    security_overview_page_show_signature_status (self->security_overview_page, self->status);
-    security_overview_page_connect_goto_scan_page_signal (self->security_overview_page);
-    security_overview_page_show_servicestat (self->security_overview_page, status);
-    security_overview_page_show_health_level (self->security_overview_page);
-
 
     self->update_context = update_context_new(self, self->security_overview_page, self->update_signature_page, self->updating_page);
     self->scan_context = scan_context_new(self, self->security_overview_page, self->scan_page, self->scanning_page, self->threat_page);

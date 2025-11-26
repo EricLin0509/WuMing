@@ -24,8 +24,11 @@
 struct _WumingPreferencesDialog {
     GtkWidget parent_instance;
 
+    GtkAdjustment *adjust_expiration;
+
     /* Private */
     GtkWidget *window;
+    GSettings *settings;
 };
 
 G_DEFINE_FINAL_TYPE(WumingPreferencesDialog, wuming_preferences_dialog, ADW_TYPE_PREFERENCES_DIALOG)
@@ -36,6 +39,26 @@ show_dialog (GSimpleAction *action, GVariant *parameter, gpointer user_data)
     WumingPreferencesDialog *dialog = WUMING_PREFERENCES_DIALOG (user_data);
 
     adw_dialog_present (ADW_DIALOG (dialog), dialog->window);
+}
+
+static void
+wuming_preferences_dialog_on_expiration_changed (GtkAdjustment *adjustment, WumingPreferencesDialog *self)
+{
+    g_return_if_fail (self->settings != NULL);
+
+    g_settings_set_int (self->settings, "signature-expiration-time", gtk_adjustment_get_value (adjustment));
+
+    wuming_window_update_signature_status (WUMING_WINDOW (self->window), FALSE);
+}
+
+static void
+wuming_preferences_dialog_init_settings (WumingPreferencesDialog *self)
+{
+    g_return_if_fail (self->settings != NULL);
+
+    g_settings_bind (self->settings, "signature-expiration-time", self->adjust_expiration, "value", G_SETTINGS_BIND_DEFAULT);
+
+    g_signal_connect (self->adjust_expiration, "value-changed", G_CALLBACK (wuming_preferences_dialog_on_expiration_changed), self);
 }
 
 /* GObject essential functions */
@@ -53,6 +76,8 @@ wuming_preferences_dialog_class_init (WumingPreferencesDialogClass *klass)
     gtk_widget_class_set_layout_manager_type(widget_class, GTK_TYPE_BIN_LAYOUT);
 
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/wuming-preferences-dialog.ui");
+
+    gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, adjust_expiration);
 }
 
 WumingPreferencesDialog *
@@ -61,6 +86,9 @@ wuming_preferences_dialog_new (GtkWidget *window)
     WumingPreferencesDialog *self = WUMING_PREFERENCES_DIALOG (g_object_new (WUMING_TYPE_PREFERENCES_DIALOG, NULL));
 
     self->window = window;
+    self->settings = wuming_window_get_component (WUMING_WINDOW (window), "settings");
+
+    wuming_preferences_dialog_init_settings (self);
 
     return self;
 }

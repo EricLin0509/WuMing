@@ -14,6 +14,21 @@
         <child>
           <object class="AdwPreferencesGroup">
             <property name="title" translatable="yes">Signature Status</property>
+            <child>
+              <object class="AdwSpinRow">
+                <property name="height-request">60</property>
+                <property name="title" translatable="yes">Signature Expiration Time</property>
+                <property name="subtitle" translatable="yes">Customize The Expiration Time Of The Signature</property>
+                <property name="adjustment">
+                  <object class="GtkAdjustment" id="adjust_expiration">
+                    <property name="lower">1</property>
+                    <property name="upper">14</property>
+                    <property name="page-increment">10</property>
+                    <property name="step-increment">1</property>
+                  </object>
+                </property>
+              </object>
+            </child>
           </object>
         </child>
       </object>
