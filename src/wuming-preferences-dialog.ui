@@ -17,10 +17,10 @@
             <child>
               <object class="AdwSpinRow">
                 <property name="height-request">60</property>
-                <property name="title" translatable="yes">Signature Expiration Time</property>
-                <property name="subtitle" translatable="yes">Customize The Expiration Time Of The Signature</property>
+                <property name="title" translatable="yes">Signature Validity Period</property>
+                <property name="subtitle" translatable="yes">Set The Expiration Time For The Signature (1-14 Days)</property>
                 <property name="adjustment">
-                  <object class="GtkAdjustment" id="adjust_expiration">
+                  <object class="GtkAdjustment" id="signature_expiry_days">
                     <property name="lower">1</property>
                     <property name="upper">14</property>
                     <property name="page-increment">10</property>

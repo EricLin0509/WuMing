@@ -24,7 +24,7 @@
 struct _WumingPreferencesDialog {
     GtkWidget parent_instance;
 
-    GtkAdjustment *adjust_expiration;
+    GtkAdjustment *signature_expiry_days;
 
     /* Private */
     GtkWidget *window;
@@ -56,9 +56,9 @@ wuming_preferences_dialog_init_settings (WumingPreferencesDialog *self)
 {
     g_return_if_fail (self->settings != NULL);
 
-    g_settings_bind (self->settings, "signature-expiration-time", self->adjust_expiration, "value", G_SETTINGS_BIND_DEFAULT);
+    g_settings_bind (self->settings, "signature-expiration-time", self->signature_expiry_days, "value", G_SETTINGS_BIND_DEFAULT);
 
-    g_signal_connect (self->adjust_expiration, "value-changed", G_CALLBACK (wuming_preferences_dialog_on_expiration_changed), self);
+    g_signal_connect (self->signature_expiry_days, "value-changed", G_CALLBACK (wuming_preferences_dialog_on_expiration_changed), self);
 }
 
 /* GObject essential functions */
@@ -77,7 +77,7 @@ wuming_preferences_dialog_class_init (WumingPreferencesDialogClass *klass)
 
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/wuming-preferences-dialog.ui");
 
-    gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, adjust_expiration);
+    gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, signature_expiry_days);
 }
 
 WumingPreferencesDialog *

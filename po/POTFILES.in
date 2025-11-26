@@ -7,6 +7,8 @@ src/shortcuts-dialog.ui
 src/main.c
 src/wuming-window.c
 src/wuming-window.ui
+src/wuming-preferences-dialog.c
+src/wuming-preferences-dialog.ui
 src/security-overview-page.c
 src/security-overview-page.ui
 src/scan-page.c
