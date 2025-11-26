@@ -83,6 +83,7 @@ struct _WumingWindow
     gboolean            is_hidden;
     gulong              close_request_signal_id;
     gulong              show_signal_id;
+    signature_status      *status;
     UpdateContext       *update_context;
     ScanContext         *scan_context;
 };
@@ -237,12 +238,26 @@ wuming_window_close_notification (WumingWindow *self)
     g_application_withdraw_notification (self->app, WUMING_WINDOW_NOTIFICATION_ID);
 }
 
+/* Update the signture status */
+void
+wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_signature)
+{
+    g_return_if_fail (self != NULL); // Check if the object is valid
+
+    if (!signature_status_update (self->status, need_rescan_signature, 1)) return; // Status not changed, no need to update
+
+    update_signature_page_show_isuptodate (self->update_signature_page, self->status);
+    security_overview_page_show_signature_status (self->security_overview_page, self->status);
+    security_overview_page_show_health_level (self->security_overview_page);
+}
+
 /* GObject essential functions */
 static void
 wuming_window_dispose (GObject *object)
 {
     WumingWindow *self = WUMING_WINDOW (object);
 
+    signature_status_clear (&self->status);
     update_context_clear (&self->update_context);
     scan_context_clear (&self->scan_context);
 
@@ -372,19 +387,18 @@ wuming_window_init (WumingWindow *self)
     int status = is_service_enabled ("clamav-freshclam.service");
 
     /* Scan the Database */
-    signature_status *result = signature_status_new ();
+    self->status = signature_status_new (1);
 
     /* Update the `UpdateSignaturePage` */
-    update_signature_page_show_isuptodate (self->update_signature_page, result);
+    update_signature_page_show_isuptodate (self->update_signature_page, self->status);
     update_signature_page_show_servicestat (self->update_signature_page, status);
 
     /* Update the `SecurityOverviewPage` */
-    security_overview_page_show_signature_status (self->security_overview_page, result);
+    security_overview_page_show_signature_status (self->security_overview_page, self->status);
     security_overview_page_connect_goto_scan_page_signal (self->security_overview_page);
     security_overview_page_show_servicestat (self->security_overview_page, status);
     security_overview_page_show_health_level (self->security_overview_page);
 
-    signature_status_clear (&result);
 
     self->update_context = update_context_new(self, self->security_overview_page, self->update_signature_page, self->updating_page);
     self->scan_context = scan_context_new(self, self->security_overview_page, self->scan_page, self->scanning_page, self->threat_page);

@@ -8,12 +8,12 @@
       <object class="AdwPreferencesPage">
         <child>
           <object class="AdwPreferencesGroup">
-            <property name="title" translatable="yes">Scan</property>
+            <property name="title" translatable="yes">Scan Options</property>
           </object>
         </child>
         <child>
           <object class="AdwPreferencesGroup">
-            <property name="title" translatable="yes">Signature</property>
+            <property name="title" translatable="yes">Signature Status</property>
           </object>
         </child>
       </object>

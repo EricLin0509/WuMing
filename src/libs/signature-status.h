@@ -30,7 +30,24 @@
 typedef struct signature_status signature_status;
 
 signature_status *
-signature_status_new(void);
+signature_status_new(gint signature_expiration_time);
+
+/* Update the signature status */
+/*
+  * @param status
+  * The signature status object.
+  * 
+  * @param need_rescan_database
+  * Whether the database needs to be rescanned.
+  * 
+  * @param signature_expiration_time
+  * The expiration time of the signature.
+  * 
+  * @return
+  * `true` if the signature status has changed, `false` otherwise.
+*/
+gboolean
+signature_status_update(signature_status *status, gboolean need_rescan_database, gint signature_expiration_time);
 
 void
 signature_status_clear(signature_status **status);

@@ -83,13 +83,7 @@ update_complete_callback(gpointer user_data)
   if (is_success) // Re-scan the signature if update is successful
   {
     /*Re-scan the signature*/
-    signature_status *result = signature_status_new();
-
-    update_signature_page_show_isuptodate(ctx->update_signature_page, result);
-    security_overview_page_show_signature_status(ctx->security_overview_page, result);
-    security_overview_page_show_health_level(ctx->security_overview_page);
-
-    signature_status_clear(&result);
+    wuming_window_update_signature_status (ctx->window, TRUE);
   }
 
   if (!wuming_window_is_hide(ctx->window))

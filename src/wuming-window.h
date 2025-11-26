@@ -64,4 +64,8 @@ wuming_window_send_notification (WumingWindow *self, GNotificationPriority prior
 void
 wuming_window_close_notification (WumingWindow *self);
 
+/* Update the signture status */
+void
+wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_signature);
+
 G_END_DECLS

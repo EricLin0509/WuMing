@@ -16,5 +16,8 @@
 		<key name="last-scan-time" type="s">
 	    	<default>"1970.01.01 00:00:00"</default>
 	  	</key>
+		<key name="signature-expiration-time" type="i">
+			<default>1</default>
+		</key>
 	</schema>
 </schemalist>
