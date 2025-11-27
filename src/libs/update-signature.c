@@ -81,7 +81,7 @@ update_complete_callback(gpointer user_data)
   if (is_success) // Re-scan the signature if update is successful
   {
     /*Re-scan the signature*/
-    wuming_window_update_signature_status (ctx->window, TRUE);
+    wuming_window_update_signature_status (ctx->window, TRUE, -1); // Use -1 to ingore the expiration time
   }
 
   if (!wuming_window_is_hide(ctx->window))

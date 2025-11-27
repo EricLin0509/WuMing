@@ -22,6 +22,8 @@
 
 #include <adwaita.h>
 
+#include "wuming-window.h"
+
 G_BEGIN_DECLS
 
 #define WUMING_TYPE_PREFERENCES_DIALOG (wuming_preferences_dialog_get_type ())
@@ -29,6 +31,9 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (WumingPreferencesDialog, wuming_preferences_dialog, WUMING, PREFERENCES_DIALOG, AdwPreferencesDialog)
 
 WumingPreferencesDialog *
-wuming_preferences_dialog_new (GtkWidget *window);
+wuming_preferences_dialog_new (WumingWindow *window);
+
+GSettings *
+wuming_preferences_dialog_get_settings (WumingPreferencesDialog *self);
 
 G_END_DECLS

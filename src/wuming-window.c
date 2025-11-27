@@ -78,7 +78,6 @@ struct _WumingWindow
 
     /* Private */
     WumingPreferencesDialog *prefrences_dialog;
-    GSettings            *settings;
     GNotification       *notification;
     GApplication        *app;
     gboolean            is_hidden;
@@ -144,7 +143,6 @@ wuming_window_get_component(WumingWindow *self, const char *component_name)
         WUMING_WINDOW_COMPONENT_ENTRY(update_signature_page),
         WUMING_WINDOW_COMPONENT_ENTRY(update_context),
         WUMING_WINDOW_COMPONENT_ENTRY(scan_context),
-        WUMING_WINDOW_COMPONENT_ENTRY(settings),
     };
 
     for (size_t i = 0; i < G_N_ELEMENTS(components); i++)
@@ -242,11 +240,9 @@ wuming_window_close_notification (WumingWindow *self)
 
 /* Update the signture status */
 void
-wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_signature)
+wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_signature, gint signature_expiration_time)
 {
     g_return_if_fail (self != NULL); // Check if the object is valid
-
-    gint signature_expiration_time = g_settings_get_int (self->settings, "signature-expiration-time");
 
     if (!signature_status_update (self->status, need_rescan_signature, signature_expiration_time)) return; // Status not changed, no need to update
 
@@ -269,7 +265,6 @@ wuming_window_dispose (GObject *object)
     wuming_window_close_notification (self);
 
     g_clear_object (&self->prefrences_dialog);
-    g_clear_object (&self->settings);
     g_clear_object (&self->notification);
 
     GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
@@ -349,35 +344,33 @@ wuming_window_class_init (WumingWindowClass *klass)
 }
 
 static void
-wuming_window_init_settings (WumingWindow *self)
+wuming_window_init_settings (WumingWindow *self, GSettings *settings)
 {
     /* Setting the window size */
-    self->settings = g_settings_new ("com.ericlin.wuming");
-
-    g_settings_bind (self->settings, "width",
+    g_settings_bind (settings, "width",
                      self, "default-width",
                      G_SETTINGS_BIND_DEFAULT);
 
-    g_settings_bind (self->settings, "height",
+    g_settings_bind (settings, "height",
                      self, "default-height",
                       G_SETTINGS_BIND_DEFAULT);
 
-    g_settings_bind (self->settings, "is-maximized",
+    g_settings_bind (settings, "is-maximized",
                      self, "maximized",
                      G_SETTINGS_BIND_DEFAULT);
 
-    g_settings_bind (self->settings, "is-fullscreen",
+    g_settings_bind (settings, "is-fullscreen",
                      self, "fullscreened",
                      G_SETTINGS_BIND_DEFAULT);
 
-    g_autofree gchar *last_scan_time = g_settings_get_string (self->settings, "last-scan-time");
+    g_autofree gchar *last_scan_time = g_settings_get_string (settings, "last-scan-time");
     gboolean is_expired = is_scan_time_expired(last_scan_time, NULL);
 
     /* Update the `ScanPage` */
     scan_page_show_last_scan_time (self->scan_page, NULL, last_scan_time);
     scan_page_show_last_scan_time_status (self->scan_page, NULL, is_expired);
 
-    gint signature_expiration_time = g_settings_get_int (self->settings, "signature-expiration-time");
+    gint signature_expiration_time = g_settings_get_int (settings, "signature-expiration-time");
 
     /* Check systemd service status */
     int status = is_service_enabled ("clamav-freshclam.service");
@@ -402,17 +395,19 @@ wuming_window_init (WumingWindow *self)
 {
 	gtk_widget_init_template (GTK_WIDGET (self));
 
-    /* Initialize the settings */
-    wuming_window_init_settings (self);
-
     self->update_context = update_context_new(self, self->updating_page);
     self->scan_context = scan_context_new(self, self->security_overview_page, self->scan_page, self->scanning_page, self->threat_page);
 
     self->notification = g_notification_new ("WuMing");
     g_object_ref_sink (self->notification); // Keep the reference count
 
-    self->prefrences_dialog = wuming_preferences_dialog_new (GTK_WIDGET (self));
+    self->prefrences_dialog = wuming_preferences_dialog_new (self);
     g_object_ref_sink (self->prefrences_dialog); // Keep the reference count
+
+    GSettings *settings = wuming_preferences_dialog_get_settings (self->prefrences_dialog);
+
+    /* Initialize the settings */
+    wuming_window_init_settings (self, settings);
 
     self->is_hidden = FALSE;
 
