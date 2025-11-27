@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
+#include "date-to-days.h"
 #include "signature-status.h"
 
 #ifndef O_PATH // Compatibility for some Linux distributions
@@ -100,40 +101,6 @@ month_str_to_num(const char *str)
         case 0x446563: return 12; // "Dec"
         default: return 0;
     }
-}
-
-/* Use for comparing the databases date */
-static int
-date_to_days(int year, int month, int day)
-{
-    /* Check is valid date */
-    if (year < 1) return 0;
-    if (month < 1 || month > 12) return 0;
-    if (day < 1 || day > 31) return 0;
-
-    /* Turn years to days */
-    int year_days = (year - 1) * 365 +
-                    (year - 1) / 4 -
-                    (year - 1) / 100 +
-                    (year - 1) / 400;
-
-    /* Turn months to days */
-    const bool current_year_is_leap_year = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-
-    static const int cumulative_days[] = { // Use cumulative days to calculate the dates of each month
-        0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
-    };
-
-    int month_days = cumulative_days[month];
-    if (current_year_is_leap_year && month > 2) month_days += 1; // If current month is greater than February and current year is leap year, add 1 to the month_days
-
-    const int max_day = 
-        (month == 2 && current_year_is_leap_year) ? 29 : 
-        (cumulative_days[month+1] - cumulative_days[month]);
-
-    if (day > max_day) return 0; // Check is valid day again
-
-    return year_days + month_days + day;
 }
 
 /* Parse the CVD header time */

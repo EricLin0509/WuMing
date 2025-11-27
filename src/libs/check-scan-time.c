@@ -20,43 +20,32 @@
 
 #include <stdio.h>
 
+#include "date-to-days.h"
 #include "check-scan-time.h"
 
 /* Check if the timestamp is expired or not */
 static gboolean
 get_expired (const char *timestamp)
 {
-    struct tm tm = {0};
-    int year, month, day, hour, min, sec;
-    time_t scan_time, now;
-    double diff_seconds;
+    g_return_val_if_fail(timestamp != NULL, FALSE);
 
-    /* Parse timestamp */
-    if (sscanf(timestamp, "%d.%d.%d %d:%d:%d",
-               &year, &month, &day, &hour, &min, &sec) != 6)
+    int year, month, day;
+
+    if (sscanf(timestamp, "%d.%d.%d", &year, &month, &day) != 3)
     {
-        return FALSE; // Format error
+        g_critical("Invalid timestamp format: %s", timestamp);
+        return FALSE;
     }
 
-    /* Store timestamp to tm struct */
-    tm.tm_year = year - 1900;
-    tm.tm_mon = month - 1;
-    tm.tm_mday = day;
-    tm.tm_hour = hour;
-    tm.tm_min = min;
-    tm.tm_sec = sec;
-    tm.tm_isdst = -1;
+    /* Get Current Time */
+    time_t t = time(NULL);
+    struct tm current_time;
+    localtime_r(&t, &current_time);
 
-    if ((scan_time = mktime(&tm)) == (time_t)-1)
-    {
-        return FALSE; // Invaild time value
-    }
+    int day_diff = date_to_days(current_time.tm_year + 1900, current_time.tm_mon + 1, current_time.tm_mday) -
+                        date_to_days(year, month, day);
 
-    time(&now);
-
-    diff_seconds = difftime(now, scan_time);
-
-    return diff_seconds > 604800; // 7 days
+    return day_diff > 7; // If the day difference is greater than 7, it's expired
 }
 
 /* Check if the last scan time is expired or not */
