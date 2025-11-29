@@ -9,6 +9,48 @@
         <child>
           <object class="AdwPreferencesGroup">
             <property name="title" translatable="yes">Scan Options</property>
+            <child>
+              <object class="AdwSwitchRow" id="enable_large_file">
+                <property name="height-request">60</property>
+                <property name="title">Scan Files Larger Than 20MB</property>
+                <property name="subtitle">Set Max File Size To 2GB</property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwSwitchRow" id="enable_pua">
+                <property name="height-request">60</property>
+                <property name="title">Detect PUA</property>
+                <property name="subtitle">Mark Potentially Unwanted Application</property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwSwitchRow" id="scan_archives">
+                <property name="height-request">60</property>
+                <property name="title">Scan Archives</property>
+                <property name="subtitle">Scan Archive Files</property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwSwitchRow" id="scan_mail">
+                <property name="height-request">60</property>
+                <property name="title">Scan Mails</property>
+                <property name="subtitle">Scan Mail Files</property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwSwitchRow" id="alert_exceeds_max">
+                <property name="height-request">60</property>
+                <property name="title">Alert Exceeds Max</property>
+                <property name="subtitle">Alert On Files That Exceed The Limits</property>
+              </object>
+            </child>
+            <child>
+              <object class="AdwSwitchRow" id="alert_encrypted">
+                <property name="height-request">60</property>
+                <property name="title">Alert Encrypted</property>
+                <property name="subtitle">Alert On Encrypted Archives And Documents</property>
+              </object>
+            </child>
           </object>
         </child>
         <child>

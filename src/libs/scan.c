@@ -29,6 +29,8 @@
 
 #define CLAMSCAN_PATH "/usr/bin/clamscan"
 
+#define EXTRA_ARGS_SIZE 6
+
 typedef struct ScanContext {
   /* Protected by mutex */
   GMutex mutex; // Only protect initialization, "completed", "success" fields
@@ -277,6 +279,37 @@ scan_complete_callback(gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
+static void
+get_extra_args(char *extra_args[EXTRA_ARGS_SIZE])
+{
+  const char *args_list[EXTRA_ARGS_SIZE] = { "--max-filesize=2048M", "--detect-pua=yes", "--scan-archive=yes", "--scan-mail=yes", "--alert-exceeds-max=yes", "--alert-encrypted=yes" };
+  const char *gsettings_key[EXTRA_ARGS_SIZE] = { "enable-large-file", "enable-pua", "scan-archives", "scan-mail", "alert-exceeds-max", "alert-encrypted" };
+  
+  GSettings *settings = g_settings_new("com.ericlin.wuming");
+
+  int j = 0;
+
+  for (int i = 0; i < EXTRA_ARGS_SIZE; i++)
+  {
+    gboolean should_enable = g_settings_get_boolean(settings, gsettings_key[i]);
+    if (should_enable)
+    {
+      extra_args[j++] = g_strdup(args_list[i]);
+    }
+  }
+
+  g_object_unref(settings);
+}
+
+static void
+extra_args_free(char *extra_args[EXTRA_ARGS_SIZE])
+{
+  for (int i = 0; i < EXTRA_ARGS_SIZE; i++)
+  {
+    g_clear_pointer(&extra_args[i], g_free);
+  }
+}
+
 static gpointer
 scan_thread(gpointer data)
 {
@@ -284,12 +317,18 @@ scan_thread(gpointer data)
     int pipefd[2];
     pid_t pid;
 
+    char *extra_args[EXTRA_ARGS_SIZE] = { NULL, NULL, NULL, NULL, NULL, NULL };
+    get_extra_args(extra_args);
+
     /*Spawn scan process*/
-    if (!spawn_new_process(pipefd, &pid, 
-        CLAMSCAN_PATH, "clamscan", ctx->path, "--recursive", NULL))
+    if (!spawn_new_process(pipefd, &pid,
+        CLAMSCAN_PATH, "clamscan", ctx->path, "--recursive",extra_args[0], extra_args[1], extra_args[2], extra_args[3], extra_args[4], extra_args[5], NULL))
     {
-        return NULL;
+          g_critical("Failed to spawn process");
+          extra_args_free(extra_args);
+          return NULL;
     }
+    extra_args_free(extra_args);
 
     /*Initialize IO context*/
     IOContext io_ctx = io_context_init(pipefd[0], POLLIN, 0, BASE_TIMEOUT_MS);

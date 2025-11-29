@@ -24,6 +24,13 @@
 struct _WumingPreferencesDialog {
     GtkWidget parent_instance;
 
+    AdwSwitchRow *enable_large_file;
+    AdwSwitchRow *enable_pua;
+    AdwSwitchRow *scan_archives;
+    AdwSwitchRow *scan_mail;
+    AdwSwitchRow *alert_exceeds_max;
+    AdwSwitchRow *alert_encrypted;
+
     GtkAdjustment *signature_expiry_days;
 
     /* Private */
@@ -45,6 +52,8 @@ static void
 show_dialog (GSimpleAction *action, GVariant *parameter, gpointer user_data)
 {
     WumingPreferencesDialog *dialog = WUMING_PREFERENCES_DIALOG (user_data);
+
+    if (!wuming_window_is_in_main_page(dialog->window)) return; // Prevent multiple tasks running at the same time
 
     adw_dialog_present (ADW_DIALOG (dialog), GTK_WIDGET (dialog->window));
 }
@@ -142,6 +151,13 @@ wuming_preferences_dialog_class_init (WumingPreferencesDialogClass *klass)
 
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/wuming-preferences-dialog.ui");
 
+    gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, enable_large_file);
+    gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, enable_pua);
+    gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, scan_archives);
+    gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, scan_mail);
+    gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, alert_exceeds_max);
+    gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, alert_encrypted);
+
     gtk_widget_class_bind_template_child (widget_class, WumingPreferencesDialog, signature_expiry_days);
 }
 
@@ -161,6 +177,13 @@ wuming_preferences_dialog_init (WumingPreferencesDialog *self)
     gtk_widget_init_template (GTK_WIDGET (self));
 
     self->settings = g_settings_new ("com.ericlin.wuming");
+
+    g_settings_bind (self->settings, "enable-large-file", self->enable_large_file, "active", G_SETTINGS_BIND_DEFAULT);
+    g_settings_bind (self->settings, "enable-pua", self->enable_pua, "active", G_SETTINGS_BIND_DEFAULT);
+    g_settings_bind (self->settings, "scan-archives", self->scan_archives, "active", G_SETTINGS_BIND_DEFAULT);
+    g_settings_bind (self->settings, "scan-mail", self->scan_mail, "active", G_SETTINGS_BIND_DEFAULT);
+    g_settings_bind (self->settings, "alert-exceeds-max", self->alert_exceeds_max, "active", G_SETTINGS_BIND_DEFAULT);
+    g_settings_bind (self->settings, "alert-encrypted", self->alert_encrypted, "active", G_SETTINGS_BIND_DEFAULT);
 
     g_settings_bind (self->settings, "signature-expiration-time", self->signature_expiry_days, "value", G_SETTINGS_BIND_DEFAULT);
 
