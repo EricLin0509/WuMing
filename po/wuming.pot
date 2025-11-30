@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-26 18:54+0800\n"
+"POT-Creation-Date: 2025-11-30 19:22+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -96,7 +96,7 @@ msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr ""
 
-#: src/wuming-window.c:178
+#: src/wuming-window.c:176
 msgid "Click to show details"
 msgstr ""
 
@@ -132,15 +132,63 @@ msgstr ""
 msgid "Scan Options"
 msgstr ""
 
+#: src/wuming-preferences-dialog.ui:15
+msgid "Scan Files Larger Than 20MB"
+msgstr ""
+
 #: src/wuming-preferences-dialog.ui:16
+msgid "Set Max File Size To 2GB"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:22
+msgid "Detect PUA"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:23
+msgid "Mark Potentially Unwanted Application"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:29
+msgid "Scan Archives"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:30
+msgid "Scan Archive Files"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:36
+msgid "Scan Mails"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:37
+msgid "Scan Mail Files"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:43
+msgid "Alert Exceeds Max"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:44
+msgid "Alert On Files That Exceed The Limits"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:50
+msgid "Alert Encrypted"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:51
+msgid "Alert On Encrypted Archives And Documents"
+msgstr ""
+
+#: src/wuming-preferences-dialog.ui:58
 msgid "Signature Status"
 msgstr ""
 
-#: src/wuming-preferences-dialog.ui:20
+#: src/wuming-preferences-dialog.ui:62
 msgid "Signature Validity Period"
 msgstr ""
 
-#: src/wuming-preferences-dialog.ui:21
+#: src/wuming-preferences-dialog.ui:63
 msgid "Set The Expiration Time For The Signature (1-14 Days)"
 msgstr ""
 
@@ -240,7 +288,7 @@ msgstr ""
 msgid "Scan folder"
 msgstr ""
 
-#: src/scanning-page.c:53 src/libs/scan.c:455
+#: src/scanning-page.c:53 src/libs/scan.c:494
 msgid "Scanning..."
 msgstr ""
 
@@ -360,26 +408,26 @@ msgstr ""
 msgid "Unknown error!"
 msgstr ""
 
-#: src/libs/scan.c:155
+#: src/libs/scan.c:157
 msgid "Delete"
 msgstr ""
 
-#: src/libs/scan.c:202
+#: src/libs/scan.c:204
 #, c-format
 msgid ""
 "%d files scanned\n"
 "%d threats found"
 msgstr ""
 
-#: src/libs/scan.c:326
+#: src/libs/scan.c:365
 msgid "Scan Canceled"
 msgstr ""
 
-#: src/libs/scan.c:330
+#: src/libs/scan.c:369
 msgid "Scan Complete"
 msgstr ""
 
-#: src/libs/scan.c:334
+#: src/libs/scan.c:373
 msgid "Scan Failed"
 msgstr ""
 

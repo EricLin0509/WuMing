@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-26 18:54+0800\n"
+"POT-Creation-Date: 2025-11-30 19:22+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -59,7 +59,6 @@ msgid "Show Shortcuts"
 msgstr "Show Shortcuts"
 
 #: src/shortcuts-dialog.ui:15
-#, fuzzy
 msgctxt "shortcut window"
 msgid "_Preferences"
 msgstr "Preferences"
@@ -101,7 +100,7 @@ msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr "Update Signature"
 
-#: src/wuming-window.c:178
+#: src/wuming-window.c:176
 msgid "Click to show details"
 msgstr "Click to show details"
 
@@ -136,21 +135,73 @@ msgstr "About WuMing"
 #: src/wuming-preferences-dialog.ui:11
 #, fuzzy
 msgid "Scan Options"
-msgstr "A caption"
+msgstr "Scan Options"
+
+#: src/wuming-preferences-dialog.ui:15
+msgid "Scan Files Larger Than 20MB"
+msgstr "Scan Files Larger Than 20MB"
 
 #: src/wuming-preferences-dialog.ui:16
+msgid "Set Max File Size To 2GB"
+msgstr "Set Max File Size To 2GB"
+
+#: src/wuming-preferences-dialog.ui:22
+msgid "Detect PUA"
+msgstr "Detect PUA"
+
+#: src/wuming-preferences-dialog.ui:23
+msgid "Mark Potentially Unwanted Application"
+msgstr "Mark Potentially Unwanted Application"
+
+#: src/wuming-preferences-dialog.ui:29
+#, fuzzy
+msgid "Scan Archives"
+msgstr "Scan Archives"
+
+#: src/wuming-preferences-dialog.ui:30
+#, fuzzy
+msgid "Scan Archive Files"
+msgstr "Scan Archive Files"
+
+#: src/wuming-preferences-dialog.ui:36
+#, fuzzy
+msgid "Scan Mails"
+msgstr "Scan Mails"
+
+#: src/wuming-preferences-dialog.ui:37
+#, fuzzy
+msgid "Scan Mail Files"
+msgstr "Scan Mail Files"
+
+#: src/wuming-preferences-dialog.ui:43
+msgid "Alert Exceeds Max"
+msgstr "Alert Exceeds Max"
+
+#: src/wuming-preferences-dialog.ui:44
+msgid "Alert On Files That Exceed The Limits"
+msgstr "Alert On Files That Exceed The Limits"
+
+#: src/wuming-preferences-dialog.ui:50
+msgid "Alert Encrypted"
+msgstr "Alert Encrypted"
+
+#: src/wuming-preferences-dialog.ui:51
+msgid "Alert On Encrypted Archives And Documents"
+msgstr "Alert On Encrypted Archives And Documents"
+
+#: src/wuming-preferences-dialog.ui:58
 #, fuzzy
 msgid "Signature Status"
-msgstr "Unknown signature status: %d"
+msgstr "Signature Status"
 
-#: src/wuming-preferences-dialog.ui:20
+#: src/wuming-preferences-dialog.ui:62
 #, fuzzy
 msgid "Signature Validity Period"
-msgstr "No Signature Found"
+msgstr "Signature Validity Period"
 
-#: src/wuming-preferences-dialog.ui:21
+#: src/wuming-preferences-dialog.ui:63
 msgid "Set The Expiration Time For The Signature (1-14 Days)"
-msgstr ""
+msgstr "Set The Expiration Time For The Signature (1-14 Days)"
 
 #: src/security-overview-page.c:105 src/security-overview-page.c:114
 #: src/security-overview-page.c:241 src/scan-page.c:120 src/scan-page.c:127
@@ -255,7 +306,7 @@ msgstr "Scan file"
 msgid "Scan folder"
 msgstr "Scan folder"
 
-#: src/scanning-page.c:53 src/libs/scan.c:455
+#: src/scanning-page.c:53 src/libs/scan.c:494
 msgid "Scanning..."
 msgstr "Scanning..."
 
@@ -380,11 +431,11 @@ msgstr "Permission denied!"
 msgid "Unknown error!"
 msgstr "Unknown error!"
 
-#: src/libs/scan.c:155
+#: src/libs/scan.c:157
 msgid "Delete"
 msgstr "Delete"
 
-#: src/libs/scan.c:202
+#: src/libs/scan.c:204
 #, c-format
 msgid ""
 "%d files scanned\n"
@@ -393,15 +444,15 @@ msgstr ""
 "%d files scanned\n"
 "%d threats found"
 
-#: src/libs/scan.c:326
+#: src/libs/scan.c:365
 msgid "Scan Canceled"
 msgstr "Scan Canceled"
 
-#: src/libs/scan.c:330
+#: src/libs/scan.c:369
 msgid "Scan Complete"
 msgstr "Scan Complete"
 
-#: src/libs/scan.c:334
+#: src/libs/scan.c:373
 msgid "Scan Failed"
 msgstr "Scan Failed"
 

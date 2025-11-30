@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-26 18:54+0800\n"
+"POT-Creation-Date: 2025-11-30 19:22+0800\n"
 "PO-Revision-Date: 2025-08-07 20:36+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -95,7 +95,7 @@ msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr "更新病毒库"
 
-#: src/wuming-window.c:178
+#: src/wuming-window.c:176
 msgid "Click to show details"
 msgstr "点击查看详细信息"
 
@@ -131,15 +131,63 @@ msgstr "关于无名"
 msgid "Scan Options"
 msgstr "扫描选项"
 
+#: src/wuming-preferences-dialog.ui:15
+msgid "Scan Files Larger Than 20MB"
+msgstr "扫描大于20MB的文件"
+
 #: src/wuming-preferences-dialog.ui:16
+msgid "Set Max File Size To 2GB"
+msgstr "将最大文件大小限制设置成2GB"
+
+#: src/wuming-preferences-dialog.ui:22
+msgid "Detect PUA"
+msgstr "检测 PUA"
+
+#: src/wuming-preferences-dialog.ui:23
+msgid "Mark Potentially Unwanted Application"
+msgstr "标记可能不需要的应用"
+
+#: src/wuming-preferences-dialog.ui:29
+msgid "Scan Archives"
+msgstr "扫描档案"
+
+#: src/wuming-preferences-dialog.ui:30
+msgid "Scan Archive Files"
+msgstr "扫描档案文件"
+
+#: src/wuming-preferences-dialog.ui:36
+msgid "Scan Mails"
+msgstr "扫描邮件"
+
+#: src/wuming-preferences-dialog.ui:37
+msgid "Scan Mail Files"
+msgstr "扫描邮件文件"
+
+#: src/wuming-preferences-dialog.ui:43
+msgid "Alert Exceeds Max"
+msgstr "超出最大值时发出警告"
+
+#: src/wuming-preferences-dialog.ui:44
+msgid "Alert On Files That Exceed The Limits"
+msgstr "文件超出限制时发出警告"
+
+#: src/wuming-preferences-dialog.ui:50
+msgid "Alert Encrypted"
+msgstr "检测到加密时发出警告"
+
+#: src/wuming-preferences-dialog.ui:51
+msgid "Alert On Encrypted Archives And Documents"
+msgstr "检测到加密档案和文档时发出警告"
+
+#: src/wuming-preferences-dialog.ui:58
 msgid "Signature Status"
 msgstr "病毒库状态"
 
-#: src/wuming-preferences-dialog.ui:20
+#: src/wuming-preferences-dialog.ui:62
 msgid "Signature Validity Period"
 msgstr "病毒库有效期"
 
-#: src/wuming-preferences-dialog.ui:21
+#: src/wuming-preferences-dialog.ui:63
 msgid "Set The Expiration Time For The Signature (1-14 Days)"
 msgstr "设置病毒库在多长时间后失效（1-14天）"
 
@@ -239,7 +287,7 @@ msgstr "扫描文件"
 msgid "Scan folder"
 msgstr "扫描文件夹"
 
-#: src/scanning-page.c:53 src/libs/scan.c:455
+#: src/scanning-page.c:53 src/libs/scan.c:494
 msgid "Scanning..."
 msgstr "扫描中..."
 
@@ -272,6 +320,7 @@ msgid "Found Threats"
 msgstr "发现威胁"
 
 #: src/update-signature-page.c:62 src/update-signature-page.c:78
+#, c-format
 msgid "Current Signature Date: %d.%d.%d %d:%2d"
 msgstr "当前病毒库日期：%d.%d.%d %d:%2d"
 
@@ -296,6 +345,7 @@ msgid "Is Up To Date"
 msgstr "已是最新"
 
 #: src/update-signature-page.c:86
+#, c-format
 msgid "Signature Status: %d"
 msgstr "病毒库状态：%d"
 
@@ -359,11 +409,11 @@ msgstr "拒绝访问"
 msgid "Unknown error!"
 msgstr "未知错误"
 
-#: src/libs/scan.c:155
+#: src/libs/scan.c:157
 msgid "Delete"
 msgstr "删除"
 
-#: src/libs/scan.c:202
+#: src/libs/scan.c:204
 #, c-format
 msgid ""
 "%d files scanned\n"
@@ -372,15 +422,15 @@ msgstr ""
 "%d 个文件已扫描\n"
 "发现 %d 个威胁"
 
-#: src/libs/scan.c:326
+#: src/libs/scan.c:365
 msgid "Scan Canceled"
 msgstr "扫描被取消"
 
-#: src/libs/scan.c:330
+#: src/libs/scan.c:369
 msgid "Scan Complete"
 msgstr "扫描完成"
 
-#: src/libs/scan.c:334
+#: src/libs/scan.c:373
 msgid "Scan Failed"
 msgstr "扫描失败"
 
