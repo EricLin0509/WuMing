@@ -240,11 +240,11 @@ wuming_window_close_notification (WumingWindow *self)
 
 /* Update the signture status */
 void
-wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_signature, gint signature_expiration_time)
+wuming_window_update_signature_status (WumingWindow *self, guint flags, gint signature_expiration_time)
 {
     g_return_if_fail (self != NULL); // Check if the object is valid
 
-    if (!signature_status_update (self->status, need_rescan_signature, signature_expiration_time)) return; // Status not changed, no need to update
+    if (!signature_status_update (self->status, flags, signature_expiration_time)) return; // Status not changed, no need to update
 
     update_signature_page_show_isuptodate (self->update_signature_page, self->status);
     security_overview_page_show_signature_status (self->security_overview_page, self->status);

@@ -66,6 +66,6 @@ wuming_window_close_notification (WumingWindow *self);
 
 /* Update the signture status */
 void
-wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_signature, gint signature_expiration_time);
+wuming_window_update_signature_status (WumingWindow *self, guint flags, gint signature_expiration_time);
 
 G_END_DECLS
