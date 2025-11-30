@@ -324,8 +324,9 @@ scan_thread(gpointer data)
     if (!spawn_new_process(pipefd, &pid,
         CLAMSCAN_PATH, "clamscan", ctx->path, "--recursive",extra_args[0], extra_args[1], extra_args[2], extra_args[3], extra_args[4], extra_args[5], NULL))
     {
-          g_critical("Failed to spawn process");
+          g_critical("Failed to spawn clamscan process");
           extra_args_free(extra_args);
+          send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, scan_complete_callback);
           return NULL;
     }
     extra_args_free(extra_args);

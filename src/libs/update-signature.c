@@ -104,6 +104,8 @@ update_thread(gpointer data)
     if (!spawn_new_process_no_pipes(&pid,
         PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL))
     {
+        g_warning("Failed to spawn freshclam process");
+        send_final_message((void *)ctx, gettext("Signature Update Failed"), FALSE, update_complete_callback);
         return NULL;
     }
 
