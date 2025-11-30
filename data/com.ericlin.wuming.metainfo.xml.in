@@ -58,6 +58,17 @@
   </screenshots>
 
   <releases>
+    <release version="0.4" date="2025-11-10">
+      <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.4</url>
+      <description translate="no">
+        <p>Add user settings</p>
+        <ul>
+          <li>Add user settings</li>
+          <li>Minor fixes and some optimizations</li>
+          <li></li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.1" date="2025-11-10">
       <url type="details">https://github.com/EricLin0509/WuMing/releases/tag/v0.3.1</url>
       <description translate="no">

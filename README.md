@@ -1,4 +1,4 @@
-# WuMing
+# <img src="./data/icons/hicolor/scalable/apps/com.ericlin.wuming.svg" height="64"/> WuMing
 
 WuMing (aka. "无名") is a simple ClamAV GUI frontend.
 
@@ -40,8 +40,8 @@ WuMing is a simple ClamAV GUI frontend written in C using GTK4/LibAdwaita. It is
 - [x] scan files and directories
 - [x] take action on infected files
 - [x] add secuirty overview page
-- [ ] add settings page
-- [ ] allow user to customize scan options (e.g. allow 4GB files, scan archives, etc.)
+- [x] add settings page
+- [x] allow user to customize scan options (e.g. allow 4GB files, scan archives, etc.)
 
 ## Installation
 
