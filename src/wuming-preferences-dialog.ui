@@ -3,12 +3,13 @@
   <requires lib="gtk" version="4.0"/>
   <requires lib="Adw" version="1.0"/>
   <template class="WumingPreferencesDialog" parent="AdwPreferencesDialog">
-    <property name="content-width">600</property>
+    <property name="search_enabled">True</property>
     <child>
       <object class="AdwPreferencesPage">
         <child>
           <object class="AdwPreferencesGroup">
             <property name="title" translatable="yes">Scan Options</property>
+            <property name="description" translatable="yes">Customize Scan Options</property>
             <child>
               <object class="AdwSwitchRow" id="enable_large_file">
                 <property name="height-request">60</property>
@@ -56,6 +57,7 @@
         <child>
           <object class="AdwPreferencesGroup">
             <property name="title" translatable="yes">Signature Status</property>
+            <property name="description" translatable="yes">Customize Signature Status</property>
             <child>
               <object class="AdwSpinRow">
                 <property name="height-request">60</property>
