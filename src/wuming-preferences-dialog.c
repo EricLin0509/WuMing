@@ -19,7 +19,6 @@
  */
 
 #include "wuming-window.h"
-#include "libs/signature-status.h"
 #include "wuming-preferences-dialog.h"
 
 struct _WumingPreferencesDialog {
@@ -68,7 +67,7 @@ on_signature_expiration_changed (GtkAdjustment *adjustment, WumingPreferencesDia
 
     g_settings_set_int (self->settings, "signature-expiration-time", new_value);
 
-    wuming_window_update_signature_status (self->window, SIGNATURE_STATUS_UPDATE_COMPARE_NEW_STATUS, new_value);
+    wuming_window_update_signature_status (self->window, FALSE, new_value);
 }
 
 GSettings *

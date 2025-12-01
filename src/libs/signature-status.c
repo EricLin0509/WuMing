@@ -326,40 +326,32 @@ signature_status_new(gint signature_expiration_time)
   * @param status
   * The signature status object.
   * 
-  * @param flags
-  * The flags for the function `signature_status_update`.
+  * @param need_rescan_database
+  * Whether the database needs to be rescanned.
   * 
   * @param signature_expiration_time
   * The expiration time of the signature.
   * 
   * @warning
   * If `signature_expiration_time` is less than or equal to 0, this argument will be ignored.
-  * 
-  * @return
-  * `true` if the signature status has changed, `false` otherwise.
 */
-gboolean
-signature_status_update(signature_status *status, guint flags, gint signature_expiration_time)
+void
+signature_status_update(signature_status *status, gboolean need_rescan_database, gint signature_expiration_time)
 {
-    g_return_val_if_fail(status != NULL, FALSE);
+    g_return_if_fail(status != NULL);
 
     gint temp_status = 0;
 
     if (signature_expiration_time > 0) status->expiration_day = signature_expiration_time;
 
-    if (flags & SIGNATURE_STATUS_UPDATE_NEED_RESCAN_DATABASE)
+    if (need_rescan_database)
     {
         scan_signature_date(status);
     }
 
-    temp_status = is_signature_uptodate(status, (flags & SIGNATURE_STATUS_UPDATE_NEED_RESCAN_DATABASE));
-
-    if (flags & SIGNATURE_STATUS_UPDATE_COMPARE_NEW_STATUS && // Only compare the new status if the flag is set
-        temp_status == status->status) return FALSE;
+    temp_status = is_signature_uptodate(status, need_rescan_database);
 
     status->status = temp_status;
-
-    return TRUE;
 }
 
 void

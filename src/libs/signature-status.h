@@ -27,10 +27,6 @@
 #define SIGNATURE_STATUS_UPTODATE 0x10 // Signature is up-to-date
 #define SIGNATURE_STATUS_NOT_FOUND 1 // No signature found
 
-/* BIT Mask for the function `signature_status_update` */
-#define SIGNATURE_STATUS_UPDATE_NEED_RESCAN_DATABASE 0x1 // Whether the database needs to be rescanned
-#define SIGNATURE_STATUS_UPDATE_COMPARE_NEW_STATUS 0x2 // Whether to compare the new status with the old one
-
 typedef struct signature_status signature_status;
 
 signature_status *
@@ -41,20 +37,17 @@ signature_status_new(gint signature_expiration_time);
   * @param status
   * The signature status object.
   * 
-  * @param flags
-  * The flags for the function `signature_status_update`.
+  * @param need_rescan_database
+  * Whether the database needs to be rescanned.
   * 
   * @param signature_expiration_time
   * The expiration time of the signature.
   * 
   * @warning
   * If `signature_expiration_time` is less than or equal to 0, this argument will be ignored.
-  * 
-  * @return
-  * `true` if the signature status has changed, `false` otherwise.
 */
-gboolean
-signature_status_update(signature_status *status, guint flags, gint signature_expiration_time);
+void
+signature_status_update(signature_status *status, gboolean need_rescan_database, gint signature_expiration_time);
 
 void
 signature_status_clear(signature_status **status);
