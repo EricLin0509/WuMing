@@ -79,6 +79,7 @@ struct _WumingWindow
     /* Private */
     WumingPreferencesDialog *prefrences_dialog;
     GNotification       *notification;
+    GtkDropTarget       *drop_target;
     GApplication        *app;
     gboolean            is_hidden;
     gulong              close_request_signal_id;
@@ -251,6 +252,24 @@ wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_
     security_overview_page_show_health_level (self->security_overview_page);
 }
 
+static void
+wuming_window_on_drag_drop (GtkDropTarget* self, const GValue* value, gdouble x, gdouble y, gpointer user_data)
+{
+    WumingWindow *window = WUMING_WINDOW (user_data);
+
+    if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
+
+    GFile *file = g_value_get_object (value);
+
+    if (file == NULL) return;
+
+    const char *path = g_file_get_path (file);
+
+    if (path == NULL) return;
+
+    start_scan (window->scan_context, path);
+}
+
 /* GObject essential functions */
 static void
 wuming_window_dispose (GObject *object)
@@ -266,6 +285,7 @@ wuming_window_dispose (GObject *object)
 
     g_clear_object (&self->prefrences_dialog);
     g_clear_object (&self->notification);
+    gtk_widget_remove_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->drop_target));
 
     GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
     g_clear_pointer (&navigation_view, gtk_widget_unparent);
@@ -408,6 +428,10 @@ wuming_window_init (WumingWindow *self)
 
     /* Initialize the settings */
     wuming_window_init_settings (self, settings);
+
+    self->drop_target = gtk_drop_target_new (G_TYPE_FILE, GDK_ACTION_COPY);
+    g_signal_connect (self->drop_target, "drop", G_CALLBACK (wuming_window_on_drag_drop), self);
+    gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->drop_target));
 
     self->is_hidden = FALSE;
 
