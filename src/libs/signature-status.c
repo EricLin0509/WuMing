@@ -210,16 +210,15 @@ parse_database_file(database_file_params *params, int dirfd, const char *filenam
 
 /*Choose the latest date*/
 static void
-update_scan_result(signature_status *result, int cvd_days, int cld_days,
-                   database_file_params *cvd, database_file_params *cld)
+update_scan_result(signature_status *result, database_file_params *cvd, database_file_params *cld)
 {
     g_return_if_fail(result != NULL && cvd != NULL && cld != NULL);
     if (result->status & SIGNATURE_STATUS_NOT_FOUND) return; // Signature not found, no need to choose
 
-    const gboolean cvd_valid = (cvd_days > 0);
-    const gboolean cld_valid = (cld_days > 0);
+    int cvd_days = date_to_days(cvd->year, cvd->month, cvd->day);
+    int cld_days = date_to_days(cld->year, cld->month, cld->day);
 
-    if (!cvd_valid && !cld_valid)
+    if (!(cvd_days > 0 || cld_days > 0))
     {
         result->status |= SIGNATURE_STATUS_NOT_FOUND;
         g_warning("No valid signature dates found");
@@ -272,22 +271,22 @@ scan_signature_date(signature_status *result)
     }
     clear_fd(dirfd);
 
-    int cvd_days = date_to_days(cvd_date->year, cvd_date->month, cvd_date->day);
-    int cld_days = date_to_days(cld_date->year, cld_date->month, cld_date->day);
-    update_scan_result(result, cvd_days, cld_days, cvd_date, cld_date);
+    update_scan_result(result, cvd_date, cld_date);
 
     g_free (cvd_date);
     g_free (cld_date);
 }
 
 /*Check whether the signature is up to date*/
-static gint
-is_signature_uptodate(signature_status *result, gboolean need_compare_day_diff)
+static void
+is_signature_uptodate(signature_status *result, gboolean need_calculate_day_diff)
 {
-    g_return_val_if_fail(result != NULL, SIGNATURE_STATUS_NOT_FOUND);
-    if (result->status & SIGNATURE_STATUS_NOT_FOUND) return SIGNATURE_STATUS_NOT_FOUND; // Signature not found, no need to check
+    g_return_if_fail(result != NULL);
+    if (result->status & SIGNATURE_STATUS_NOT_FOUND) return; // Signature not found, no need to check
 
-    if (need_compare_day_diff)
+    result->status &= ~SIGNATURE_STATUS_UPTODATE; // Reset the status
+
+    if (need_calculate_day_diff)
     {
         /* Get Current Time */
         time_t t = time(NULL);
@@ -300,8 +299,9 @@ is_signature_uptodate(signature_status *result, gboolean need_compare_day_diff)
         g_print("[INFO] Signature day diff: %d\n", result->signature_day_diff);
     }
 
-    if (result->signature_day_diff > result->expiration_day) return 0; // Signature is not up to date
-    return SIGNATURE_STATUS_UPTODATE;
+    if (result->signature_day_diff > result->expiration_day) return; // Signature is not up to date
+
+    result->status |= SIGNATURE_STATUS_UPTODATE;
 }
 
 signature_status *
@@ -314,9 +314,7 @@ signature_status_new(gint signature_expiration_time)
     gint temp_status = 0;
 
     scan_signature_date(status);
-    temp_status = is_signature_uptodate(status, TRUE);
-
-    status->status = temp_status;
+    is_signature_uptodate(status, TRUE);
 
     return status;
 }
@@ -349,9 +347,7 @@ signature_status_update(signature_status *status, gboolean need_rescan_database,
         scan_signature_date(status);
     }
 
-    temp_status = is_signature_uptodate(status, need_rescan_database);
-
-    status->status = temp_status;
+    is_signature_uptodate(status, need_rescan_database);
 }
 
 void
