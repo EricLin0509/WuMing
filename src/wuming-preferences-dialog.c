@@ -18,6 +18,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include "libs/scan-options-configs.h"
+
 #include "wuming-window.h"
 #include "wuming-preferences-dialog.h"
 
@@ -68,6 +70,35 @@ on_signature_expiration_changed (GtkAdjustment *adjustment, WumingPreferencesDia
     g_settings_set_int (self->settings, "signature-expiration-time", new_value);
 
     wuming_window_update_signature_status (self->window, FALSE, new_value);
+}
+
+static void
+on_scan_options_changed (AdwSwitchRow *row, GParamSpec *pspec, WumingPreferencesDialog *self)
+{
+    g_return_if_fail (self->settings != NULL);
+
+    int new_bitmask = 0;
+
+    AdwSwitchRow *rows[] = {
+        self->enable_large_file,
+        self->enable_pua,
+        self->scan_archives,
+        self->scan_mail,
+        self->alert_exceeds_max,
+        self->alert_encrypted,
+        NULL
+    };
+
+    int options_bit = 1;
+    for (int i = 0; rows[i] != NULL; i++)
+    {
+        if (adw_switch_row_get_active (rows[i]))
+            new_bitmask |= options_bit;
+
+        options_bit <<= 1; // Move to the next option
+    }
+
+    g_settings_set_int (self->settings, "scan-options-bitmask", new_bitmask);
 }
 
 GSettings *
@@ -172,18 +203,39 @@ wuming_preferences_dialog_new (WumingWindow *window)
 }
 
 static void
+wuming_preferences_dialog_init_scan_options (WumingPreferencesDialog *self)
+{
+    g_return_if_fail (self->settings != NULL);
+
+    int bitmask = g_settings_get_int (self->settings, "scan-options-bitmask");
+
+    AdwSwitchRow *rows[] = {
+        self->enable_large_file,
+        self->enable_pua,
+        self->scan_archives,
+        self->scan_mail,
+        self->alert_exceeds_max,
+        self->alert_encrypted,
+        NULL
+    };
+
+    int options_bit = 1;
+    for (int i = 0; rows[i] != NULL; i++)
+    {
+        adw_switch_row_set_active (rows[i], (bitmask & options_bit));
+        g_signal_connect (rows[i], "notify::active", G_CALLBACK (on_scan_options_changed), self);
+        options_bit <<= 1; // Move to the next option
+    }
+}
+
+static void
 wuming_preferences_dialog_init (WumingPreferencesDialog *self)
 {
     gtk_widget_init_template (GTK_WIDGET (self));
 
     self->settings = g_settings_new ("com.ericlin.wuming");
 
-    g_settings_bind (self->settings, "enable-large-file", self->enable_large_file, "active", G_SETTINGS_BIND_DEFAULT);
-    g_settings_bind (self->settings, "enable-pua", self->enable_pua, "active", G_SETTINGS_BIND_DEFAULT);
-    g_settings_bind (self->settings, "scan-archives", self->scan_archives, "active", G_SETTINGS_BIND_DEFAULT);
-    g_settings_bind (self->settings, "scan-mail", self->scan_mail, "active", G_SETTINGS_BIND_DEFAULT);
-    g_settings_bind (self->settings, "alert-exceeds-max", self->alert_exceeds_max, "active", G_SETTINGS_BIND_DEFAULT);
-    g_settings_bind (self->settings, "alert-encrypted", self->alert_encrypted, "active", G_SETTINGS_BIND_DEFAULT);
+    wuming_preferences_dialog_init_scan_options (self);
 
     g_settings_bind (self->settings, "signature-expiration-time", self->signature_expiry_days, "value", G_SETTINGS_BIND_DEFAULT);
 

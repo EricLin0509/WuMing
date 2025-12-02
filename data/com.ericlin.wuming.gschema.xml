@@ -19,23 +19,8 @@
 		<key name="signature-expiration-time" type="i">
 			<default>1</default>
 		</key>
-		<key name="enable-large-file" type="b">
-			<default>false</default>
-		</key>
-		<key name="enable-pua" type="b">
-			<default>false</default>
-		</key>
-		<key name="scan-archives" type="b">
-			<default>false</default>
-		</key>
-		<key name="scan-mail" type="b">
-			<default>false</default>
-		</key>
-		<key name="alert-exceeds-max" type="b">
-			<default>false</default>
-		</key>
-		<key name="alert-encrypted" type="b">
-			<default>false</default>
+		<key name="scan-options-bitmask" type="i">
+			<default>0</default>
 		</key>
 	</schema>
 </schemalist>

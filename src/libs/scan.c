@@ -23,13 +23,12 @@
 #include <fcntl.h>
 
 #include "subprocess-components.h"
+#include "scan-options-configs.h"
 #include "scan.h"
 
 #include "delete-file.h"
 
 #define CLAMSCAN_PATH "/usr/bin/clamscan"
-
-#define EXTRA_ARGS_SIZE 6
 
 typedef struct ScanContext {
   /* Protected by mutex */
@@ -280,31 +279,31 @@ scan_complete_callback(gpointer user_data)
 }
 
 static void
-get_extra_args(char *extra_args[EXTRA_ARGS_SIZE])
+get_extra_args(char *extra_args[SCAN_OPTIONS_N_ELEMENTS])
 {
-  const char *args_list[EXTRA_ARGS_SIZE] = { "--max-filesize=2048M", "--detect-pua=yes", "--scan-archive=yes", "--scan-mail=yes", "--alert-exceeds-max=yes", "--alert-encrypted=yes" };
-  const char *gsettings_key[EXTRA_ARGS_SIZE] = { "enable-large-file", "enable-pua", "scan-archives", "scan-mail", "alert-exceeds-max", "alert-encrypted" };
+  const char *args_list[SCAN_OPTIONS_N_ELEMENTS] = { "--max-filesize=2048M", "--detect-pua=yes", "--scan-archive=yes", "--scan-mail=yes", "--alert-exceeds-max=yes", "--alert-encrypted=yes" };
   
   GSettings *settings = g_settings_new("com.ericlin.wuming");
-
-  int j = 0;
-
-  for (int i = 0; i < EXTRA_ARGS_SIZE; i++)
-  {
-    gboolean should_enable = g_settings_get_boolean(settings, gsettings_key[i]);
-    if (should_enable)
-    {
-      extra_args[j++] = g_strdup(args_list[i]);
-    }
-  }
-
+  int bitmask = g_settings_get_int(settings, "scan-options-bitmask");
   g_object_unref(settings);
+
+  int i = 0;
+  int j = 0;
+  int options_bit = 1;
+
+  while (options_bit <= bitmask && i < SCAN_OPTIONS_N_ELEMENTS)
+  {
+    if (bitmask & options_bit) extra_args[j++] = g_strdup(args_list[i]);
+
+    i++;
+    options_bit <<= 1; // Move to the next option bit
+  }
 }
 
 static void
-extra_args_free(char *extra_args[EXTRA_ARGS_SIZE])
+extra_args_free(char *extra_args[SCAN_OPTIONS_N_ELEMENTS])
 {
-  for (int i = 0; i < EXTRA_ARGS_SIZE; i++)
+  for (int i = 0; i < SCAN_OPTIONS_N_ELEMENTS; i++)
   {
     g_clear_pointer(&extra_args[i], g_free);
   }
@@ -317,7 +316,7 @@ scan_thread(gpointer data)
     int pipefd[2];
     pid_t pid;
 
-    char *extra_args[EXTRA_ARGS_SIZE] = { NULL, NULL, NULL, NULL, NULL, NULL };
+    char *extra_args[SCAN_OPTIONS_N_ELEMENTS] = { NULL };
     get_extra_args(extra_args);
 
     /*Spawn scan process*/
