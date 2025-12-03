@@ -24,8 +24,8 @@
 /*
     @warning These bit masks cannot be set at the same time
 */
-#define SIGNATURE_STATUS_UPTODATE 0x10 // Signature is up-to-date
-#define SIGNATURE_STATUS_NOT_FOUND 1 // No signature found
+#define SIGNATURE_STATUS_UPTODATE 0x02 // Signature is up-to-date
+#define SIGNATURE_STATUS_NOT_FOUND 0x01 // No signature found
 
 typedef struct signature_status signature_status;
 

@@ -66,7 +66,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
       button_style = "button-suggestion";
       icon_name = "status-warning-symbolic";
       break;
-    case 1: // No signature found
+    case SIGNATURE_STATUS_NOT_FOUND: // No signature found
       date_msg = g_strdup (gettext("Warning: No signature found\nPlease update the signature now!"));
 
       signature_msg = gettext("No Signature Found");
@@ -74,7 +74,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
       button_style = "button-suggestion";
       icon_name = "status-error-symbolic";
       break;
-    case 16: // Signature is up-to-date
+    case SIGNATURE_STATUS_UPTODATE: // Signature is up-to-date
       date_msg = g_strdup_printf (gettext("Current Signature Date: %4d.%02d.%02d %02d:%02d"), year, month, day, hour, minute);
 
       signature_msg = gettext("Signature Is Up To Date");

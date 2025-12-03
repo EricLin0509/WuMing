@@ -23,8 +23,8 @@
 
 #include "security-overview-page.h"
 
-#define LAST_SCAN_TIME_VALID 1 // Bit mask for last scan time valid
-#define SIGNATURE_VALID 0x10 // Bit mask for signature valid
+#define LAST_SCAN_TIME_VALID 0x01 // Bit mask for last scan time valid
+#define SIGNATURE_VALID 0x02 // Bit mask for signature valid
 
 struct _SecurityOverviewPage {
     GtkWidget parent_instance;
@@ -152,12 +152,12 @@ security_overview_page_show_signature_status (SecurityOverviewPage *self, const 
             icon_name = "status-warning-symbolic";
             style = "button-warning";
             break;
-        case 1: // No signature found
+        case SIGNATURE_STATUS_NOT_FOUND: // No signature found
             label = gettext ("No Signature Found");
             icon_name = "status-error-symbolic";
             style = "button-error";
             break;
-        case 16: // Signature is up-to-date
+        case SIGNATURE_STATUS_UPTODATE: // Signature is up-to-date
             label = gettext ("Signature Is Up To Date");
             icon_name = "status-ok-symbolic";
             style = "button-success";
@@ -231,17 +231,17 @@ security_overview_page_show_health_level (SecurityOverviewPage *self)
             message = gettext ("Please take action immediately");
             icon_name = "status-error-symbolic";
             break;
-        case 1: // Only last scan time is valid, signature has issue
+        case LAST_SCAN_TIME_VALID: // Only last scan time is valid, signature has issue
             title = gettext ("Need Attention");
             message = gettext("Something wrong with the signature");
             icon_name = "status-warning-symbolic";
             break;
-        case 16: // Only signature is valid, last scan time has issue
+        case SIGNATURE_VALID: // Only signature is valid, last scan time has issue
             title = gettext ("Need Attention");
             message = gettext ("Scan Has Expired");
             icon_name = "status-warning-symbolic";
             break;
-        case 17: // Both last scan time and signature are valid
+        case LAST_SCAN_TIME_VALID | SIGNATURE_VALID: // Both last scan time and signature are valid
             title = gettext ("All Good");
             message = gettext ("All set, have a nice day");
             icon_name = "status-ok-symbolic";
