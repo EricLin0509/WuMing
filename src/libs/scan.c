@@ -349,7 +349,7 @@ scan_thread(gpointer data)
         {
           g_warning("[INFO] User cancelled the scan");
           kill(pid, SIGTERM);
-          wait_for_process(pid, 0);
+          exit_status = wait_for_process(pid, 0); // Update the exit status
           break;
         }
 
