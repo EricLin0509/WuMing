@@ -34,6 +34,7 @@
 typedef struct IdleData {
     gpointer context; // context that store some GTKWidgets or other data (e.g. some GTKWidgets you want to control it)
     const char *message; // message to send to the subprocess
+    int exit_status; // exit status of the subprocess
 } IdleData;
 
 /* Initialize the IO context */
@@ -111,14 +112,24 @@ get_idle_message(IdleData *idle_data)
     return idle_data->message;
 }
 
+/* Get the exit status from the `IdleData` */
+int
+get_idle_exit_status(IdleData *idle_data)
+{
+    g_return_val_if_fail(idle_data != NULL, -1);
+
+    return idle_data->exit_status;
+}
+
 static IdleData *
-idle_data_new(void *context, const char *message)
+idle_data_new(void *context, const char *message, int exit_status)
 {
     g_return_val_if_fail(context != NULL, NULL);
 
     IdleData *data = g_new0(IdleData, 1);
     data->context = context;
     data->message = message;
+    data->exit_status = exit_status;
 
     return data;
 }
@@ -196,7 +207,7 @@ process_output_lines(IOContext *io_ctx, gpointer context,
     char *line;
     while ((line = ring_buffer_find_new_line(&io_ctx->ring_buf)) != NULL)
     {
-        IdleData *data = idle_data_new(context, line);
+        IdleData *data = idle_data_new(context, line, 0);
 
         /* Send the message to the main process */
         g_main_context_invoke_full( // Invoke the callback function in the main context
@@ -217,7 +228,7 @@ process_output_lines(IOContext *io_ctx, gpointer context,
   * destroy_notify: the cleanup function for the context data
 */
 void
-send_final_message(gpointer context, const char *message, gboolean is_success,
+send_final_message(gpointer context, const char *message, gboolean is_success, int exit_status,
                     GSourceFunc callback_function)
 {
     g_return_if_fail(message != NULL);
@@ -225,7 +236,7 @@ send_final_message(gpointer context, const char *message, gboolean is_success,
     g_return_if_fail(context != NULL);
 
     /* Create final status message */
-    IdleData *complete_data = idle_data_new(context, message);
+    IdleData *complete_data = idle_data_new(context, message, exit_status);
 
     /* Send the final message to the main process */
     g_main_context_invoke_full( // Invoke the callback function in the main context

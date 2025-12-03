@@ -75,6 +75,7 @@ update_complete_callback(gpointer user_data)
 
   const char *icon_name = is_success ? "status-ok-symbolic" : "status-error-symbolic";
   const char *message = get_idle_message(data);
+  g_autofree char *error_message = NULL;
 
   updating_page_set_final_result(ctx->updating_page, message, icon_name);
 
@@ -83,10 +84,17 @@ update_complete_callback(gpointer user_data)
     /*Re-scan the signature*/
     wuming_window_update_signature_status (ctx->window, TRUE, -1); // Use -1 to ingore the expiration time
   }
+  else // Show error message if update is failed
+  {
+    /* Show error message */
+    int exit_status = get_idle_exit_status(data);
+    error_message = g_strdup_printf(gettext("Signature update failed with exit status %d"), exit_status);
+    wuming_window_send_toast_notification(ctx->window, error_message, 10);
+  }
 
   if (!wuming_window_is_hide(ctx->window))
   {
-    wuming_window_send_notification(ctx->window, G_NOTIFICATION_PRIORITY_URGENT, message, NULL); // Send notification if the window is not active
+    wuming_window_send_notification(ctx->window, G_NOTIFICATION_PRIORITY_URGENT, message, error_message); // Send notification if the window is not active
   }
 
   wuming_window_set_hide_on_close(ctx->window, FALSE, NULL); // Allow the window to be closed when update is complete
@@ -105,7 +113,7 @@ update_thread(gpointer data)
         PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL))
     {
         g_warning("Failed to spawn freshclam process");
-        send_final_message((void *)ctx, gettext("Signature Update Failed"), FALSE, update_complete_callback);
+        send_final_message((void *)ctx, gettext("Signature Update Failed"), FALSE, -1, update_complete_callback);
         return NULL;
     }
 
@@ -117,7 +125,7 @@ update_thread(gpointer data)
     const char *status_text = success ?
         gettext("Signature Update Complete") : gettext("Signature Update Failed");
 
-    send_final_message((void *)ctx, status_text, success, update_complete_callback);
+    send_final_message((void *)ctx, status_text, success, exit_status, update_complete_callback);
 
     return NULL;
 }

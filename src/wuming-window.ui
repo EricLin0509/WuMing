@@ -17,132 +17,139 @@
     </child>
 
     <property name="content">
-      <!-- AdwNavigationView -->
-      <object class="AdwNavigationView" id="navigation_view">
-        <child>
-          <!-- AdwNavigationPage for the main page -->
-          <object class="AdwNavigationPage" id="main_nav_page">
-            <property name="title" translatable="yes">WuMing</property>
-            <property name="tag">main_nav_page</property>
-            <property name="can-pop">false</property>
-            <property name="child">
-              <object class="AdwToolbarView">
-                <child type="top">
-                  <object class="AdwHeaderBar" id="header_bar">
-                    <property name="title-widget">
-                      <object class="AdwViewSwitcher">
+      <!-- AdwToastOverlay -->
+      <object class="AdwToastOverlay" id="toast_overlay">
+        <property name="child">
+          <!-- AdwNavigationView -->
+          <object class="AdwNavigationView" id="navigation_view">
+            <child>
+              <!-- AdwNavigationPage for the main page -->
+              <object class="AdwNavigationPage" id="main_nav_page">
+                <property name="title" translatable="yes">WuMing</property>
+                <property name="tag">main_nav_page</property>
+                <property name="can-pop">false</property>
+                <property name="child">
+                  <object class="AdwToolbarView">
+                    <child type="top">
+                      <object class="AdwHeaderBar" id="header_bar">
+                        <property name="title-widget">
+                          <object class="AdwViewSwitcher">
+                            <property name="stack">view_stack</property>
+                            <property name="policy">wide</property>
+                          </object>
+                        </property>
+                        <child type="end">
+                          <object class="GtkMenuButton">
+                            <property name="primary">True</property>
+                            <property name="icon-name">open-menu-symbolic</property>
+                            <property name="tooltip-text" translatable="yes">Main Menu</property>
+                            <property name="menu-model">primary_menu</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child type="bottom">
+                      <object class="AdwViewSwitcherBar" id="switcher_bar">
                         <property name="stack">view_stack</property>
-                        <property name="policy">wide</property>
+                      </object>
+                    </child>
+
+                    <property name="content">
+                      <!-- AdwViewStack -->
+                      <object class="AdwViewStack" id="view_stack">
+                        <child>
+                          <!-- Security Overview Page -->
+                          <object class="AdwViewStackPage">
+                            <property name="title" translatable="yes">Security Overview</property>
+                            <property name="name">security-overview</property>
+                            <property name="icon-name">security-medium-symbolic</property>
+                            <property name="child">
+                              <object class="AdwStatusPage">
+                                <property name="title" translatable="yes">Security Overview</property>
+                                <child>
+                                  <object class="SecurityOverviewPage" id="security_overview_page"/>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+
+                        <!-- Scan Page -->
+                        <child>
+                          <object class="AdwViewStackPage">
+                            <property name="title" translatable="yes">Scan</property>
+                            <property name="name">scan</property>
+                            <property name="icon-name">scanner-symbolic</property>
+                            <property name="child">
+                              <object class="AdwStatusPage">
+                                <property name="title" translatable="yes">Scan</property>
+                                <child>
+                                  <object class="ScanPage" id="scan_page"/>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
+
+                        <!-- Update Signature Page -->
+                        <child>
+                          <object class="AdwViewStackPage">
+                            <property name="title" translatable="yes">Update Signature</property>
+                            <property name="name">update-signature</property>
+                            <property name="icon-name">software-update-available-symbolic</property>
+                            <property name="child">
+                              <object class="AdwStatusPage">
+                                <child>
+                                  <object class="UpdateSignaturePage" id="update_signature_page"/>
+                                </child>
+                              </object>
+                            </property>
+                          </object>
+                        </child>
                       </object>
                     </property>
-                    <child type="end">
-                      <object class="GtkMenuButton">
-                        <property name="primary">True</property>
-                        <property name="icon-name">open-menu-symbolic</property>
-                        <property name="tooltip-text" translatable="yes">Main Menu</property>
-                        <property name="menu-model">primary_menu</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-
-                <child type="bottom">
-                  <object class="AdwViewSwitcherBar" id="switcher_bar">
-                    <property name="stack">view_stack</property>
-                  </object>
-                </child>
-
-                <property name="content">
-                  <!-- AdwViewStack -->
-                  <object class="AdwViewStack" id="view_stack">
-                    <child>
-                      <!-- Security Overview Page -->
-                      <object class="AdwViewStackPage">
-                        <property name="title" translatable="yes">Security Overview</property>
-                        <property name="name">security-overview</property>
-                        <property name="icon-name">security-medium-symbolic</property>
-                        <property name="child">
-                          <object class="AdwStatusPage">
-                            <property name="title" translatable="yes">Security Overview</property>
-                            <child>
-                              <object class="SecurityOverviewPage" id="security_overview_page"/>
-                            </child>
-                          </object>
-                        </property>
-                      </object>
-                    </child>
-
-                    <!-- Scan Page -->
-                    <child>
-                      <object class="AdwViewStackPage">
-                        <property name="title" translatable="yes">Scan</property>
-                        <property name="name">scan</property>
-                        <property name="icon-name">scanner-symbolic</property>
-                        <property name="child">
-                          <object class="AdwStatusPage">
-                            <property name="title" translatable="yes">Scan</property>
-                            <child>
-                              <object class="ScanPage" id="scan_page"/>
-                            </child>
-                          </object>
-                        </property>
-                      </object>
-                    </child>
-
-                    <!-- Update Signature Page -->
-                    <child>
-                      <object class="AdwViewStackPage">
-                        <property name="title" translatable="yes">Update Signature</property>
-                        <property name="name">update-signature</property>
-                        <property name="icon-name">software-update-available-symbolic</property>
-                        <property name="child">
-                          <object class="AdwStatusPage">
-                            <child>
-                              <object class="UpdateSignaturePage" id="update_signature_page"/>
-                            </child>
-                          </object>
-                        </property>
-                      </object>
-                    </child>
-
                   </object>
                 </property>
               </object>
-            </property>
+            </child>
+
+            <child>
+              <!-- AdwNavigationPage for Updating Page -->
+              <object class="AdwNavigationPage" id="updating_nav_page">
+                <property name="title" translatable="yes">Update</property>
+                <property name="tag">updating_nav_page</property>
+                <property name="can-pop">false</property>
+                <property name="child">
+                  <object class="UpdatingPage" id="updating_page"/>
+                </property>
+              </object>
+            </child>
+
+            <child>
+              <!-- AdwNavigationPage for Scanning Page -->
+              <object class="AdwNavigationPage" id="scanning_nav_page">
+                <property name="title" translatable="yes">Scan</property>
+                <property name="tag">scanning_nav_page</property>
+                <property name="can-pop">false</property>
+                <property name="child">
+                  <object class="ScanningPage" id="scanning_page"/>
+                </property>
+              </object>
+            </child>
+
+            <child>
+              <!-- AdwNavigationPage for Threat Page -->
+              <object class="AdwNavigationPage" id="threat_nav_page">
+                <property name="title" translatable="yes">Threats</property>
+                <property name="tag">threat_nav_page</property>
+                <property name="child">
+                  <object class="ThreatPage" id="threat_page"/>
+                </property>
+              </object>
+            </child>
           </object>
-        </child>
-        <child>
-          <!-- AdwNavigationPage for Updating Page -->
-          <object class="AdwNavigationPage" id="updating_nav_page">
-            <property name="title" translatable="yes">Update</property>
-            <property name="tag">updating_nav_page</property>
-            <property name="can-pop">false</property>
-            <property name="child">
-              <object class="UpdatingPage" id="updating_page"/>
-            </property>
-          </object>
-        </child>
-        <child>
-          <!-- AdwNavigationPage for Scanning Page -->
-          <object class="AdwNavigationPage" id="scanning_nav_page">
-            <property name="title" translatable="yes">Scan</property>
-            <property name="tag">scanning_nav_page</property>
-            <property name="can-pop">false</property>
-            <property name="child">
-              <object class="ScanningPage" id="scanning_page"/>
-            </property>
-          </object>
-        </child>
-        <child>
-          <!-- AdwNavigationPage for Threat Page -->
-          <object class="AdwNavigationPage" id="threat_nav_page">
-            <property name="title" translatable="yes">Threats</property>
-            <property name="tag">threat_nav_page</property>
-            <property name="child">
-              <object class="ThreatPage" id="threat_page"/>
-            </property>
-          </object>
-        </child>
+        </property>
       </object>
     </property>
   </template>
@@ -164,4 +171,3 @@
     </section>
   </menu>
 </interface>
-

@@ -261,6 +261,13 @@ scan_complete_callback(gpointer user_data)
 
   scanning_page_set_final_result(ctx->scanning_page, has_threat, message, status_text, icon_name);
 
+  if (!is_success)
+  {
+    int exit_status = get_idle_exit_status(data);
+    g_autofree char *error_message = g_strdup_printf(gettext("Scan failed with exit status %d"), exit_status);
+    wuming_window_send_toast_notification(ctx->window, error_message, 10);
+  }
+
   if (has_threat) // If threats found, push the page to the threat page
   {
     wuming_window_push_page_by_tag(ctx->window, "threat_nav_page");
@@ -325,7 +332,7 @@ scan_thread(gpointer data)
     {
           g_critical("Failed to spawn clamscan process");
           extra_args_free(extra_args);
-          send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, scan_complete_callback);
+          send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
           return NULL;
     }
     extra_args_free(extra_args);
@@ -342,6 +349,7 @@ scan_thread(gpointer data)
         {
           g_warning("[INFO] User cancelled the scan");
           kill(pid, SIGTERM);
+          wait_for_process(pid, 0);
           break;
         }
 
@@ -373,7 +381,7 @@ scan_thread(gpointer data)
         status_text = gettext("Scan Failed");
     }
 
-    send_final_message((void *)ctx, status_text, success, scan_complete_callback);
+    send_final_message((void *)ctx, status_text, success, exit_status, scan_complete_callback);
 
     close(pipefd[0]);
     return NULL;

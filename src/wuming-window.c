@@ -47,6 +47,7 @@ struct _WumingWindow
 	AdwApplicationWindow  parent_instance;
 
 	/* Template widgets */
+    AdwToastOverlay     *toast_overlay; // ToastOverlay
     AdwNavigationView   *navigation_view; // NavigationView
 
     /* Main Navigation Page */
@@ -239,6 +240,18 @@ wuming_window_close_notification (WumingWindow *self)
     g_application_withdraw_notification (self->app, WUMING_WINDOW_NOTIFICATION_ID);
 }
 
+/* Send toast notification */
+void
+wuming_window_send_toast_notification (WumingWindow *self, const char *message, int timeout)
+{
+    g_return_if_fail (self != NULL && message != NULL); // Check if the object is valid
+
+    AdwToast *toast = adw_toast_new (message);
+    adw_toast_set_timeout (toast, timeout);
+
+    adw_toast_overlay_add_toast (self->toast_overlay, toast);
+}
+
 /* Update the signture status */
 void
 wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_signature, gint signature_expiration_time)
@@ -287,8 +300,8 @@ wuming_window_dispose (GObject *object)
     g_clear_object (&self->notification);
     gtk_widget_remove_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->drop_target));
 
-    GtkWidget *navigation_view = GTK_WIDGET (self->navigation_view);
-    g_clear_pointer (&navigation_view, gtk_widget_unparent);
+    GtkWidget *toast_overlay = GTK_WIDGET (self->toast_overlay);
+    g_clear_pointer (&toast_overlay, gtk_widget_unparent);
 
     G_OBJECT_CLASS (wuming_window_parent_class)->dispose (object);
 }
@@ -299,6 +312,7 @@ wuming_window_finalize (GObject *object)
     WumingWindow *self = WUMING_WINDOW (object);
 
     /* Reset all child widgets */
+    self->toast_overlay = NULL;
     self->navigation_view = NULL;
     self->main_nav_page = NULL;
     self->view_stack = NULL;
@@ -326,6 +340,8 @@ wuming_window_class_init (WumingWindowClass *klass)
 
 	gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/wuming-window.ui");
 
+    /* Template widgets */
+    gtk_widget_class_bind_template_child (widget_class, WumingWindow, toast_overlay);
     gtk_widget_class_bind_template_child (widget_class, WumingWindow, navigation_view);
 
     /* Main Navigation Page */

@@ -67,6 +67,10 @@ get_idle_context(IdleData *idle_data);
 const char *
 get_idle_message(IdleData *idle_data);
 
+/* Get the exit status from the `IdleData` */
+int
+get_idle_exit_status(IdleData *idle_data);
+
 /* Wait for the process to finish and return the exit status */
 gint
 wait_for_process(pid_t pid, int flags);
@@ -92,7 +96,7 @@ process_output_lines(IOContext *io_ctx, gpointer context,
   * is_success: whether the subprocess is exited successfully or not
 */
 void
-send_final_message(gpointer context, const char *message, gboolean is_success,
+send_final_message(gpointer context, const char *message, gboolean is_success, int exit_status,
                     GSourceFunc callback_function);
 
 /* Spawn a new process */
