@@ -11,6 +11,9 @@
     <file preprocess="xml-stripblanks">icons/scalable/actions/status-warning-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/status-error-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/actions/delete-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/security-overview-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/scan-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">icons/scalable/actions/update-signature-symbolic.svg</file>
   </gresource>
 
   <gresource prefix="/com/ericlin/wuming/pages">

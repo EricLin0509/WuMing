@@ -63,7 +63,7 @@
                           <object class="AdwViewStackPage">
                             <property name="title" translatable="yes">Security Overview</property>
                             <property name="name">security-overview</property>
-                            <property name="icon-name">security-medium-symbolic</property>
+                            <property name="icon-name">security-overview-symbolic</property>
                             <property name="child">
                               <object class="AdwStatusPage">
                                 <property name="title" translatable="yes">Security Overview</property>
@@ -80,7 +80,7 @@
                           <object class="AdwViewStackPage">
                             <property name="title" translatable="yes">Scan</property>
                             <property name="name">scan</property>
-                            <property name="icon-name">scanner-symbolic</property>
+                            <property name="icon-name">scan-symbolic</property>
                             <property name="child">
                               <object class="AdwStatusPage">
                                 <property name="title" translatable="yes">Scan</property>
@@ -97,7 +97,7 @@
                           <object class="AdwViewStackPage">
                             <property name="title" translatable="yes">Update Signature</property>
                             <property name="name">update-signature</property>
-                            <property name="icon-name">software-update-available-symbolic</property>
+                            <property name="icon-name">update-signature-symbolic</property>
                             <property name="child">
                               <object class="AdwStatusPage">
                                 <child>

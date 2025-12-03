@@ -25,7 +25,7 @@
                     <property name="halign">center</property>
                     <property name="child">
                       <object class="AdwButtonContent">
-                        <property name="icon-name">software-update-available-symbolic</property>
+                        <property name="icon-name">update-signature-symbolic</property>
                         <property name="label" translatable="yes">Update</property>
                         <property name="use-underline">True</property>
                       </object>
