@@ -77,7 +77,7 @@ on_scan_options_changed (AdwSwitchRow *row, GParamSpec *pspec, WumingPreferences
 {
     g_return_if_fail (self->settings != NULL);
 
-    int new_bitmask = 0;
+    int bitmask = g_settings_get_int (self->settings, "scan-options-bitmask");
 
     AdwSwitchRow *rows[] = {
         self->enable_large_file,
@@ -90,15 +90,13 @@ on_scan_options_changed (AdwSwitchRow *row, GParamSpec *pspec, WumingPreferences
     };
 
     int options_bit = 1;
-    for (int i = 0; rows[i] != NULL; i++)
+    for (int i = 0; rows[i] != NULL && rows[i] != row; i++)
     {
-        if (adw_switch_row_get_active (rows[i]))
-            new_bitmask |= options_bit;
-
         options_bit <<= 1; // Move to the next option
     }
+    bitmask ^= options_bit; // Toggle the option
 
-    g_settings_set_int (self->settings, "scan-options-bitmask", new_bitmask);
+    g_settings_set_int (self->settings, "scan-options-bitmask", bitmask);
 }
 
 GSettings *
