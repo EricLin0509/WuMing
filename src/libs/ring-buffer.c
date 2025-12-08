@@ -26,8 +26,7 @@
 
 #define ring_buffer_full(r) ((r)->count == RING_BUFFER_SIZE) // Check whether the buffer is full
 #define ring_buffer_empty(r) ((r)->count == 0) // Check whether the buffer is empty
-#define calculate_head_pos(head) ((head) & (RING_BUFFER_SIZE - 1)) // calculate the head position with modulo operation
-#define calculate_tail_pos(tail) ((tail) & (RING_BUFFER_SIZE - 1)) // calculate the tail position with modulo operation
+#define calculate_pos(pos) ((pos) & (RING_BUFFER_SIZE - 1)) // calculate the pointer position with modulo operation
 
 #define RING_DIFF(tail, head) (( (tail) >= (head) ) ? ( (tail) - (head) ) : ( RING_BUFFER_SIZE - ( (head) - (tail) ) )) // Use for assertions
 
@@ -70,7 +69,7 @@ ring_buffer_write(RingBuffer *ring, const char *src, size_t len)
     const size_t to_write = MIN(len, available);
     if (to_write == 0) return 0;
 
-    const size_t tail_pos = calculate_tail_pos(ring->tail);
+    const size_t tail_pos = calculate_pos(ring->tail);
 
     const size_t wrapped_write = (tail_pos + to_write) & (RING_BUFFER_SIZE - 1);
     if (wrapped_write >= tail_pos)
@@ -105,7 +104,7 @@ ring_buffer_read(RingBuffer *ring, char *dest, size_t len)
     const size_t to_read = MIN(len, ring->count);
     if (to_read == 0) return 0;
 
-    const size_t head_pos = calculate_head_pos(ring->head);
+    const size_t head_pos = calculate_pos(ring->head);
     const size_t first_chunk = MIN(to_read, RING_BUFFER_SIZE - head_pos);
 
     memcpy(dest, ring->data + head_pos, first_chunk);
@@ -140,18 +139,18 @@ ring_buffer_memchr(RingBuffer *ring, char target, size_t max_search_size)
 {
     if (ring_buffer_empty(ring) || max_search_size == 0) return NULL;
 
-    const size_t head_pos = calculate_head_pos(ring->head);
+    const size_t head_pos = calculate_pos(ring->head);
     size_t search_size = MIN(max_search_size, ring->count);
     char *found = NULL;
 
     /* First search in the first chunk of the ring buffer */
-    size_t first_chunk = RING_BUFFER_SIZE - head_pos;
+    size_t first_chunk = MIN(RING_BUFFER_SIZE - head_pos, search_size); // Prevent overflow
     found = memchr(ring->data + head_pos, target, first_chunk);
     if (found) return found;
 
     /* Then search in the remaining part of the ring buffer */
     size_t second_chunk = search_size - first_chunk;
-    found = memchr(ring->data, target, second_chunk);
+    if (search_size > first_chunk) found = memchr(ring->data, target, second_chunk); // DON'T use calculated `second_chunk` here, it may underflow
     return found;
 }
 
@@ -173,7 +172,7 @@ ring_buffer_find_new_line(RingBuffer *ring)
     char *line = NULL;
     char *newline_pos = NULL;
     size_t line_length = 0;
-    const size_t head_pos = calculate_head_pos(ring->head);
+    const size_t head_pos = calculate_pos(ring->head);
 
     /* Find the first newline character in the ring buffer */
     newline_pos = ring_buffer_memchr(ring, '\n', MIN(ring->count, MAX_LINE_LENGTH));
