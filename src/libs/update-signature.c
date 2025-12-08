@@ -36,6 +36,8 @@ typedef struct UpdateContext {
   gboolean completed;
   gboolean success;
 
+  pid_t pid;
+
   /*No need to protect these fields because they always same after initialize*/
   WumingWindow *window;
   UpdatingPage *updating_page;
@@ -102,32 +104,42 @@ update_complete_callback(gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
-static gpointer
-update_thread(gpointer data)
+static gboolean
+update_sync_callback(gpointer user_data)
 {
-    UpdateContext *ctx = data;
-    pid_t pid;
-    
-    /*Spawn update process*/
-    if (!spawn_new_process_no_pipes(&pid,
-        PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL))
-    {
-        g_warning("Failed to spawn freshclam process");
-        send_final_message((void *)ctx, gettext("Signature Update Failed"), FALSE, -1, update_complete_callback);
-        return NULL;
-    }
+  UpdateContext *ctx = user_data;
+  pid_t pid = ctx->pid;
 
-    /*Clean up*/
-    const gint exit_status = wait_for_process(pid, 0);
-    gboolean success = exit_status == 0;
-    set_completion_state(ctx, TRUE, success);
+  const gint exit_status = wait_for_process(pid, WNOHANG);
+  if (exit_status == -1) return G_SOURCE_CONTINUE; // Process is still running
 
-    const char *status_text = success ?
-        gettext("Signature Update Complete") : gettext("Signature Update Failed");
+  gboolean success = exit_status == 0;
+  set_completion_state(ctx, TRUE, success);
 
-    send_final_message((void *)ctx, status_text, success, exit_status, update_complete_callback);
+  const char *status_text = success ?
+      gettext("Signature Update Complete") : gettext("Signature Update Failed");
 
-    return NULL;
+  send_final_message((void *)ctx, status_text, success, exit_status, update_complete_callback);
+
+  return G_SOURCE_REMOVE;
+}
+
+static void
+start_update_async(UpdateContext *ctx)
+{
+  /*Spawn update process*/
+  if (!spawn_new_process_no_pipes(&ctx->pid,
+      PKEXEC_PATH, "pkexec", FRESHCLAM_PATH, "--verbose", NULL))
+  {
+      g_warning("Failed to spawn freshclam process");
+      send_final_message((void *)ctx, gettext("Signature Update Failed"), FALSE, -1, update_complete_callback);
+      return;
+  }
+
+  /* Use Async I/O to check the update status */
+  GSource *source = g_timeout_source_new(BASE_TIMEOUT_MS);
+  g_source_set_callback(source, (GSourceFunc)update_sync_callback, ctx, NULL);
+  g_source_attach(source, g_main_context_default());
 }
 
 UpdateContext*
@@ -161,6 +173,8 @@ update_context_reset(UpdateContext *ctx)
 {
   g_return_if_fail(ctx);
 
+  ctx->pid = 0; // Reset PID
+
   /* Reset `UpdateContext` */
   set_completion_state(ctx, FALSE, FALSE);
 
@@ -179,7 +193,6 @@ start_update(UpdateContext *ctx)
   wuming_window_push_page_by_tag (ctx->window, "updating_nav_page");
   wuming_window_set_hide_on_close(ctx->window, TRUE, gettext("Updating...")); // Hide the window instead of closing it
 
-  /* Start update thread */
-  g_thread_new("update-thread", update_thread, ctx);
+  start_update_async(ctx);
 }
 

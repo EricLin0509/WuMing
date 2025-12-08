@@ -72,14 +72,14 @@ io_context_handle_poll_events(IOContext *io_ctx)
   * This parameter can be NULL if you don't need to reset the idle_counter
 */
 int
-calculate_dynamic_timeout(IOContext *io_ctx, int *ready_status)
+calculate_dynamic_timeout(IOContext *io_ctx, const int ready_status)
 {
     /* Check the input parameters */
     g_return_val_if_fail(io_ctx != NULL, 0);
 
     const int jitter = rand() % JITTER_RANGE; // Add random jitter to the timeout to minimize the wake up of threads at the same time
 
-    if (ready_status != NULL && *ready_status > 0) // Optional parameter, reset the idle_counter if the subprocess is ready to read/write
+    if (ready_status > 0) // Optional parameter, reset the idle_counter if the subprocess is ready to read/write
     {
         io_ctx->idle_counter = 0; // Reset the idle_counter if the subprocess is ready to read/write
         io_ctx->dynamic_timeout = BASE_TIMEOUT_MS; // Reset the timeout to the base value
@@ -273,7 +273,7 @@ build_command_args(const char *command, va_list args)
 // path & command: use for `execv()`
 // This function MUST end with a NULL argument to indicate the end of the arguments list
 gboolean
-spawn_new_process(int pipefd[2], pid_t *pid, const char *path, const char *command, ...)
+spawn_new_process(int *pipefd, pid_t *pid, const char *path, const char *command, ...)
 {
     if (access(path, X_OK) == -1) // First check if the path is valid
     {

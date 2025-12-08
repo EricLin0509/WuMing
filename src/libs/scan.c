@@ -36,6 +36,10 @@ typedef struct ScanContext {
   gboolean completed;
   gboolean success;
 
+  int pipefd[2];
+  pid_t pid;
+  IOContext io_ctx;
+
   /* Protected by atomic operation */
   gboolean should_cancel; // Whether the scan should be cancelled
   gint total_files; // Total files scanned
@@ -316,75 +320,63 @@ extra_args_free(char *extra_args[SCAN_OPTIONS_N_ELEMENTS])
   }
 }
 
-static gpointer
-scan_thread(gpointer data)
+static gboolean
+scan_sync_callback(gpointer user_data)
 {
-    ScanContext *ctx = data;
-    int pipefd[2];
-    pid_t pid;
+  ScanContext *ctx = user_data;
 
+  if (get_cancel_scan(ctx)) // Check if the scan has been cancelled
+  {
+      g_warning("[INFO] User cancelled the scan");
+      kill(ctx->pid, SIGTERM);
+      wait_for_process(ctx->pid, 0); // Update the exit status
+      send_final_message((void *)ctx, gettext("Scan Canceled"), FALSE, -1, scan_complete_callback);
+      return G_SOURCE_REMOVE;
+  }
+
+  if (handle_input_event(&ctx->io_ctx))
+    process_output_lines(&ctx->io_ctx, ctx, scan_ui_callback);
+
+  const int exit_status = wait_for_process(ctx->pid, WNOHANG);
+
+  if (exit_status == -1) return G_SOURCE_CONTINUE; // The process is still running
+
+  gboolean success = (exit_status == 0) || (exit_status == 1);
+  set_completion_state(ctx, TRUE, success);
+
+  const char *status_text = success ? gettext("Scan Complete") : gettext("Scan Failed");
+
+  send_final_message((void *)ctx, status_text, success, exit_status, scan_complete_callback);
+
+  close(ctx->pipefd[0]);
+  close(ctx->pipefd[1]);
+
+  return G_SOURCE_REMOVE;
+}
+
+static void
+start_scan_async(ScanContext *ctx)
+{
     char *extra_args[SCAN_OPTIONS_N_ELEMENTS] = { NULL };
     get_extra_args(extra_args);
 
-    /*Spawn scan process*/
-    if (!spawn_new_process(pipefd, &pid,
+    /* Spawn scan process */
+    if (!spawn_new_process(ctx->pipefd, &ctx->pid,
         CLAMSCAN_PATH, "clamscan", ctx->path, "--recursive",extra_args[0], extra_args[1], extra_args[2], extra_args[3], extra_args[4], extra_args[5], NULL))
     {
           g_critical("Failed to spawn clamscan process");
           extra_args_free(extra_args);
           send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-          return NULL;
+          return;
     }
     extra_args_free(extra_args);
 
-    /*Initialize IO context*/
-    IOContext io_ctx = io_context_init(pipefd[0], POLLIN, 0, BASE_TIMEOUT_MS);
+    ctx->io_ctx = io_context_init(ctx->pipefd[0], POLLIN, 0, BASE_TIMEOUT_MS);
 
-    int ready = 0; // Whether there is data to read from the pipe
-    gint exit_status = -2;
-
-    while ((exit_status = wait_for_process(pid, WNOHANG)) == -1)
-    {
-        if (get_cancel_scan(ctx)) // Check if the scan has been cancelled
-        {
-          g_warning("[INFO] User cancelled the scan");
-          kill(pid, SIGTERM);
-          exit_status = wait_for_process(pid, 0); // Update the exit status
-          break;
-        }
-
-        int timeout = calculate_dynamic_timeout(&io_ctx, &ready);
-        ready = io_context_handle_poll_events(&io_ctx);
-
-        if (ready > 0)
-        {
-          handle_input_event(&io_ctx);
-          process_output_lines(&io_ctx, ctx, scan_ui_callback);
-        }
-    }
-
-    /*Clean up*/
-    gboolean success = (exit_status == 0) || (exit_status == 1);
-    set_completion_state(ctx, TRUE, success);
-
-    const char *status_text = NULL;
-    if (get_cancel_scan(ctx)) // User cancelled the scan
-    {
-      status_text = gettext("Scan Canceled");
-    }
-    else if (success) // Scan completed successfully
-    {
-        status_text = gettext("Scan Complete");
-    }
-    else // Scan failed
-    {
-        status_text = gettext("Scan Failed");
-    }
-
-    send_final_message((void *)ctx, status_text, success, exit_status, scan_complete_callback);
-
-    close(pipefd[0]);
-    return NULL;
+    /* Use Async I/O to check the progress of the scan */
+    GSource *source = g_timeout_source_new(BASE_TIMEOUT_MS);
+    g_source_set_callback(source, (GSourceFunc) scan_sync_callback, ctx, NULL);
+    g_source_attach(source, g_main_context_default());
 }
 
 /* Clear the list view and force close the dialog */
@@ -501,7 +493,6 @@ start_scan(ScanContext *ctx, const char *path)
   wuming_window_push_page_by_tag(ctx->window, "scanning_nav_page");
   wuming_window_set_hide_on_close(ctx->window, TRUE, gettext("Scanning...")); // Hide the window instead of closing it
 
-  /* Start scan thread */
-  g_thread_new("scan-thread", scan_thread, ctx);
+  start_scan_async(ctx);
 }
 

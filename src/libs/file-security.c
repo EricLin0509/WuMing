@@ -100,7 +100,7 @@ static bool file_security_context_take_snapshot(FileSecurityContext *context, co
     {
         close(dir_fd);
     }
-    else *need_dir_fd = dir_fd;
+    else if (need_dir_fd != NULL) *need_dir_fd = dir_fd;
     dir_fd = -1; // Reset the file descriptor
 
     /* Clean up */

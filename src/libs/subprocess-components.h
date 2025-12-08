@@ -57,7 +57,7 @@ io_context_handle_poll_events(IOContext *io_ctx);
   * This parameter can be NULL if you don't need to reset the idle_counter
 */
 int
-calculate_dynamic_timeout(IOContext *io_ctx, int *ready_status);
+calculate_dynamic_timeout(IOContext *io_ctx, const int ready_status);
 
 /* Get the context from the `IdleData` */
 gpointer
