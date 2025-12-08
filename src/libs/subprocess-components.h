@@ -32,32 +32,7 @@
 #define BASE_TIMEOUT_MS 50
 #define MAX_TIMEOUT_MS 1000
 
-typedef struct {
-    int pipefd;
-    RingBuffer ring_buf;
-
-    struct pollfd fds;
-    int idle_counter;
-    int dynamic_timeout;
-} IOContext;
-
 typedef struct IdleData IdleData;
-
-/* Initialize the IO context */
-IOContext
-io_context_init(int pipefd, int poll_events, int idle_counter, int dynamic_timeout);
-
-/* IO context handle poll events */
-int
-io_context_handle_poll_events(IOContext *io_ctx);
-
-/* Calculate the dynamic timeout based on the idle_counter and current_timeout */
-/*
-  * ready_status: this is the result of `poll()`, it indicates whether the subprocess is ready to read/write
-  * This parameter can be NULL if you don't need to reset the idle_counter
-*/
-int
-calculate_dynamic_timeout(IOContext *io_ctx, const int ready_status);
 
 /* Get the context from the `IdleData` */
 gpointer
@@ -77,16 +52,16 @@ wait_for_process(pid_t pid, int flags);
 
 /* Handle the input/output event */
 gboolean
-handle_input_event(IOContext *io_ctx);
+handle_input_event(RingBuffer *ring_buf, int pipefd);
 
 /* Process the subprocess stdout message */
 /*
-  * io_ctx: the IO context
+  * ring_buf: the ring buffer to store the output messages
   * context: the context data for the callback function
   * callback_function: the callback function to process the output lines
 */
 void
-process_output_lines(IOContext *io_ctx, gpointer context,
+process_output_lines(RingBuffer *ring_buf, gpointer context,
                       GSourceFunc callback_function);
 
 /* Send the final message from the subprocess to the main process */

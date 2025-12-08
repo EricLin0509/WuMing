@@ -36,8 +36,8 @@ typedef struct RingBuffer {
   * @param ring
   * the ring buffer to be initialized
 */
-RingBuffer
-ring_buffer_init(void);
+void
+ring_buffer_init(RingBuffer *ring);
 
 /* Get the number of bytes available for reading */
 size_t

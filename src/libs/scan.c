@@ -38,7 +38,7 @@ typedef struct ScanContext {
 
   int pipefd[2];
   pid_t pid;
-  IOContext io_ctx;
+  RingBuffer ring_buffer; // Ring buffer to store the output of the scan process
 
   /* Protected by atomic operation */
   gboolean should_cancel; // Whether the scan should be cancelled
@@ -334,8 +334,8 @@ scan_sync_callback(gpointer user_data)
       return G_SOURCE_REMOVE;
   }
 
-  if (handle_input_event(&ctx->io_ctx))
-    process_output_lines(&ctx->io_ctx, ctx, scan_ui_callback);
+  if (handle_input_event(&ctx->ring_buffer, ctx->pipefd[0]))
+    process_output_lines(&ctx->ring_buffer, ctx, scan_ui_callback);
 
   const int exit_status = wait_for_process(ctx->pid, WNOHANG);
 
@@ -371,7 +371,7 @@ start_scan_async(ScanContext *ctx)
     }
     extra_args_free(extra_args);
 
-    ctx->io_ctx = io_context_init(ctx->pipefd[0], POLLIN, 0, BASE_TIMEOUT_MS);
+    ring_buffer_init(&ctx->ring_buffer);
 
     /* Use Async I/O to check the progress of the scan */
     GSource *source = g_timeout_source_new(BASE_TIMEOUT_MS);
