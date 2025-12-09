@@ -104,9 +104,7 @@ wait_for_process(pid_t pid, int flags)
             break;
     }
 
-    gint exit_status = -1;
-    if (WIFEXITED(status)) exit_status = WEXITSTATUS(status); // Program exited normally
-    else if (WIFSIGNALED(status)) exit_status = WTERMSIG(status); // Program terminated by `SIGTERM` or `SIGKILL`
+    const gint exit_status = WEXITSTATUS(status);
 
     g_debug("Process exited with status %d", exit_status);
     

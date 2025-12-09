@@ -27,10 +27,7 @@
 
 #include "ring-buffer.h"
 
-#define JITTER_RANGE 30
-#define MAX_IDLE_COUNT 5 // If idle_counter greater than this, use MAX_TIMEOUT_MS
-#define BASE_TIMEOUT_MS 50
-#define MAX_TIMEOUT_MS 1000
+#define BASE_TIMEOUT_MS 100
 
 typedef struct IdleData IdleData;
 
