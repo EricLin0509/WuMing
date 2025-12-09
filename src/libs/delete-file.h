@@ -48,3 +48,7 @@ delete_file_data_table_clear(void);
 */
 void
 delete_threat_file(DeleteFileData *data);
+
+/* Delete all threat files in the threat page */
+void
+delete_all_threat_files(void);

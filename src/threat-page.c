@@ -20,6 +20,8 @@
 
 #include <glib/gi18n.h>
 
+#include "libs/delete-file.h"
+
 #include "wuming-window.h"
 #include "scanning-page.h"
 #include "threat-page.h"
@@ -28,6 +30,7 @@ struct _ThreatPage {
     GtkWidget parent_instance;
 
     AdwToolbarView *toolbar_view;
+    GtkButton *delete_all_button;
     GtkListBox *threat_list;
 };
 
@@ -83,6 +86,7 @@ threat_page_finalize (GObject *object)
 
     /* Reset all child widgets */
     self->toolbar_view = NULL;
+    self->delete_all_button = NULL;
     self->threat_list = NULL;
 
     G_OBJECT_CLASS (threat_page_parent_class)->finalize(object);
@@ -102,6 +106,7 @@ threat_page_class_init (ThreatPageClass *klass)
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/threat-page.ui");
 
     gtk_widget_class_bind_template_child (widget_class, ThreatPage, toolbar_view);
+    gtk_widget_class_bind_template_child (widget_class, ThreatPage, delete_all_button);
     gtk_widget_class_bind_template_child (widget_class, ThreatPage, threat_list);
 }
 
@@ -109,6 +114,8 @@ static void
 threat_page_init (ThreatPage *self)
 {
     gtk_widget_init_template (GTK_WIDGET(self));
+
+    g_signal_connect_swapped (self->delete_all_button, "clicked", G_CALLBACK (delete_all_threat_files), NULL);
 }
 
 GtkWidget *

@@ -342,3 +342,27 @@ delete_threat_file(DeleteFileData *data)
         delete_file_data_table_remove(data); // Remove the data structure from the list
     }
 }
+
+void
+delete_all_threat_files(void)
+{
+    if (!delete_file_table) return;
+
+    GList *keys = NULL;
+    GHashTableIter iter;
+    gpointer key;
+    g_hash_table_iter_init(&iter, delete_file_table);
+
+    while (g_hash_table_iter_next(&iter, &key, NULL))
+    {
+        keys = g_list_prepend(keys, key);
+    }
+
+    for (GList *elements = keys; elements != NULL; elements = elements->next)
+    {
+        DeleteFileData *data = (DeleteFileData *)elements->data;
+        delete_threat_file(data);
+    }
+
+    g_list_free(keys);
+}
