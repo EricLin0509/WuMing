@@ -142,12 +142,11 @@ reset_total_files(ScanContext *ctx)
 
 /* Create a new `AdwActionRow` for the threat list view */
 static GtkWidget*
-create_threat_action_row(GtkWidget **delete_button, const char *path)
+create_threat_expander_row(GtkWidget **delete_button, const char *path, const char *virname)
 {
-  GtkWidget *action_row = adw_action_row_new(); // Create the action row for the list view
-  gtk_widget_add_css_class(action_row, "property"); // Add property syle class to the action row
-  gtk_widget_set_size_request(action_row, -1, 60); // Set the size request for the action row
-  adw_action_row_set_subtitle(ADW_ACTION_ROW(action_row), path);
+  GtkWidget *expander_row = adw_expander_row_new(); // Create the action row for the list view
+  gtk_widget_add_css_class(expander_row, "property"); // Add property syle class to the action row
+  adw_expander_row_set_subtitle(ADW_EXPANDER_ROW(expander_row), path);
 
   /* Delete button for the action row */
   *delete_button = gtk_button_new();
@@ -162,14 +161,22 @@ create_threat_action_row(GtkWidget **delete_button, const char *path)
 
   gtk_button_set_child(GTK_BUTTON(*delete_button), content);
   
-  adw_action_row_add_suffix(ADW_ACTION_ROW(action_row), *delete_button); // Add the delete button to the action row
+  adw_expander_row_add_suffix(ADW_EXPANDER_ROW(expander_row), *delete_button); // Add the delete button to the action row
 
-  return action_row;
+  GtkWidget *vir_row = adw_action_row_new(); // Create the virname row
+  gtk_widget_add_css_class(vir_row, "property"); // Add property style class to the virname row
+
+  adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vir_row), gettext("Threat Characteristics"));
+  adw_action_row_set_subtitle(ADW_ACTION_ROW(vir_row), virname);
+
+  adw_expander_row_add_row(ADW_EXPANDER_ROW(expander_row), vir_row); // Add the virname row to the action row
+
+  return expander_row;
 }
 
 /* thread-safe method to add/clear a threat path to the list */
 static void
-add_threat_path(ScanContext *ctx, const char *path)
+add_threat_path(ScanContext *ctx, const char *path, const char *virname)
 {
   g_return_if_fail(ctx);
   g_return_if_fail(path);
@@ -177,13 +184,13 @@ add_threat_path(ScanContext *ctx, const char *path)
   g_mutex_lock(&ctx->threats_mutex);
 
   GtkWidget *delete_button = NULL;
-  GtkWidget *action_row = create_threat_action_row(&delete_button, path); // Create the action row for the list view
+  GtkWidget *expander_row = create_threat_expander_row(&delete_button, path, virname); // Create the action row for the list view
 
   /* Add the action row to the list view */
-  threat_page_add_threat (ctx->threat_page, action_row);
+  threat_page_add_threat (ctx->threat_page, expander_row);
 
   /* Add the threat path to the list */
-  DeleteFileData *delete_data = delete_file_data_table_insert(GTK_WIDGET(ctx->threat_page), action_row); // Add the delete data to the list
+  DeleteFileData *delete_data = delete_file_data_table_insert(GTK_WIDGET(ctx->threat_page), path, expander_row); // Add the delete data to the list
   if (delete_data == NULL) // Failed to add delete data to list
   {
     g_critical("Failed to add delete data to list");
@@ -231,7 +238,12 @@ scan_ui_callback(gpointer user_data)
     if (colon)
     {
       *colon = '\0'; // Replace the colon with null terminator
-      add_threat_path(ctx, message);
+
+      char *last_space = status_marker - 1; // Find the last space before FOUND
+      *last_space = '\0'; // Replace the last space with null terminator
+      char *virname = colon + 2 >= last_space ? NULL : colon + 2; // Get the virname from the message
+
+      add_threat_path(ctx, message, virname);
     }
   }
   else if ((status_marker = strstr(message, "OK")) != NULL) inc_total_files(ctx);

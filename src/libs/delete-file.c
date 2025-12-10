@@ -46,7 +46,7 @@ static GHashTable *delete_file_table = NULL; // Use to store the information of 
 typedef struct DeleteFileData {
     const char *path;
     GtkWidget *threat_page;
-    GtkWidget *action_row;
+    GtkWidget *expander_row;
 
     FileSecurityContext *security_context; // Security context for the file
 } DeleteFileData; // Data structure to store the information of a file to be deleted
@@ -59,7 +59,8 @@ delete_file_data_clear(DeleteFileData **data)
     g_return_if_fail(data != NULL && *data != NULL);
 
     file_security_context_clear(&(*data)->security_context, NULL, NULL);
-    threat_page_remove_threat(THREAT_PAGE((*data)->threat_page), (*data)->action_row); // Remove the action row from the list view
+    threat_page_remove_threat(THREAT_PAGE((*data)->threat_page), (*data)->expander_row); // Remove the action row from the list view
+
     g_free(*data);
 
     *data = NULL;
@@ -96,8 +97,8 @@ ensure_delete_file_table(void)
 /*
   * first initialize the file security context using `secure_open_and_verify()`
   * check file whether is a file inside the system directory
-  * and set the properties of the AdwActionRow
-  * Warning: the AdwActionRow widget MUST have `subtitle` property
+  * and set the properties of the AdwExpanderRow
+  * Warning: the AdwExpanderRow widget MUST have `subtitle` property
 */
 static gboolean
 set_file_properties(DeleteFileData *data)
@@ -105,7 +106,7 @@ set_file_properties(DeleteFileData *data)
     g_return_val_if_fail(data != NULL, FALSE);
     g_return_val_if_fail(data->security_context != NULL, FALSE);
 
-    if (!data->action_row || !GTK_IS_WIDGET(data->action_row)) return FALSE; // Check if the action row is valid
+    if (!data->expander_row || !GTK_IS_WIDGET(data->expander_row)) return FALSE; // Check if the action row is valid
 
     const char *path = data->path;
 
@@ -128,7 +129,7 @@ set_file_properties(DeleteFileData *data)
     gboolean is_system_direcotry = (strstr(SYSTEM_DIRECTORIES, query) != NULL);
 
     adw_preferences_row_set_title(
-        ADW_PREFERENCES_ROW(data->action_row),
+        ADW_PREFERENCES_ROW(data->expander_row),
         is_system_direcotry ? 
             gettext("Maybe a system file, delete it with caution!") : 
             gettext("Normal file")
@@ -141,22 +142,22 @@ set_file_properties(DeleteFileData *data)
 
 /* Create a new delete file data structure */
 // Tips: this also creates a new security context for the file
-// Warning: the AdwActionRow MUST be added to the GtkListBox before calling this function
+// Warning: the AdwExpanderRow MUST be added to the GtkListBox before calling this function
 static DeleteFileData *
-delete_file_data_new(GtkWidget *threat_page, GtkWidget *action_row)
+delete_file_data_new(GtkWidget *threat_page, const char *path, GtkWidget *expander_row)
 {
     if (!threat_page || !GTK_IS_WIDGET(threat_page) ||
-       !action_row || !GTK_IS_WIDGET(action_row) ||
-        !gtk_widget_get_ancestor(action_row, THREAT_TYPE_PAGE)) // Check if the action_row is a child of the threat_page
+       !expander_row || !GTK_IS_WIDGET(expander_row) ||
+        !gtk_widget_get_ancestor(expander_row, THREAT_TYPE_PAGE)) // Check if the expander_row is a child of the threat_page
     {
-        g_critical("[ERROR] Invalid parameters, threat_page: %p, action_row: %p", threat_page, action_row);
+        g_critical("[ERROR] Invalid parameters, threat_page: %p, expander_row: %p", threat_page, expander_row);
         return NULL;
     }
 
     DeleteFileData *data = g_new0(DeleteFileData, 1);
-    data->path = adw_action_row_get_subtitle(ADW_ACTION_ROW(action_row)), // This string SHOULDN'T be freed because it's owned by the action row
+    data->path = path != NULL ? path : adw_expander_row_get_subtitle(ADW_EXPANDER_ROW(expander_row)), // Choose one of the two to get the path
     data->threat_page = threat_page;
-    data->action_row = action_row;
+    data->expander_row = expander_row;
     data->security_context = file_security_context_new(data->path, FALSE, NULL, NULL);
 
     if (!set_file_properties(data))
@@ -172,9 +173,9 @@ delete_file_data_new(GtkWidget *threat_page, GtkWidget *action_row)
 /* Insert a new delete file data structure to the hash table */
 // @return a new created DeleteFileData structure
 DeleteFileData *
-delete_file_data_table_insert(GtkWidget *threat_page, GtkWidget *action_row)
+delete_file_data_table_insert(GtkWidget *threat_page, const char *path, GtkWidget *expander_row)
 {
-    DeleteFileData *data = delete_file_data_new(threat_page, action_row);
+    DeleteFileData *data = delete_file_data_new(threat_page, path, expander_row);
     if (!data)
     {
         g_critical("[ERROR] Failed to create new delete file data structure");
@@ -216,37 +217,37 @@ delete_file_data_table_clear(void)
 static void
 policy_forbid_operation(DeleteFileData *data)
 {
-    gtk_widget_set_sensitive(data->action_row, FALSE);
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Blocked by policy, try removing it manually!"));
+    gtk_widget_set_sensitive(data->expander_row, FALSE);
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Blocked by policy, try removing it manually!"));
 }
 
 /* error operation */
 static void
 error_operation(DeleteFileData *data, FileSecurityStatus status)
 {
-    gtk_widget_set_sensitive(data->action_row, FALSE);
+    gtk_widget_set_sensitive(data->expander_row, FALSE);
     switch (status)
     {
         case FILE_SECURITY_DIR_MODIFIED:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Directory modified, try removing it manually!"));
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Directory modified, try removing it manually!"));
             break;
         case FILE_SECURITY_FILE_MODIFIED:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("File may compromised, try removing it manually!"));
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("File may compromised, try removing it manually!"));
             break;
         case FILE_SECURITY_DIR_NOT_FOUND:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Directory not found!"));
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Directory not found!"));
             break;
         case FILE_SECURITY_FILE_NOT_FOUND:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("File not found!"));
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("File not found!"));
             break;
         case FILE_SECURITY_INVALID_PATH:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Invalid path!"));
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Invalid path!"));
             break;
         case FILE_SECURITY_PERMISSION_DENIED:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Permission denied!"));
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Permission denied!"));
             break;
         default:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->action_row), gettext("Unknown error!"));
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Unknown error!"));
             break;
     }
 }
@@ -310,7 +311,7 @@ delete_threat_file_elevated(DeleteFileData *data)
 
 /* Delete threat files */
 /*
-  * this function should pass a AdwActionRow widget to the function
+  * this function should pass a AdwExpanderRow widget to the function
   * because the function needs to remove the row from the GtkListBox
 */
 void
@@ -319,7 +320,7 @@ delete_threat_file(DeleteFileData *data)
     g_return_if_fail(data != NULL);
     g_return_if_fail(data->security_context != NULL);
 
-    if (!data->action_row || !GTK_IS_WIDGET(data->action_row)) return; // Check if the action row is valid
+    if (!data->expander_row || !GTK_IS_WIDGET(data->expander_row)) return; // Check if the action row is valid
 
     /* Delete file */
     FileSecurityStatus result = file_security_secure_delete(data->security_context, data->path, 0);

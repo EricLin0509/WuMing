@@ -29,7 +29,7 @@ typedef struct DeleteFileData DeleteFileData;
 /* Insert a new delete file data structure to the hash table */
 // @return a new created DeleteFileData structure
 DeleteFileData *
-delete_file_data_table_insert(GtkWidget *threat_page, GtkWidget *action_row);
+delete_file_data_table_insert(GtkWidget *threat_page, const char *path, GtkWidget *expander_row);
 
 /* Remove a delete file data structure from the hash table */
 // @warning this also clear the DeleteFileData structure and the security context in the hash table
@@ -43,7 +43,7 @@ delete_file_data_table_clear(void);
 
 /* Delete threat files */
 /*
-  * this function should pass a AdwActionRow widget to the function
+  * this function should pass a AdwExpanderRow widget to the function
   * because the function needs to remove the row from the GtkListBox
 */
 void
