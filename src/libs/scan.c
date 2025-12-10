@@ -228,7 +228,7 @@ scan_ui_callback(gpointer user_data)
   const char *message = get_idle_message(data); // Get the message from the ring buffer
   char *status_marker = NULL; // Check file is OK or FOUND
 
-  if ((status_marker = strstr(message, "FOUND")) != NULL)
+  if ((status_marker = strstr(message, " FOUND\0")) != NULL)
   {
     inc_total_files(ctx);
     inc_total_threats(ctx);
@@ -239,14 +239,14 @@ scan_ui_callback(gpointer user_data)
     {
       *colon = '\0'; // Replace the colon with null terminator
 
-      char *last_space = status_marker - 1; // Find the last space before FOUND
-      *last_space = '\0'; // Replace the last space with null terminator
-      char *virname = colon + 2 >= last_space ? NULL : colon + 2; // Get the virname from the message
+      *status_marker = '\0'; // Replace the last space with null terminator
+      char *virname = colon + 2 < status_marker ? colon + 2 : NULL; // Get the virname from the message
+      g_print("virname: %s\n", virname);
 
       add_threat_path(ctx, message, virname);
     }
   }
-  else if ((status_marker = strstr(message, "OK")) != NULL) inc_total_files(ctx);
+  else if ((status_marker = strstr(message, " OK\0")) != NULL) inc_total_files(ctx);
 
   char *status_text = get_status_text(ctx);
 
