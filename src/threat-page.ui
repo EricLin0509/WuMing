@@ -7,7 +7,10 @@
     <child>
       <object class="AdwToolbarView" id="toolbar_view">
         <child type="top">
-          <object class="AdwHeaderBar">
+          <object class="AdwHeaderBar"/>
+        </child>
+        <child type="bottom">
+          <object class="GtkActionBar">
             <child type="end">
               <object class="GtkButton" id="delete_all_button">
                 <property name="can-shrink">true</property>

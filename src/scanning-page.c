@@ -54,6 +54,10 @@ scanning_page_reset (ScanningPage *self)
     adw_status_page_set_description(self->status_page, gettext("Preparing..."));
     adw_status_page_set_paintable(self->status_page, GDK_PAINTABLE(self->spinner));
 
+    /* Set can-pop property to false */
+    AdwNavigationPage *page = ADW_NAVIGATION_PAGE(gtk_widget_get_ancestor(GTK_WIDGET(self->status_page), ADW_TYPE_NAVIGATION_PAGE));
+    if (page != NULL) adw_navigation_page_set_can_pop(page, FALSE);
+
     /* Disable close button */
     gtk_widget_set_sensitive(GTK_WIDGET(self->close_button), FALSE);
     gtk_widget_set_visible(GTK_WIDGET(self->close_button), FALSE);
@@ -78,6 +82,10 @@ scanning_page_set_final_result (ScanningPage *self, gboolean has_threat, const c
     if (result) adw_status_page_set_title(self->status_page, result);
     if (detail) adw_status_page_set_description(self->status_page, detail);
     if (icon_name) adw_status_page_set_icon_name(self->status_page, icon_name);
+
+    /* Set can-pop property to true */
+    AdwNavigationPage *page = ADW_NAVIGATION_PAGE(gtk_widget_get_ancestor(GTK_WIDGET(self->status_page), ADW_TYPE_NAVIGATION_PAGE));
+    if (page != NULL) adw_navigation_page_set_can_pop(page, TRUE);
 
     /* Disable cancel button */
     gtk_widget_set_sensitive(GTK_WIDGET(self->cancel_button), FALSE);

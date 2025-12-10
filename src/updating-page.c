@@ -43,6 +43,10 @@ updating_page_reset (UpdatingPage *self)
     adw_status_page_set_title(self->status_page, gettext("Updating..."));
     adw_status_page_set_description(self->status_page, gettext("This might take a while"));
 
+    /* Set can-pop property to false */
+    AdwNavigationPage *page = ADW_NAVIGATION_PAGE(gtk_widget_get_ancestor(GTK_WIDGET(self->status_page), ADW_TYPE_NAVIGATION_PAGE));
+    if (page != NULL) adw_navigation_page_set_can_pop(page, FALSE);
+
     /* Disable the close button */
     gtk_widget_set_sensitive(GTK_WIDGET(self->close_button), FALSE);
     gtk_widget_set_visible(GTK_WIDGET(self->close_button), FALSE);
@@ -54,6 +58,10 @@ updating_page_set_final_result (UpdatingPage *self, const char *result, const ch
     adw_status_page_set_title(self->status_page, result);
     adw_status_page_set_description(self->status_page, NULL);
     adw_status_page_set_icon_name(self->status_page, icon_name);
+
+    /* Set can-pop property to true */
+    AdwNavigationPage *page = ADW_NAVIGATION_PAGE(gtk_widget_get_ancestor(GTK_WIDGET(self->status_page), ADW_TYPE_NAVIGATION_PAGE));
+    if (page != NULL) adw_navigation_page_set_can_pop(page, TRUE);
 
     /* Enable the close button */
     gtk_widget_set_sensitive(GTK_WIDGET(self->close_button), TRUE);
