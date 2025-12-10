@@ -175,11 +175,11 @@ create_threat_expander_row(GtkWidget **delete_button, const char *path, const ch
 }
 
 /* thread-safe method to add/clear a threat path to the list */
-static void
+static gboolean
 add_threat_path(ScanContext *ctx, const char *path, const char *virname)
 {
-  g_return_if_fail(ctx);
-  g_return_if_fail(path);
+  g_return_val_if_fail(ctx, FALSE);
+  g_return_val_if_fail(path, FALSE);
 
   g_mutex_lock(&ctx->threats_mutex);
 
@@ -195,12 +195,14 @@ add_threat_path(ScanContext *ctx, const char *path, const char *virname)
   {
     g_critical("Failed to add delete data to list");
     g_mutex_unlock(&ctx->threats_mutex);
-    return;
+    return FALSE;
   }
 
   g_signal_connect_swapped(delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
 
   g_mutex_unlock(&ctx->threats_mutex);
+
+  return TRUE;
 }
 
 static char *
@@ -230,20 +232,20 @@ scan_ui_callback(gpointer user_data)
 
   if ((status_marker = strstr(message, " FOUND\0")) != NULL)
   {
-    inc_total_files(ctx);
-    inc_total_threats(ctx);
-
     /* Add threat path to the list */
     char *colon = strchr(message, ':'); // Find the colon separator
+    char *virname = NULL;
     if (colon)
     {
       *colon = '\0'; // Replace the colon with null terminator
-
       *status_marker = '\0'; // Replace the last space with null terminator
-      char *virname = colon + 2 < status_marker ? colon + 2 : NULL; // Get the virname from the message
-      g_print("virname: %s\n", virname);
+      virname = colon + 2 < status_marker ? colon + 2 : NULL; // Get the virname from the message
+    }
 
-      add_threat_path(ctx, message, virname);
+    if (add_threat_path(ctx, message, virname)) // Ensure the threat path can be added to the list
+    {
+      inc_total_files(ctx);
+      inc_total_threats(ctx);
     }
   }
   else if ((status_marker = strstr(message, " OK\0")) != NULL) inc_total_files(ctx);
