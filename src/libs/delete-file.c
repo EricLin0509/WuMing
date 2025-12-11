@@ -45,6 +45,7 @@ static GHashTable *delete_file_table = NULL; // Use to store the information of 
 
 typedef struct DeleteFileData {
     const char *path;
+    gboolean is_external_path_string; // Whether to use the external path string or the internal path string
     GtkWidget *threat_page;
     GtkWidget *expander_row;
 
@@ -60,6 +61,8 @@ delete_file_data_clear(DeleteFileData **data)
 
     file_security_context_clear(&(*data)->security_context, NULL, NULL);
     threat_page_remove_threat(THREAT_PAGE((*data)->threat_page), (*data)->expander_row); // Remove the action row from the list view
+
+    if ((*data)->is_external_path_string) g_clear_pointer((void **)(&(*data)->path), g_free); // Only free the external path string
 
     g_free(*data);
 
@@ -155,7 +158,8 @@ delete_file_data_new(GtkWidget *threat_page, const char *path, GtkWidget *expand
     }
 
     DeleteFileData *data = g_new0(DeleteFileData, 1);
-    data->path = path != NULL ? path : adw_expander_row_get_subtitle(ADW_EXPANDER_ROW(expander_row)), // Choose one of the two to get the path
+    data->is_external_path_string = path != NULL; // Whether to use the external path string or the internal path string
+    data->path = data->is_external_path_string ? path : adw_expander_row_get_subtitle(ADW_EXPANDER_ROW(expander_row)), // Choose one of the two to get the path
     data->threat_page = threat_page;
     data->expander_row = expander_row;
     data->security_context = file_security_context_new(data->path, FALSE, NULL, NULL);
