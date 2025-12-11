@@ -38,7 +38,6 @@ typedef enum FileSecurityStatus {
     FILE_SECURITY_INVALID_CONTEXT, // Invalid file security context
     FILE_SECURITY_PERMISSION_DENIED, // Permission denied
     FILE_SECURITY_OPERATION_FAILED, // Operation failed
-    FILE_SECURITY_UNKNOWN_ERROR // Unknown error
 } FileSecurityStatus; // File security status code
 
 /* Initialize the file security context */

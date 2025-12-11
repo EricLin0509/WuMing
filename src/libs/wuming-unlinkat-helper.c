@@ -35,7 +35,7 @@ void
 breakpoint_handler(int signal)
 {
     g_critical("[ERROR] Breakpoint detected, aborting...");
-    exit(FILE_SECURITY_UNKNOWN_ERROR);
+    exit(FILE_SECURITY_OPERATION_FAILED);
 }
 
 gint
@@ -74,7 +74,7 @@ command_line_handler(GApplication* self, GApplicationCommandLine* command_line, 
     if (security_context == NULL)
     {
         g_critical("[ERROR] Failed to open shared memory: %s", shm_name);
-        return FILE_SECURITY_UNKNOWN_ERROR;
+        return FILE_SECURITY_OPERATION_FAILED;
     }
 
     /* Delete file */

@@ -237,6 +237,9 @@ error_operation(DeleteFileData *data, FileSecurityStatus status)
         case FILE_SECURITY_PERMISSION_DENIED:
             adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Permission denied!"));
             break;
+        case FILE_SECURITY_OPERATION_FAILED:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Operation failed!"));
+            break;
         default:
             adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Unknown error!"));
             break;
@@ -266,7 +269,7 @@ delete_threat_file_elevated(DeleteFileData *data)
     if (!copied_context)
     {
         g_critical("[ERROR] Failed to copy security context to shared memory");
-        error_operation(data, FILE_SECURITY_UNKNOWN_ERROR);
+        error_operation(data, FILE_SECURITY_OPERATION_FAILED);
         return;
     }
 
@@ -275,15 +278,16 @@ delete_threat_file_elevated(DeleteFileData *data)
     spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
                                     shm_name, data->path, NULL); // Spawn the helper process
 
-    int exit_status = pid == -1 ? FILE_SECURITY_UNKNOWN_ERROR : wait_for_process(pid, 0); // Wait for the helper process to finish
+    int exit_status = pid == -1 ? FILE_SECURITY_OPERATION_FAILED : wait_for_process(pid, 0); // Wait for the helper process to finish
 
     if (exit_status == 126) // Pkexec user request dismiss
     {
+        g_warning("[WARNING] User dismissed the elevation request");
         file_security_context_clear(&copied_context, &shm_name, NULL);
         return;
     }
 
-    exit_status = (exit_status < FILE_SECURITY_OK || exit_status > FILE_SECURITY_UNKNOWN_ERROR) ? FILE_SECURITY_UNKNOWN_ERROR : exit_status; // Check if the exit status is valid
+    exit_status = (exit_status < FILE_SECURITY_OK || exit_status > FILE_SECURITY_OPERATION_FAILED) ? FILE_SECURITY_OPERATION_FAILED : exit_status; // Check if the exit status is valid
 
     if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK)
     {
