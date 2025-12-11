@@ -166,7 +166,7 @@ create_threat_expander_row(GtkWidget **delete_button, const char *path, const ch
   GtkWidget *vir_row = adw_action_row_new(); // Create the virname row
   gtk_widget_add_css_class(vir_row, "property"); // Add property style class to the virname row
 
-  adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vir_row), gettext("Threat Characteristics"));
+  adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vir_row), gettext("Threat Identity"));
   adw_action_row_set_subtitle(ADW_ACTION_ROW(vir_row), virname);
 
   adw_expander_row_add_row(ADW_EXPANDER_ROW(expander_row), vir_row); // Add the virname row to the action row

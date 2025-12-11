@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-30 19:22+0800\n"
+"POT-Creation-Date: 2025-12-11 18:54+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -19,7 +19,7 @@ msgstr ""
 
 #: data/com.ericlin.wuming.desktop.in:2
 #: data/com.ericlin.wuming.metainfo.xml.in:7 src/wuming-window.ui:7
-#: src/wuming-window.ui:25
+#: src/wuming-window.ui:28
 msgid "WuMing"
 msgstr "WuMing"
 
@@ -73,8 +73,8 @@ msgctxt "shortcut window"
 msgid "Quit"
 msgstr "Quit"
 
-#: src/shortcuts-dialog.ui:35 src/wuming-window.ui:78 src/wuming-window.ui:83
-#: src/wuming-window.ui:128
+#: src/shortcuts-dialog.ui:35 src/wuming-window.ui:81 src/wuming-window.ui:86
+#: src/wuming-window.ui:132
 msgid "Scan"
 msgstr "Scan"
 
@@ -90,7 +90,7 @@ msgctxt "shortcut window"
 msgid "Scan folder"
 msgstr "Scan folder"
 
-#: src/shortcuts-dialog.ui:52 src/wuming-window.ui:95
+#: src/shortcuts-dialog.ui:52 src/wuming-window.ui:98
 msgid "Update Signature"
 msgstr "Update Signature"
 
@@ -100,35 +100,35 @@ msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr "Update Signature"
 
-#: src/wuming-window.c:176
+#: src/wuming-window.c:178
 msgid "Click to show details"
 msgstr "Click to show details"
 
-#: src/wuming-window.ui:42
+#: src/wuming-window.ui:45
 msgid "Main Menu"
 msgstr "Main Menu"
 
-#: src/wuming-window.ui:61 src/wuming-window.ui:66
+#: src/wuming-window.ui:64 src/wuming-window.ui:69
 msgid "Security Overview"
 msgstr "Security Overview"
 
-#: src/wuming-window.ui:117 src/update-signature-page.ui:29
+#: src/wuming-window.ui:120 src/update-signature-page.ui:29
 msgid "Update"
 msgstr "Update"
 
-#: src/wuming-window.ui:139
+#: src/wuming-window.ui:144
 msgid "Threats"
 msgstr "Threats"
 
-#: src/wuming-window.ui:153
+#: src/wuming-window.ui:160
 msgid "_Preferences"
 msgstr "Preferences"
 
-#: src/wuming-window.ui:157
+#: src/wuming-window.ui:164
 msgid "_Keyboard Shortcuts"
 msgstr "Keyboard Shortcuts"
 
-#: src/wuming-window.ui:161
+#: src/wuming-window.ui:168
 msgid "_About WuMing"
 msgstr "About WuMing"
 
@@ -137,69 +137,79 @@ msgstr "About WuMing"
 msgid "Scan Options"
 msgstr "Scan Options"
 
-#: src/wuming-preferences-dialog.ui:15
+#: src/wuming-preferences-dialog.ui:12
+#, fuzzy
+msgid "Customize Scan Options"
+msgstr "Customize Scan Options"
+
+#: src/wuming-preferences-dialog.ui:16
 msgid "Scan Files Larger Than 20MB"
 msgstr "Scan Files Larger Than 20MB"
 
-#: src/wuming-preferences-dialog.ui:16
+#: src/wuming-preferences-dialog.ui:17
 msgid "Set Max File Size To 2GB"
 msgstr "Set Max File Size To 2GB"
 
-#: src/wuming-preferences-dialog.ui:22
+#: src/wuming-preferences-dialog.ui:23
 msgid "Detect PUA"
 msgstr "Detect PUA"
 
-#: src/wuming-preferences-dialog.ui:23
+#: src/wuming-preferences-dialog.ui:24
 msgid "Mark Potentially Unwanted Application"
 msgstr "Mark Potentially Unwanted Application"
 
-#: src/wuming-preferences-dialog.ui:29
+#: src/wuming-preferences-dialog.ui:30
 #, fuzzy
 msgid "Scan Archives"
 msgstr "Scan Archives"
 
-#: src/wuming-preferences-dialog.ui:30
+#: src/wuming-preferences-dialog.ui:31
 #, fuzzy
 msgid "Scan Archive Files"
 msgstr "Scan Archive Files"
 
-#: src/wuming-preferences-dialog.ui:36
+#: src/wuming-preferences-dialog.ui:37
 #, fuzzy
 msgid "Scan Mails"
 msgstr "Scan Mails"
 
-#: src/wuming-preferences-dialog.ui:37
+#: src/wuming-preferences-dialog.ui:38
 #, fuzzy
 msgid "Scan Mail Files"
 msgstr "Scan Mail Files"
 
-#: src/wuming-preferences-dialog.ui:43
+#: src/wuming-preferences-dialog.ui:44
 msgid "Alert Exceeds Max"
 msgstr "Alert Exceeds Max"
 
-#: src/wuming-preferences-dialog.ui:44
+#: src/wuming-preferences-dialog.ui:45
 msgid "Alert On Files That Exceed The Limits"
 msgstr "Alert On Files That Exceed The Limits"
 
-#: src/wuming-preferences-dialog.ui:50
+#: src/wuming-preferences-dialog.ui:51
 msgid "Alert Encrypted"
 msgstr "Alert Encrypted"
 
-#: src/wuming-preferences-dialog.ui:51
+#: src/wuming-preferences-dialog.ui:52
 msgid "Alert On Encrypted Archives And Documents"
 msgstr "Alert On Encrypted Archives And Documents"
 
-#: src/wuming-preferences-dialog.ui:58
+#: src/wuming-preferences-dialog.ui:59
 #, fuzzy
 msgid "Signature Status"
 msgstr "Signature Status"
 
-#: src/wuming-preferences-dialog.ui:62
+#: src/wuming-preferences-dialog.ui:60
+#, fuzzy
+msgid "Customize Signature Status"
+msgstr "Customize Signature Status"
+
+#: src/wuming-preferences-dialog.ui:64
 #, fuzzy
 msgid "Signature Validity Period"
 msgstr "Signature Validity Period"
 
-#: src/wuming-preferences-dialog.ui:63
+#: src/wuming-preferences-dialog.ui:65
 msgid "Set The Expiration Time For The Signature (1-14 Days)"
 msgstr "Set The Expiration Time For The Signature (1-14 Days)"
 
@@ -306,7 +316,7 @@ msgstr "Scan file"
 msgid "Scan folder"
 msgstr "Scan folder"
 
-#: src/scanning-page.c:53 src/libs/scan.c:494
+#: src/scanning-page.c:53 src/libs/scan.c:505
 msgid "Scanning..."
 msgstr "Scanning..."
 
@@ -314,7 +324,7 @@ msgstr "Scanning..."
 msgid "Preparing..."
 msgstr "Preparing..."
 
-#: src/scanning-page.ui:14
+#: src/scanning-page.ui:14 src/threat-page.c:139
 msgid "Cancel"
 msgstr "Cancel"
 
@@ -326,22 +336,35 @@ msgstr "Show threats"
 msgid "Close"
 msgstr "Close"
 
-#: src/threat-page.c:55
+#: src/threat-page.c:61
 msgid "All Clear"
 msgstr "All Clear"
 
-#: src/threat-page.c:55
+#: src/threat-page.c:61
 msgid "All threats have been removed!"
 msgstr "All threats have been removed!"
 
-#: src/threat-page.ui:14
+#: src/threat-page.c:135
+msgid "Delete All Threats?"
+msgstr "Delete All Threats?"
+
+#: src/threat-page.c:136
+msgid "This will delete all threat files and cannot be undone. Are you sure?"
+msgstr "This will delete all threat files and cannot be undone. Are you sure?"
+
+#: src/threat-page.c:140 src/threat-page.ui:17
+#, fuzzy
+msgid "Delete All"
+msgstr "Delete All"
+
+#: src/threat-page.ui:27
 #, fuzzy
 msgid "Found Threats"
 msgstr "Found Threats"
 
 #: src/update-signature-page.c:62 src/update-signature-page.c:78
 #, fuzzy, c-format
-msgid "Current Signature Date: %d.%d.%d %d:%2d"
+msgid "Current Signature Date: %4d.%02d.%02d %02d:%02d"
 msgstr "Current signature date: %d.%d.%d %d:%d"
 
 #: src/update-signature-page.c:65
@@ -383,7 +406,7 @@ msgstr "Disabled"
 msgid "Failed to check!"
 msgstr "Failed to check!"
 
-#: src/updating-page.c:43 src/libs/update-signature.c:170
+#: src/updating-page.c:43 src/libs/update-signature.c:194
 msgid "Updating..."
 msgstr "Updating..."
 
@@ -391,51 +414,55 @@ msgstr "Updating..."
 msgid "This might take a while"
 msgstr "This might take a while"
 
-#: src/libs/delete-file.c:133
+#: src/libs/delete-file.c:137
 msgid "Maybe a system file, delete it with caution!"
 msgstr "Maybe a system file, delete it with caution!"
 
-#: src/libs/delete-file.c:134
+#: src/libs/delete-file.c:138
 msgid "Normal file"
 msgstr "Normal file"
 
-#: src/libs/delete-file.c:220
-msgid "Blocked by policy, try removing it manually!"
-msgstr "Blocked by policy, try removing it manually!"
-
-#: src/libs/delete-file.c:231
+#: src/libs/delete-file.c:227
 msgid "Directory modified, try removing it manually!"
 msgstr "Directory modified, try removing it manually!"
 
-#: src/libs/delete-file.c:234
+#: src/libs/delete-file.c:230
 msgid "File may compromised, try removing it manually!"
 msgstr "File may compromised, try removing it manually!"
 
-#: src/libs/delete-file.c:237
+#: src/libs/delete-file.c:233
 msgid "Directory not found!"
 msgstr "Directory not found!"
 
-#: src/libs/delete-file.c:240
+#: src/libs/delete-file.c:236
 msgid "File not found!"
 msgstr "File not found!"
 
-#: src/libs/delete-file.c:243
+#: src/libs/delete-file.c:239
 msgid "Invalid path!"
 msgstr "Invalid path!"
 
-#: src/libs/delete-file.c:246
+#: src/libs/delete-file.c:242
 msgid "Permission denied!"
 msgstr "Permission denied!"
 
-#: src/libs/delete-file.c:249
+#: src/libs/delete-file.c:245
+msgid "Operation failed!"
+msgstr "Operation failed!"
+
+#: src/libs/delete-file.c:248
 msgid "Unknown error!"
 msgstr "Unknown error!"
 
-#: src/libs/scan.c:157
+#: src/libs/scan.c:159
 msgid "Delete"
 msgstr "Delete"
 
-#: src/libs/scan.c:204
+#: src/libs/scan.c:169
+msgid "Threat Identity"
+msgstr "Threat Identity"
+
+#: src/libs/scan.c:216
 #, c-format
 msgid ""
 "%d files scanned\n"
@@ -444,24 +471,34 @@ msgstr ""
 "%d files scanned\n"
 "%d threats found"
 
-#: src/libs/scan.c:365
+#: src/libs/scan.c:282
+#, c-format
+msgid "Scan failed with exit status %d"
+msgstr "Scan failed with exit status %d"
+
+#: src/libs/scan.c:344
 msgid "Scan Canceled"
 msgstr "Scan Canceled"
 
-#: src/libs/scan.c:369
+#: src/libs/scan.c:358
 msgid "Scan Complete"
 msgstr "Scan Complete"
 
-#: src/libs/scan.c:373
+#: src/libs/scan.c:358 src/libs/scan.c:380
 msgid "Scan Failed"
 msgstr "Scan Failed"
 
-#: src/libs/update-signature.c:116
+#: src/libs/update-signature.c:93
+#, fuzzy, c-format
+msgid "Signature update failed with exit status %d"
+msgstr "Signature update failed with exit status %d"
+
+#: src/libs/update-signature.c:120
 #, fuzzy
 msgid "Signature Update Complete"
 msgstr "Signature Update Complete"
 
-#: src/libs/update-signature.c:116
+#: src/libs/update-signature.c:120 src/libs/update-signature.c:135
 #, fuzzy
 msgid "Signature Update Failed"
 msgstr "Signature Update Failed"

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-30 19:22+0800\n"
+"POT-Creation-Date: 2025-12-11 18:54+0800\n"
 "PO-Revision-Date: 2025-08-07 20:36+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -18,7 +18,7 @@ msgstr ""
 
 #: data/com.ericlin.wuming.desktop.in:2
 #: data/com.ericlin.wuming.metainfo.xml.in:7 src/wuming-window.ui:7
-#: src/wuming-window.ui:25
+#: src/wuming-window.ui:28
 msgid "WuMing"
 msgstr "无名"
 
@@ -71,8 +71,8 @@ msgctxt "shortcut window"
 msgid "Quit"
 msgstr "退出程序"
 
-#: src/shortcuts-dialog.ui:35 src/wuming-window.ui:78 src/wuming-window.ui:83
-#: src/wuming-window.ui:128
+#: src/shortcuts-dialog.ui:35 src/wuming-window.ui:81 src/wuming-window.ui:86
+#: src/wuming-window.ui:132
 msgid "Scan"
 msgstr "扫描"
 
@@ -86,7 +86,7 @@ msgctxt "shortcut window"
 msgid "Scan folder"
 msgstr "扫描文件夹"
 
-#: src/shortcuts-dialog.ui:52 src/wuming-window.ui:95
+#: src/shortcuts-dialog.ui:52 src/wuming-window.ui:98
 msgid "Update Signature"
 msgstr "更新病毒库"
 
@@ -95,35 +95,35 @@ msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr "更新病毒库"
 
-#: src/wuming-window.c:176
+#: src/wuming-window.c:178
 msgid "Click to show details"
 msgstr "点击查看详细信息"
 
-#: src/wuming-window.ui:42
+#: src/wuming-window.ui:45
 msgid "Main Menu"
 msgstr "主菜单"
 
-#: src/wuming-window.ui:61 src/wuming-window.ui:66
+#: src/wuming-window.ui:64 src/wuming-window.ui:69
 msgid "Security Overview"
 msgstr "安全概览"
 
-#: src/wuming-window.ui:117 src/update-signature-page.ui:29
+#: src/wuming-window.ui:120 src/update-signature-page.ui:29
 msgid "Update"
 msgstr "更新"
 
-#: src/wuming-window.ui:139
+#: src/wuming-window.ui:144
 msgid "Threats"
 msgstr "威胁"
 
-#: src/wuming-window.ui:153
+#: src/wuming-window.ui:160
 msgid "_Preferences"
 msgstr "首选项"
 
-#: src/wuming-window.ui:157
+#: src/wuming-window.ui:164
 msgid "_Keyboard Shortcuts"
 msgstr "快捷键"
 
-#: src/wuming-window.ui:161
+#: src/wuming-window.ui:168
 msgid "_About WuMing"
 msgstr "关于无名"
 
@@ -131,63 +131,71 @@ msgstr "关于无名"
 msgid "Scan Options"
 msgstr "扫描选项"
 
-#: src/wuming-preferences-dialog.ui:15
+#: src/wuming-preferences-dialog.ui:12
+msgid "Customize Scan Options"
+msgstr "自定义扫描选项"
+
+#: src/wuming-preferences-dialog.ui:16
 msgid "Scan Files Larger Than 20MB"
 msgstr "扫描大于20MB的文件"
 
-#: src/wuming-preferences-dialog.ui:16
+#: src/wuming-preferences-dialog.ui:17
 msgid "Set Max File Size To 2GB"
 msgstr "将最大文件大小限制设置成2GB"
 
-#: src/wuming-preferences-dialog.ui:22
+#: src/wuming-preferences-dialog.ui:23
 msgid "Detect PUA"
 msgstr "检测 PUA"
 
-#: src/wuming-preferences-dialog.ui:23
+#: src/wuming-preferences-dialog.ui:24
 msgid "Mark Potentially Unwanted Application"
 msgstr "标记可能不需要的应用"
 
-#: src/wuming-preferences-dialog.ui:29
+#: src/wuming-preferences-dialog.ui:30
 msgid "Scan Archives"
 msgstr "扫描档案"
 
-#: src/wuming-preferences-dialog.ui:30
+#: src/wuming-preferences-dialog.ui:31
 msgid "Scan Archive Files"
 msgstr "扫描档案文件"
 
-#: src/wuming-preferences-dialog.ui:36
+#: src/wuming-preferences-dialog.ui:37
 msgid "Scan Mails"
 msgstr "扫描邮件"
 
-#: src/wuming-preferences-dialog.ui:37
+#: src/wuming-preferences-dialog.ui:38
 msgid "Scan Mail Files"
 msgstr "扫描邮件文件"
 
-#: src/wuming-preferences-dialog.ui:43
+#: src/wuming-preferences-dialog.ui:44
 msgid "Alert Exceeds Max"
 msgstr "超出最大值时发出警告"
 
-#: src/wuming-preferences-dialog.ui:44
+#: src/wuming-preferences-dialog.ui:45
 msgid "Alert On Files That Exceed The Limits"
 msgstr "文件超出限制时发出警告"
 
-#: src/wuming-preferences-dialog.ui:50
+#: src/wuming-preferences-dialog.ui:51
 msgid "Alert Encrypted"
 msgstr "检测到加密时发出警告"
 
-#: src/wuming-preferences-dialog.ui:51
+#: src/wuming-preferences-dialog.ui:52
 msgid "Alert On Encrypted Archives And Documents"
 msgstr "检测到加密档案和文档时发出警告"
 
-#: src/wuming-preferences-dialog.ui:58
+#: src/wuming-preferences-dialog.ui:59
 msgid "Signature Status"
 msgstr "病毒库状态"
 
-#: src/wuming-preferences-dialog.ui:62
+#: src/wuming-preferences-dialog.ui:60
+msgid "Customize Signature Status"
+msgstr "自定义病毒库状态"
+
+#: src/wuming-preferences-dialog.ui:64
 msgid "Signature Validity Period"
 msgstr "病毒库有效期"
 
-#: src/wuming-preferences-dialog.ui:63
+#: src/wuming-preferences-dialog.ui:65
 msgid "Set The Expiration Time For The Signature (1-14 Days)"
 msgstr "设置病毒库在多长时间后失效（1-14天）"
 
@@ -287,7 +295,7 @@ msgstr "扫描文件"
 msgid "Scan folder"
 msgstr "扫描文件夹"
 
-#: src/scanning-page.c:53 src/libs/scan.c:494
+#: src/scanning-page.c:53 src/libs/scan.c:505
 msgid "Scanning..."
 msgstr "扫描中..."
 
@@ -295,7 +303,7 @@ msgstr "扫描中..."
 msgid "Preparing..."
 msgstr "准备中..."
 
-#: src/scanning-page.ui:14
+#: src/scanning-page.ui:14 src/threat-page.c:139
 msgid "Cancel"
 msgstr "取消"
 
@@ -307,22 +315,33 @@ msgstr "显示威胁"
 msgid "Close"
 msgstr "关闭"
 
-#: src/threat-page.c:55
+#: src/threat-page.c:61
 msgid "All Clear"
 msgstr "完成"
 
-#: src/threat-page.c:55
+#: src/threat-page.c:61
 msgid "All threats have been removed!"
 msgstr "所有威胁都清除了！"
 
-#: src/threat-page.ui:14
+#: src/threat-page.c:135
+msgid "Delete All Threats?"
+msgstr "删除全部威胁？"
+
+#: src/threat-page.c:136
+msgid "This will delete all threat files and cannot be undone. Are you sure?"
+msgstr "这将会删除全部威胁且无法撤销，确定吗？"
+
+#: src/threat-page.c:140 src/threat-page.ui:17
+msgid "Delete All"
+msgstr "删除全部"
+
+#: src/threat-page.ui:27
 msgid "Found Threats"
 msgstr "发现威胁"
 
 #: src/update-signature-page.c:62 src/update-signature-page.c:78
-#, c-format
-msgid "Current Signature Date: %d.%d.%d %d:%2d"
-msgstr "当前病毒库日期：%d.%d.%d %d:%2d"
+msgid "Current Signature Date: %4d.%02d.%02d %02d:%02d"
+msgstr "当前病毒库日期：%4d.%02d.%02d %02d:%02d"
 
 #: src/update-signature-page.c:65
 msgid "Outdated!"
@@ -361,7 +380,7 @@ msgstr "已禁用"
 msgid "Failed to check!"
 msgstr "检查失败！"
 
-#: src/updating-page.c:43 src/libs/update-signature.c:170
+#: src/updating-page.c:43 src/libs/update-signature.c:194
 msgid "Updating..."
 msgstr "更新中..."
 
@@ -369,51 +388,55 @@ msgstr "更新中..."
 msgid "This might take a while"
 msgstr "这可能需要一些时间"
 
-#: src/libs/delete-file.c:133
+#: src/libs/delete-file.c:137
 msgid "Maybe a system file, delete it with caution!"
 msgstr "可能是系统文件，慎重删除！"
 
-#: src/libs/delete-file.c:134
+#: src/libs/delete-file.c:138
 msgid "Normal file"
 msgstr "常规文件"
 
-#: src/libs/delete-file.c:220
-msgid "Blocked by policy, try removing it manually!"
-msgstr "被策略阻止，请手动删除！"
-
-#: src/libs/delete-file.c:231
+#: src/libs/delete-file.c:227
 msgid "Directory modified, try removing it manually!"
 msgstr "文件可能已被篡改，请手动删除！"
 
-#: src/libs/delete-file.c:234
+#: src/libs/delete-file.c:230
 msgid "File may compromised, try removing it manually!"
 msgstr "文件可能已被篡改，请手动删除！"
 
-#: src/libs/delete-file.c:237
+#: src/libs/delete-file.c:233
 msgid "Directory not found!"
 msgstr "目录不存在"
 
-#: src/libs/delete-file.c:240
+#: src/libs/delete-file.c:236
 msgid "File not found!"
 msgstr "文件不存在"
 
-#: src/libs/delete-file.c:243
+#: src/libs/delete-file.c:239
 msgid "Invalid path!"
 msgstr "无效路径"
 
-#: src/libs/delete-file.c:246
+#: src/libs/delete-file.c:242
 msgid "Permission denied!"
 msgstr "拒绝访问"
 
-#: src/libs/delete-file.c:249
+#: src/libs/delete-file.c:245
+msgid "Operation failed!"
+msgstr ""
+
+#: src/libs/delete-file.c:248
 msgid "Unknown error!"
 msgstr "未知错误"
 
-#: src/libs/scan.c:157
+#: src/libs/scan.c:159
 msgid "Delete"
 msgstr "删除"
 
-#: src/libs/scan.c:204
+#: src/libs/scan.c:169
+msgid "Threat Identity"
+msgstr "威胁特征"
+
+#: src/libs/scan.c:216
 #, c-format
 msgid ""
 "%d files scanned\n"
@@ -422,22 +445,31 @@ msgstr ""
 "%d 个文件已扫描\n"
 "发现 %d 个威胁"
 
-#: src/libs/scan.c:365
+#: src/libs/scan.c:282
+#, c-format
+msgid "Scan failed with exit status %d"
+msgstr "扫描失败且退出状态为 %d"
+
+#: src/libs/scan.c:344
 msgid "Scan Canceled"
 msgstr "扫描被取消"
 
-#: src/libs/scan.c:369
+#: src/libs/scan.c:358
 msgid "Scan Complete"
 msgstr "扫描完成"
 
-#: src/libs/scan.c:373
+#: src/libs/scan.c:358 src/libs/scan.c:380
 msgid "Scan Failed"
 msgstr "扫描失败"
 
-#: src/libs/update-signature.c:116
+#: src/libs/update-signature.c:93
+msgid "Signature update failed with exit status %d"
+msgstr "病毒库更新失败且退出状态为 %d"
+
+#: src/libs/update-signature.c:120
 msgid "Signature Update Complete"
 msgstr "病毒库更新完成"
 
-#: src/libs/update-signature.c:116
+#: src/libs/update-signature.c:120 src/libs/update-signature.c:135
 msgid "Signature Update Failed"
 msgstr "病毒库更新失败"
