@@ -233,14 +233,13 @@ scan_ui_callback(gpointer user_data)
   if ((status_marker = strstr(message, " FOUND\0")) != NULL)
   {
     /* Add threat path to the list */
-    char *colon = strchr(message, ':'); // Find the colon separator
+    char *colon = strrchr(message, ':'); // Find the last colon separator
     char *virname = NULL;
-    if (colon)
-    {
-      *colon = '\0'; // Replace the colon with null terminator
-      *status_marker = '\0'; // Replace the last space with null terminator
-      virname = colon + 2 < status_marker ? colon + 2 : NULL; // Get the virname from the message
-    }
+    if (colon == NULL || colon >= status_marker) return G_SOURCE_REMOVE; // Handle the case where the colon is missing or after the `FOUND` string
+
+    *colon = '\0'; // Replace the colon with null terminator
+    *status_marker = '\0'; // Replace the last space with null terminator
+    virname = colon + 2 < status_marker ? colon + 2 : NULL; // Get the virname from the message
 
     if (add_threat_path(ctx, message, virname)) // Ensure the threat path can be added to the list
     {
