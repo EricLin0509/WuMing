@@ -248,12 +248,10 @@ scan_ui_callback(gpointer user_data)
     }
   }
   else if ((status_marker = strstr(message, " OK\0")) != NULL) inc_total_files(ctx);
+  else return G_SOURCE_REMOVE; // Ignore the message if it is not a threat or OK message
 
-  char *status_text = get_status_text(ctx);
-
+  g_autofree char *status_text = get_status_text(ctx);
   scanning_page_set_progress(ctx->scanning_page, status_text);
-
-  g_clear_pointer(&status_text, g_free);
 
   return G_SOURCE_REMOVE;
 }

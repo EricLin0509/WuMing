@@ -212,15 +212,6 @@ delete_file_data_table_clear(void)
     delete_file_table = NULL;
 }
 
-/* Policy forbid the operation to delete the file */
-// Use if `validate_path_safety()` returns `FALSE`
-static void
-policy_forbid_operation(DeleteFileData *data)
-{
-    gtk_widget_set_sensitive(data->expander_row, FALSE);
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Blocked by policy, try removing it manually!"));
-}
-
 /* error operation */
 static void
 error_operation(DeleteFileData *data, FileSecurityStatus status)
