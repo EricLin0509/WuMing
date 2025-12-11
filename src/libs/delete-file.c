@@ -275,10 +275,17 @@ delete_threat_file_elevated(DeleteFileData *data)
 
     pid_t pid;
 
-    spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
-                                    shm_name, data->path, NULL); // Spawn the helper process
+    if (!spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
+                                    shm_name, data->path, NULL)) // Spawn the helper process
+    {
+        /* Process spawn failed */
+        g_critical("[ERROR] Failed to spawn helper process");
+        error_operation(data, FILE_SECURITY_OPERATION_FAILED);
+        file_security_context_clear(&copied_context, &shm_name, NULL);
+        return;
+    }
 
-    int exit_status = pid == -1 ? FILE_SECURITY_OPERATION_FAILED : wait_for_process(pid, 0); // Wait for the helper process to finish
+    int exit_status = wait_for_process(pid, 0); // Wait for the helper process to finish
 
     if (exit_status == 126) // Pkexec user request dismiss
     {
