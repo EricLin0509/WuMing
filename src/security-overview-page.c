@@ -186,23 +186,23 @@ security_overview_page_show_servicestat (SecurityOverviewPage *self, int service
     char *icon_name = NULL;
     char *style = NULL;
 
-    if (service_status == 1) // Service is enabled
+    switch(service_status)
     {
-        label = gettext ("Freshclam Is Enabled");
-        icon_name = "status-ok-symbolic";
-        style = "button-success";
-    }
-    else if (service_status == 0) // Service is disabled
-    {
-        label = gettext ("Freshclam Is Disabled");
-        icon_name = "status-warning-symbolic";
-        style = "button-warning";
-    }
-    else // Service is not found
-    {
-        label = gettext ("Freshclam Is Not Found");
-        icon_name = "status-error-symbolic";
-        style = "button-error";
+        case 1:
+            label = gettext ("Freshclam Is Enabled");
+            icon_name = "status-ok-symbolic";
+            style = "button-success";
+            break;
+        case 0:
+            label = gettext ("Freshclam Is Disabled");
+            icon_name = "status-warning-symbolic";
+            style = "button-warning";
+            break;
+        default:
+            label = gettext ("Freshclam Is Not Found");
+            icon_name = "status-error-symbolic";
+            style = "button-error";
+            break;
     }
 
     adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);

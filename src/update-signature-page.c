@@ -108,9 +108,22 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 void
 update_signature_page_show_servicestat(UpdateSignaturePage *self, int service_status)
 {
-  if (service_status == 1) adw_action_row_set_subtitle (self->service_row, gettext("Enabled"));
-  else if (service_status == 0) adw_action_row_set_subtitle (self->service_row, gettext("Disabled"));
-  else adw_action_row_set_subtitle (self->service_row, gettext("Failed to check!"));
+  char *subtitle = NULL;
+
+  switch (service_status)
+  {
+    case 1:
+      subtitle = gettext("Enabled");
+      break;
+    case 0:
+      subtitle = gettext("Disabled");
+      break;
+    default:
+      subtitle = gettext("Failed to check!");
+      break;
+  }
+
+  adw_action_row_set_subtitle (self->service_row, subtitle);
 }
 
 static void
