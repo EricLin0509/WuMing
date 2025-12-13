@@ -32,7 +32,6 @@ struct _ScanningPage {
     AdwStatusPage *status_page;
     GtkButton *threat_button;
     GtkButton *close_button;
-    gulong close_button_handler_id;
 
     /* Private */
     AdwSpinnerPaintable *spinner;
@@ -102,21 +101,6 @@ scanning_page_set_final_result (ScanningPage *self, gboolean has_threat, const c
 }
 
 void
-scanning_page_set_close_signal (ScanningPage *self, GCallback close_signal_cb, gpointer user_data)
-{
-    self->close_button_handler_id = g_signal_connect_swapped(self->close_button, "clicked", close_signal_cb, user_data);
-}
-
-void
-scanning_page_revoke_close_signal (ScanningPage *self)
-{
-    if (self->close_button_handler_id == 0) return; // No need to revoke if not connected to any signal
-
-    g_signal_handler_disconnect(self->close_button, self->close_button_handler_id);
-    self->close_button_handler_id = 0;
-}
-
-void
 scanning_page_set_cancel_signal (ScanningPage *self, GCallback cancel_signal_cb, gpointer user_data)
 {
     self->cancel_button_handler_id = g_signal_connect_swapped(self->cancel_button, "clicked", cancel_signal_cb, user_data);
@@ -138,7 +122,6 @@ scanning_page_dispose(GObject *object)
 {
     ScanningPage *self = SCANNING_PAGE(object);
 
-    scanning_page_revoke_close_signal(self);
     scanning_page_revoke_cancel_signal(self);
 
     GtkWidget *toolbar_view = GTK_WIDGET(self->toolbar_view);

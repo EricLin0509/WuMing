@@ -389,15 +389,6 @@ start_scan_async(ScanContext *ctx)
     g_source_attach(source, g_main_context_default());
 }
 
-/* Clear the list view and force close the dialog */
-static void
-clear_box_list_and_close(ScanContext *ctx)
-{
-  delete_file_data_table_clear(); // Clear the list of delete data
-
-  wuming_window_pop_page(ctx->window); // Pop the scanning page
-}
-
 static void
 scan_context_clear_path(ScanContext *ctx)
 {
@@ -439,7 +430,6 @@ scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_p
   ctx->should_cancel = FALSE;
 
   /* Bind the signal */
-  scanning_page_set_close_signal(scanning_page, (GCallback) clear_box_list_and_close, ctx);
   scanning_page_set_cancel_signal(scanning_page, (GCallback) set_cancel_scan, ctx);
 
   return ctx;
@@ -456,8 +446,9 @@ scan_context_clear(ScanContext **ctx)
 {
   g_return_if_fail(ctx && *ctx);
 
+  delete_file_data_table_clear();
+
   /* Revoke the signal */
-  scanning_page_revoke_close_signal((*ctx)->scanning_page);
   scanning_page_revoke_cancel_signal((*ctx)->scanning_page);
 
   g_mutex_clear(&(*ctx)->mutex);
@@ -472,6 +463,8 @@ static void
 scan_context_reset(ScanContext *ctx)
 {
   g_return_if_fail(ctx);
+
+  delete_file_data_table_clear();
 
   /* Reset `ScanContext` */
   reset_cancel_scan(ctx); // Reset the cancel scan flag
