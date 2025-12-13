@@ -112,41 +112,42 @@ wait_for_process(pid_t pid, int flags)
 }
 
 /* Handle the input event */
-gboolean
-handle_input_event(RingBuffer *ring_buf, int pipefd)
+static gboolean
+handle_output_event(RingBuffer *ring_buf, int pipefd)
 {
     const size_t free_space = ring_buffer_available(ring_buf);
-    const size_t buf_size = CLAMP(buf_size, 512, 4096); // Set the buffer size to 512-4096 bytes
+    const size_t buf_size = MIN(free_space, 4096); // Set the buffer size up to 4096 bytes
 
     char read_buf[buf_size];
     ssize_t n = 0;
 
-    if ((n = read(pipefd, read_buf, buf_size)) > 0) // Read from the pipe
+    if ((n = read(pipefd, read_buf, buf_size)) <= 0) return FALSE; // Read from the pipe
+
+    size_t written = ring_buffer_write(ring_buf, read_buf, n); // Write to the ring buffer
+    if (written < (size_t)n)
     {
-        size_t written = ring_buffer_write(ring_buf, read_buf, n); // Write to the ring buffer
-        if (written < (size_t)n)
-        {
-            g_warning("Ring buffer overflow, lost %zd bytes", n - written);
-        }
-        return TRUE;
+        g_warning("Ring buffer overflow, lost %zd bytes", n - written);
     }
-    return FALSE;
+
+    return TRUE;
 }
 
 /* Process the subprocess stdout message */
 /*
-  * ring_buf: the ring buffer to read the output messages
+  * ring_buf: the ring buffer to store the output messages
+  * pipefd: the pipe file descriptor to read the output messages
   * context: the context data for the callback function
   * callback_function: the callback function to process the output lines
-  * destroy_notify: the cleanup function for the context data
 */
 void
-process_output_lines(RingBuffer *ring_buf, gpointer context,
+process_output_lines(RingBuffer *ring_buf, int pipefd, gpointer context,
                       GSourceFunc callback_function)
 {
     g_return_if_fail(ring_buf != NULL);
     g_return_if_fail(callback_function != NULL);
     g_return_if_fail(context != NULL);
+
+    if (!handle_output_event(ring_buf, pipefd)) return; // Check if there is any output event
 
     char *line;
     while ((line = ring_buffer_find_new_line(ring_buf)) != NULL)

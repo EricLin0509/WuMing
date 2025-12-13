@@ -345,8 +345,7 @@ scan_sync_callback(gpointer user_data)
       return G_SOURCE_REMOVE;
   }
 
-  if (handle_input_event(&ctx->ring_buffer, ctx->pipefd[0]))
-    process_output_lines(&ctx->ring_buffer, ctx, scan_ui_callback);
+  process_output_lines(&ctx->ring_buffer, ctx->pipefd[0], ctx, scan_ui_callback);
 
   const int exit_status = wait_for_process(ctx->pid, WNOHANG);
 

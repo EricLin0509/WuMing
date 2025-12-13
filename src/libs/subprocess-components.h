@@ -47,18 +47,15 @@ get_idle_exit_status(IdleData *idle_data);
 gint
 wait_for_process(pid_t pid, int flags);
 
-/* Handle the input/output event */
-gboolean
-handle_input_event(RingBuffer *ring_buf, int pipefd);
-
 /* Process the subprocess stdout message */
 /*
   * ring_buf: the ring buffer to store the output messages
+  * pipefd: the pipe file descriptor to read the output messages
   * context: the context data for the callback function
   * callback_function: the callback function to process the output lines
 */
 void
-process_output_lines(RingBuffer *ring_buf, gpointer context,
+process_output_lines(RingBuffer *ring_buf, int pipefd, gpointer context,
                       GSourceFunc callback_function);
 
 /* Send the final message from the subprocess to the main process */
