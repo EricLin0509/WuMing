@@ -36,6 +36,14 @@ wuming_window_push_page_by_tag (WumingWindow *self, const char *tag);
 void
 wuming_window_pop_page (WumingWindow *self);
 
+/* Connect `popped` signal */
+gulong
+wuming_window_connect_popped_signal (WumingWindow *self, GCallback callback, gpointer user_data);
+
+/* Revoke the `popped` signal */
+void
+wuming_window_revoke_popped_signal (WumingWindow *self, gulong signal_id);
+
 /* Get current Page tag */
 const char *
 wuming_window_get_current_page_tag (WumingWindow *self);

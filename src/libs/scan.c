@@ -50,6 +50,7 @@ typedef struct ScanContext {
 
   /*No need to protect these fields because they always same after initialize*/
   WumingWindow *window; // The main window
+  gulong popped_signal_id; // The signal id for the popped signal
   SecurityOverviewPage *security_overview_page; // The security overview page
   ScanPage *scan_page; // The scan page
   ScanningPage *scanning_page; // The scanning page
@@ -407,34 +408,6 @@ scan_context_add_path(ScanContext *ctx, const char *path)
   ctx->path = (char *)g_steal_pointer(&path); // Add the new path to the context
 }
 
-ScanContext *
-scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_page, ScanPage *scan_page, ScanningPage *scanning_page, ThreatPage *threat_page)
-{
-  g_return_val_if_fail(window && scanning_page && threat_page, NULL);
-
-  ScanContext *ctx = g_new0(ScanContext, 1);
-  g_mutex_init(&ctx->mutex);
-  g_mutex_init(&ctx->threats_mutex);
-
-  ctx->completed = FALSE;
-  ctx->success = FALSE;
-  ctx->total_files = 0;
-  ctx->total_threats = 0;
-  ctx->window = window;
-  ctx->security_overview_page = security_overview_page;
-  ctx->scan_page = scan_page;
-  ctx->scanning_page = scanning_page;
-  ctx->threat_page = threat_page;
-  ctx->path = NULL;
-
-  ctx->should_cancel = FALSE;
-
-  /* Bind the signal */
-  scanning_page_set_cancel_signal(scanning_page, (GCallback) set_cancel_scan, ctx);
-
-  return ctx;
-}
-
 /* Clear `ScanContext` */
 /*
   * @warning
@@ -449,6 +422,7 @@ scan_context_clear(ScanContext **ctx)
   delete_file_data_table_clear();
 
   /* Revoke the signal */
+  wuming_window_revoke_popped_signal((*ctx)->window, (*ctx)->popped_signal_id);
   scanning_page_revoke_cancel_signal((*ctx)->scanning_page);
 
   g_mutex_clear(&(*ctx)->mutex);
@@ -474,13 +448,47 @@ scan_context_reset(ScanContext *ctx)
 
   /* Reset Widgets */
   scanning_page_reset(ctx->scanning_page);
-  threat_page_clear(ctx->threat_page);
+}
 
-  g_autofree gchar *timestamp = save_last_scan_time(NULL, TRUE);
-  scan_page_show_last_scan_time(ctx->scan_page, NULL, timestamp);
-  scan_page_show_last_scan_time_status(ctx->scan_page, NULL, FALSE);
-  security_overview_page_show_last_scan_time_status(ctx->security_overview_page, NULL, FALSE);
-  security_overview_page_show_health_level(ctx->security_overview_page);
+static void
+on_page_popped(AdwNavigationView* self, AdwNavigationPage* page, gpointer user_data)
+{
+  g_return_if_fail(self && page && user_data);
+
+  ScanContext *ctx = user_data;
+  const char *tag = adw_navigation_page_get_tag(page);
+
+  if (g_strcmp0(tag, "scanning_nav_page") == 0)
+    scan_context_reset(ctx); // Reset the `ScanContext` when the scanning page is popped
+}
+
+ScanContext *
+scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_page, ScanPage *scan_page, ScanningPage *scanning_page, ThreatPage *threat_page)
+{
+  g_return_val_if_fail(window && scanning_page && threat_page, NULL);
+
+  ScanContext *ctx = g_new0(ScanContext, 1);
+  g_mutex_init(&ctx->mutex);
+  g_mutex_init(&ctx->threats_mutex);
+
+  ctx->completed = FALSE;
+  ctx->success = FALSE;
+  ctx->total_files = 0;
+  ctx->total_threats = 0;
+  ctx->window = window;
+  ctx->security_overview_page = security_overview_page;
+  ctx->scan_page = scan_page;
+  ctx->scanning_page = scanning_page;
+  ctx->threat_page = threat_page;
+  ctx->path = NULL;
+
+  ctx->should_cancel = FALSE;
+
+  /* Bind the signal */
+  ctx->popped_signal_id = wuming_window_connect_popped_signal(window, (GCallback) on_page_popped, ctx);
+  scanning_page_set_cancel_signal(scanning_page, (GCallback) set_cancel_scan, ctx);
+
+  return ctx;
 }
 
 void
@@ -490,8 +498,11 @@ start_scan(ScanContext *ctx, const char *path)
 
   scan_context_add_path(ctx, path);
 
-  /* Reset `ScanContext` */
-  scan_context_reset(ctx);
+  g_autofree gchar *timestamp = save_last_scan_time(NULL, TRUE);
+  scan_page_show_last_scan_time(ctx->scan_page, NULL, timestamp);
+  scan_page_show_last_scan_time_status(ctx->scan_page, NULL, FALSE);
+  security_overview_page_show_last_scan_time_status(ctx->security_overview_page, NULL, FALSE);
+  security_overview_page_show_health_level(ctx->security_overview_page);
 
   wuming_window_push_page_by_tag(ctx->window, "scanning_nav_page");
   wuming_window_set_hide_on_close(ctx->window, TRUE, gettext("Scanning...")); // Hide the window instead of closing it

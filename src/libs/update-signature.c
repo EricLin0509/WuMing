@@ -40,6 +40,7 @@ typedef struct UpdateContext {
 
   /*No need to protect these fields because they always same after initialize*/
   WumingWindow *window;
+  gulong popped_signal_id;
   UpdatingPage *updating_page;
 
 } UpdateContext;
@@ -142,26 +143,13 @@ start_update_async(UpdateContext *ctx)
   g_source_attach(source, g_main_context_default());
 }
 
-UpdateContext*
-update_context_new(WumingWindow *window, UpdatingPage *updating_page)
-{
-  g_return_val_if_fail(window && updating_page, NULL);
-
-  UpdateContext *ctx = g_new0(UpdateContext, 1);
-  g_mutex_init(&ctx->mutex);
-
-  ctx->completed = FALSE;
-  ctx->success = FALSE;
-  ctx->window = window;
-  ctx->updating_page = updating_page;
-
-  return ctx;
-}
-
 void
 update_context_clear(UpdateContext **ctx)
 {
   g_return_if_fail(ctx && *ctx);
+
+  /* Revoke signals */
+  wuming_window_revoke_popped_signal((*ctx)->window, (*ctx)->popped_signal_id);
 
   g_mutex_clear(&(*ctx)->mutex);
   g_free(*ctx);
@@ -180,6 +168,40 @@ update_context_reset(UpdateContext *ctx)
 
   /* Reset Widgets */
   updating_page_reset(ctx->updating_page);
+}
+
+static void
+on_page_popped(AdwNavigationView* self, AdwNavigationPage* page, gpointer user_data)
+{
+  g_return_if_fail(self && page && user_data);
+
+  UpdateContext *ctx = user_data;
+
+  const char *tag = adw_navigation_page_get_tag(page);
+
+  if (g_strcmp0(tag, "updating_nav_page") == 0)
+  {
+    update_context_reset(ctx);
+  }
+}
+
+UpdateContext*
+update_context_new(WumingWindow *window, UpdatingPage *updating_page)
+{
+  g_return_val_if_fail(window && updating_page, NULL);
+
+  UpdateContext *ctx = g_new0(UpdateContext, 1);
+  g_mutex_init(&ctx->mutex);
+
+  ctx->completed = FALSE;
+  ctx->success = FALSE;
+  ctx->window = window;
+  ctx->updating_page = updating_page;
+
+  /* Connect signals */
+  ctx->popped_signal_id = wuming_window_connect_popped_signal(window, (GCallback)on_page_popped, ctx);
+
+  return ctx;
 }
 
 void

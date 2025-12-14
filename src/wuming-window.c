@@ -106,6 +106,26 @@ wuming_window_pop_page (WumingWindow *self)
     adw_navigation_view_pop (self->navigation_view);
 }
 
+/* Connect `popped` signal */
+gulong
+wuming_window_connect_popped_signal (WumingWindow *self, GCallback callback, gpointer user_data)
+{
+    g_return_val_if_fail (self != NULL && callback != NULL, 0); // Check if the object is valid
+
+    return g_signal_connect (self->navigation_view, "popped", callback, user_data);
+}
+
+/* Revoke the `popped` signal */
+void
+wuming_window_revoke_popped_signal (WumingWindow *self, gulong signal_id)
+{
+    g_return_if_fail (self != NULL); // Check if the object is valid
+
+    if (signal_id == 0) return;
+
+    g_signal_handler_disconnect (self->navigation_view, signal_id);
+}
+
 /* Get current Page tag */
 const char *
 wuming_window_get_current_page_tag (WumingWindow *self)
