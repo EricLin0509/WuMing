@@ -180,9 +180,7 @@ on_page_popped(AdwNavigationView* self, AdwNavigationPage* page, gpointer user_d
   const char *tag = adw_navigation_page_get_tag(page);
 
   if (g_strcmp0(tag, "updating_nav_page") == 0)
-  {
     update_context_reset(ctx);
-  }
 }
 
 UpdateContext*

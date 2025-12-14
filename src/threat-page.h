@@ -34,9 +34,6 @@ threat_page_add_threat (ThreatPage *self, GtkWidget *row);
 void
 threat_page_remove_threat (ThreatPage *self, GtkWidget *row);
 
-void
-threat_page_clear (ThreatPage *self);
-
 GtkWidget *
 threat_page_new (void);
 

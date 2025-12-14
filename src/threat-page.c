@@ -61,12 +61,6 @@ threat_page_remove_threat (ThreatPage *self, GtkWidget *row)
     scanning_page_set_final_result (scanning_page, FALSE, gettext("All Clear"), gettext("All threats have been removed!"), "status-ok-symbolic");
 }
 
-void
-threat_page_clear (ThreatPage *self)
-{
-    gtk_list_box_remove_all (self->threat_list); // Remove all items from the list
-}
-
 static void
 on_alert_dialog_response (AdwAlertDialog *dialog, GAsyncResult *result, gpointer user_data)
 {
@@ -90,8 +84,8 @@ threat_page_dispose (GObject *object)
 
     GtkWidget *toolbar_view = GTK_WIDGET (self->toolbar_view);
 
+    gtk_list_box_remove_all (self->threat_list); // Remove all items from the list
     g_clear_object (&self->alert_dialog);
-    threat_page_clear (self);
     g_clear_pointer (&toolbar_view, gtk_widget_unparent);
 
     G_OBJECT_CLASS (threat_page_parent_class)->dispose(object);
