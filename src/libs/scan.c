@@ -187,9 +187,6 @@ add_threat_path(ScanContext *ctx, const char *path, const char *virname)
   GtkWidget *delete_button = NULL;
   GtkWidget *expander_row = create_threat_expander_row(&delete_button, path, virname); // Create the action row for the list view
 
-  /* Add the action row to the list view */
-  threat_page_add_threat (ctx->threat_page, expander_row);
-
   /* Add the threat path to the list */
   DeleteFileData *delete_data = delete_file_data_table_insert(GTK_WIDGET(ctx->threat_page), path, expander_row); // Add the delete data to the list
   if (delete_data == NULL) // Failed to add delete data to list
