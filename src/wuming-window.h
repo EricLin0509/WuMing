@@ -76,6 +76,10 @@ wuming_window_close_notification (WumingWindow *self);
 void
 wuming_window_send_toast_notification (WumingWindow *self, const char *message, int timeout);
 
+/* Dismiss toast notification */
+void
+wuming_window_dismiss_toast_notification (WumingWindow *self);
+
 /* Update the signture status */
 void
 wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_signature, gint signature_expiration_time);

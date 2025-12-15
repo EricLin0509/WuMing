@@ -437,6 +437,12 @@ scan_context_reset(ScanContext *ctx)
 
   delete_file_data_table_clear();
 
+  ctx->pid = 0; // Reset the process id
+
+  /* Dismiss toast notification */
+  wuming_window_close_notification(ctx->window);
+  wuming_window_dismiss_toast_notification(ctx->window);
+
   /* Reset `ScanContext` */
   reset_cancel_scan(ctx); // Reset the cancel scan flag
   reset_total_files(ctx); // Reset the total files

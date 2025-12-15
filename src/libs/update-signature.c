@@ -163,6 +163,10 @@ update_context_reset(UpdateContext *ctx)
 
   ctx->pid = 0; // Reset PID
 
+  /* Dismiss toast notification */
+  wuming_window_close_notification(ctx->window);
+  wuming_window_dismiss_toast_notification(ctx->window);
+
   /* Reset `UpdateContext` */
   set_completion_state(ctx, FALSE, FALSE);
 
@@ -206,9 +210,6 @@ void
 start_update(UpdateContext *ctx)
 {
   g_return_if_fail(ctx);
-
-  /* Reset `UpdateContext` */
-  update_context_reset(ctx);
 
   wuming_window_push_page_by_tag (ctx->window, "updating_nav_page");
   wuming_window_set_hide_on_close(ctx->window, TRUE, gettext("Updating...")); // Hide the window instead of closing it

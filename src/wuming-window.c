@@ -272,6 +272,15 @@ wuming_window_send_toast_notification (WumingWindow *self, const char *message, 
     adw_toast_overlay_add_toast (self->toast_overlay, toast);
 }
 
+/* Dismiss toast notification */
+void
+wuming_window_dismiss_toast_notification (WumingWindow *self)
+{
+    g_return_if_fail (self != NULL); // Check if the object is valid
+
+    adw_toast_overlay_dismiss_all (self->toast_overlay);
+}
+
 /* Update the signture status */
 void
 wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_signature, gint signature_expiration_time)
@@ -314,6 +323,7 @@ wuming_window_dispose (GObject *object)
     scan_context_clear (&self->scan_context);
 
     wuming_window_set_hide_on_close (self, FALSE, NULL);
+    wuming_window_dismiss_toast_notification (self);
     wuming_window_close_notification (self);
 
     g_clear_object (&self->prefrences_dialog);
