@@ -96,11 +96,8 @@ static bool file_security_context_take_snapshot(FileSecurityContext *context, co
     }
 
     /* Get the file descriptor if needed */
-    if ((need_dir_fd == NULL || !is_operation_success) && dir_fd != -1) // If the file descriptor is not needed or the operation is failed, close the file descriptor
-    {
-        close(dir_fd);
-    }
-    else if (need_dir_fd != NULL) *need_dir_fd = dir_fd;
+    if (need_dir_fd != NULL && is_operation_success && dir_fd != -1) *need_dir_fd = dir_fd;
+    else if (dir_fd != -1) close(dir_fd);
     dir_fd = -1; // Reset the file descriptor
 
     /* Clean up */
