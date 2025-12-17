@@ -26,6 +26,9 @@
 #include "scanning-page.h"
 #include "threat-page.h"
 
+// Warning: this macro should be started and ended with a space, otherwise may cause comparison error
+#define SYSTEM_DIRECTORIES " /usr /lib /lib64 /etc /opt /var /sys /proc " // System directories that should be warned before deleting
+
 struct _ThreatPage {
     GtkWidget parent_instance;
 
@@ -35,42 +38,153 @@ struct _ThreatPage {
 
     /* Private */
     AdwDialog *alert_dialog;
+    GHashTable *delete_file_table;
 };
 
 G_DEFINE_FINAL_TYPE(ThreatPage, threat_page, GTK_TYPE_WIDGET)
 
+static void
+set_file_properties(GtkWidget *expander_row, const char *path)
+{
+    if (!path || !*path || path[0] != '/') // Check if the path is valid and is absolute
+    {
+        g_warning("Invalid absolute path: %s", path ? path : "(null)");
+        return;
+    }
+
+    /* Get the first directory name in the path */
+    // Because all the paths should be absolute, the first character should be a slash
+    char *second_slash = strchr(path + 1, '/');
+
+    if (second_slash) *second_slash = '\0'; // Cut the path to the first directory name temporarily
+
+    gchar *query = g_strdup_printf(" %s ", path); // Use for searching in the `SYSTEM_DIRECTORIES`
+    gboolean is_system_direcotry = (strstr(SYSTEM_DIRECTORIES, query) != NULL);
+
+    adw_preferences_row_set_title(
+        ADW_PREFERENCES_ROW(expander_row),
+        is_system_direcotry ? 
+            gettext("Maybe a system file, delete it with caution!") : 
+            gettext("Normal file")
+    );
+
+    g_free(query);
+    
+    if (second_slash) *second_slash = '/'; // Restore the path
+}
+
 /* Create a new `AdwExpanderRow` for the threat list view */
 static GtkWidget *
-create_threat_expander_row(GtkWidget **delete_button, const char *path, const char *virname)
+create_threat_expander_row (GtkWidget **delete_button, const char *path, const char *virname)
 {
-    GtkWidget *expander_row = adw_expander_row_new(); // Create the action row for the list view
-    gtk_widget_add_css_class(expander_row, "property"); // Add property syle class to the action row
-    adw_expander_row_set_subtitle(ADW_EXPANDER_ROW(expander_row), path);
+    GtkWidget *expander_row = adw_expander_row_new (); // Create the action row for the list view
+    gtk_widget_add_css_class (expander_row, "property"); // Add property syle class to the action row
+    set_file_properties(expander_row, path); // Set the file properties for the expander row
+    adw_expander_row_set_subtitle (ADW_EXPANDER_ROW (expander_row), path);
 
     /* Delete button for the action row */
-    *delete_button = gtk_button_new();
-    gtk_widget_set_size_request(*delete_button, -1, 40);
-    gtk_widget_add_css_class(*delete_button, "button-default");
-    gtk_widget_set_halign(*delete_button, GTK_ALIGN_CENTER);
-    gtk_widget_set_valign(*delete_button, GTK_ALIGN_CENTER);
+    *delete_button = gtk_button_new ();
+    gtk_widget_set_size_request (*delete_button, -1, 40);
+    gtk_widget_add_css_class (*delete_button, "button-default");
+    gtk_widget_set_halign (*delete_button, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign (*delete_button, GTK_ALIGN_CENTER);
 
-    GtkWidget *content = adw_button_content_new(); // Create the button content
-    adw_button_content_set_label(ADW_BUTTON_CONTENT(content), gettext("Delete"));
-    adw_button_content_set_icon_name(ADW_BUTTON_CONTENT(content), "delete-symbolic");
+    GtkWidget *content = adw_button_content_new (); // Create the button content
+    adw_button_content_set_label (ADW_BUTTON_CONTENT (content), gettext ("Delete"));
+    adw_button_content_set_icon_name (ADW_BUTTON_CONTENT (content), "delete-symbolic");
 
-    gtk_button_set_child(GTK_BUTTON(*delete_button), content);
+    gtk_button_set_child (GTK_BUTTON (*delete_button), content);
 
-    adw_expander_row_add_suffix(ADW_EXPANDER_ROW(expander_row), *delete_button); // Add the delete button to the action row
+    adw_expander_row_add_suffix (ADW_EXPANDER_ROW (expander_row), *delete_button); // Add the delete button to the action row
 
-    GtkWidget *vir_row = adw_action_row_new(); // Create the virname row
-    gtk_widget_add_css_class(vir_row, "property"); // Add property style class to the virname row
+    GtkWidget *vir_row = adw_action_row_new (); // Create the virname row
+    gtk_widget_add_css_class (vir_row, "property"); // Add property style class to the virname row
 
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vir_row), gettext("Threat Identity"));
-    adw_action_row_set_subtitle(ADW_ACTION_ROW(vir_row), virname);
+    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (vir_row), gettext ("Threat Identity"));
+    adw_action_row_set_subtitle (ADW_ACTION_ROW (vir_row), virname);
 
-    adw_expander_row_add_row(ADW_EXPANDER_ROW(expander_row), vir_row); // Add the virname row to the action row
+    adw_expander_row_add_row (ADW_EXPANDER_ROW (expander_row), vir_row); // Add the virname row to the expander row
 
     return expander_row;
+}
+
+/* error operation */
+static void
+delete_error_operation(GtkWidget *expander_row, FileSecurityStatus status)
+{
+    g_return_if_fail(expander_row != NULL);
+
+    gtk_widget_set_sensitive(expander_row, FALSE);
+    switch (status)
+    {
+        case FILE_SECURITY_OK:
+        case FILE_SECURITY_OPERATION_SKIPPED:
+            break;
+        case FILE_SECURITY_DIR_MODIFIED:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(expander_row), gettext("Directory modified, try removing it manually!"));
+            break;
+        case FILE_SECURITY_FILE_MODIFIED:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(expander_row), gettext("File may compromised, try removing it manually!"));
+            break;
+        case FILE_SECURITY_DIR_NOT_FOUND:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(expander_row), gettext("Directory not found!"));
+            break;
+        case FILE_SECURITY_FILE_NOT_FOUND:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(expander_row), gettext("File not found!"));
+            break;
+        case FILE_SECURITY_INVALID_PATH:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(expander_row), gettext("Invalid path!"));
+            break;
+        case FILE_SECURITY_PERMISSION_DENIED:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(expander_row), gettext("Permission denied!"));
+            break;
+        case FILE_SECURITY_OPERATION_FAILED:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(expander_row), gettext("Operation failed!"));
+            break;
+        default:
+            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(expander_row), gettext("Unknown error!"));
+            break;
+    }
+}
+
+static void
+threat_page_remove_threat (ThreatPage *self, GtkWidget *row, FileSecurityStatus status)
+{
+    g_return_if_fail (THREAT_IS_PAGE (self) && GTK_IS_WIDGET (row));
+
+    switch (status)
+    {
+        case FILE_SECURITY_OK:
+            break;
+        case FILE_SECURITY_OPERATION_SKIPPED:
+            return; // Skip the delete operation, do nothing
+        default: // Delete failed, show the error message
+            delete_error_operation(row, status);
+            return;
+    }
+
+    gtk_list_box_remove (self->threat_list, row);
+
+    if (gtk_list_box_get_row_at_index (self->threat_list, 0) != NULL) return;
+
+    /* If has no more threats, pop the page and show the final result */
+    WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
+    wuming_window_pop_page (window);
+
+    ScanningPage *scanning_page = wuming_window_get_component (window, "scanning_page");
+    scanning_page_disable_threat_button (scanning_page);
+    scanning_page_set_final_result (scanning_page, FALSE, gettext("All Clear"), gettext("All threats have been removed!"), "status-ok-symbolic");
+}
+
+static void
+on_delete_button_clicked (DeleteFileData *data)
+{
+    g_return_if_fail (data != NULL);
+    GtkWidget *expander_row = delete_file_data_get_expander_row (data);
+    ThreatPage *page = THREAT_PAGE (gtk_widget_get_ancestor (expander_row, THREAT_TYPE_PAGE));
+
+    FileSecurityStatus status = delete_threat_file (page->delete_file_table, data);
+    threat_page_remove_threat (page, expander_row, status);
 }
 
 gboolean
@@ -83,46 +197,69 @@ threat_page_add_threat (ThreatPage *self, const char *threat_path, const char *t
     GtkWidget *expander_row = create_threat_expander_row (&delete_button, threat_path, threat_name);
     gtk_list_box_prepend (self->threat_list, expander_row); // Add the expander row to the list
 
-    DeleteFileData *delete_data = delete_file_data_table_insert (GTK_WIDGET(self), threat_path, expander_row); // Add the delete data to the list
+    DeleteFileData *delete_data = delete_file_data_table_insert (self->delete_file_table, threat_path, expander_row); // Add the delete data to the list
     if (delete_data == NULL)
     {
         g_critical ("Failed to add delete data to the table");
         return FALSE;
     }
 
-    g_signal_connect_swapped (delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
+    g_signal_connect_swapped (delete_button, "clicked", G_CALLBACK(on_delete_button_clicked), delete_data); // Connect the delete button signal to the `delete_threat_file` function
 
     return TRUE;
 }
 
 void
-threat_page_remove_threat (ThreatPage *self, GtkWidget *row)
+threat_page_clear_threats (ThreatPage *self)
 {
-    gtk_list_box_remove (self->threat_list, row);
+    g_return_if_fail (THREAT_IS_PAGE (self));
 
-    if (gtk_list_box_get_row_at_index (self->threat_list, 0) != NULL) return;
+    gtk_list_box_remove_all (self->threat_list); // Remove all items from the list
+    g_hash_table_remove_all (self->delete_file_table); // Remove all delete data from the table
+}
 
-    // If the list is empty, pop this page from the stack
-    WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
-    wuming_window_pop_page (window);
+static void
+delete_all_threat_files(ThreatPage *self)
+{
+    g_return_if_fail(THREAT_IS_PAGE(self));
 
-    ScanningPage *scanning_page = wuming_window_get_component (window, "scanning_page");
-    scanning_page_disable_threat_button (scanning_page);
-    scanning_page_set_final_result (scanning_page, FALSE, gettext("All Clear"), gettext("All threats have been removed!"), "status-ok-symbolic");
+    GList *keys = NULL;
+    GHashTableIter iter;
+    gpointer key;
+    g_hash_table_iter_init(&iter, self->delete_file_table);
+
+    while (g_hash_table_iter_next(&iter, &key, NULL))
+    {
+        keys = g_list_prepend(keys, key);
+    }
+
+    for (GList *elements = keys; elements != NULL; elements = elements->next)
+    {
+        DeleteFileData *data = (DeleteFileData *)elements->data;
+        GtkWidget *expander_row = delete_file_data_get_expander_row(data);
+        FileSecurityStatus status = delete_threat_file(self->delete_file_table, data);
+        threat_page_remove_threat(self, expander_row, status);
+    }
+
+    g_list_free(keys);
 }
 
 static void
 on_alert_dialog_response (AdwAlertDialog *dialog, GAsyncResult *result, gpointer user_data)
 {
+    g_return_if_fail (user_data != NULL);
+
+    ThreatPage *self = THREAT_PAGE (user_data);
+
     const char *response = adw_alert_dialog_choose_finish (dialog, result);
 
-    if (g_strcmp0 (response, "delete_all") == 0) delete_all_threat_files ();
+    if (g_strcmp0 (response, "delete_all") == 0) delete_all_threat_files (self);
 }
 
 static void
 show_alert_dialog (ThreatPage *self)
 {
-    adw_alert_dialog_choose (ADW_ALERT_DIALOG (self->alert_dialog), GTK_WIDGET (self), NULL, (GAsyncReadyCallback) on_alert_dialog_response, NULL);
+    adw_alert_dialog_choose (ADW_ALERT_DIALOG (self->alert_dialog), GTK_WIDGET (self), NULL, (GAsyncReadyCallback) on_alert_dialog_response, self);
 }
 
 /* GObject essential functions */
@@ -134,7 +271,8 @@ threat_page_dispose (GObject *object)
 
     GtkWidget *toolbar_view = GTK_WIDGET (self->toolbar_view);
 
-    gtk_list_box_remove_all (self->threat_list); // Remove all items from the list
+    threat_page_clear_threats (self);
+    g_hash_table_unref (self->delete_file_table); // Unref the delete data table
     g_clear_object (&self->alert_dialog);
     g_clear_pointer (&toolbar_view, gtk_widget_unparent);
 
@@ -200,6 +338,8 @@ threat_page_init (ThreatPage *self)
 
     self->alert_dialog = build_alert_dialog ();
     g_object_ref_sink (self->alert_dialog);
+
+    self->delete_file_table = delete_file_data_table_new();
 
     g_signal_connect_swapped (self->delete_all_button, "clicked", G_CALLBACK (show_alert_dialog), self);
 }

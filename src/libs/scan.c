@@ -26,8 +26,6 @@
 #include "scan-options-configs.h"
 #include "scan.h"
 
-#include "libs/delete-file.h"
-
 #define CLAMSCAN_PATH "/usr/bin/clamscan"
 
 typedef struct ScanContext {
@@ -358,8 +356,6 @@ scan_context_clear(ScanContext **ctx)
 {
   g_return_if_fail(ctx && *ctx);
 
-  delete_file_data_table_clear();
-
   /* Revoke the signal */
   wuming_window_revoke_popped_signal((*ctx)->window, (*ctx)->popped_signal_id);
   scanning_page_revoke_cancel_signal((*ctx)->scanning_page);
@@ -377,8 +373,6 @@ scan_context_reset(ScanContext *ctx)
 {
   g_return_if_fail(ctx);
 
-  delete_file_data_table_clear();
-
   ctx->pid = 0; // Reset the process id
 
   /* Dismiss toast notification */
@@ -392,6 +386,7 @@ scan_context_reset(ScanContext *ctx)
   set_completion_state(ctx, FALSE, FALSE); // Reset the completion state
 
   /* Reset Widgets */
+  threat_page_clear_threats(ctx->threat_page);
   scanning_page_reset(ctx->scanning_page);
 }
 

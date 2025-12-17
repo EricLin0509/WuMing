@@ -24,21 +24,11 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 
+#include "file-security-status.h"
+
 #define FILE_SECURITY_VALIDATE_STRICT 0x10 // Validate the file integrity strictly
 
 typedef struct FileSecurityContext FileSecurityContext;
-
-typedef enum FileSecurityStatus {
-    FILE_SECURITY_OK, // File is safe
-    FILE_SECURITY_DIR_MODIFIED, // Directory has been modified
-    FILE_SECURITY_FILE_MODIFIED, // File has been modified
-    FILE_SECURITY_DIR_NOT_FOUND, // Directory not found
-    FILE_SECURITY_FILE_NOT_FOUND, // File not found
-    FILE_SECURITY_INVALID_PATH, // Invalid path
-    FILE_SECURITY_INVALID_CONTEXT, // Invalid file security context
-    FILE_SECURITY_PERMISSION_DENIED, // Permission denied
-    FILE_SECURITY_OPERATION_FAILED, // Operation failed
-} FileSecurityStatus; // File security status code
 
 /* Initialize the file security context */
 /*

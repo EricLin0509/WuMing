@@ -34,19 +34,10 @@
 #include "file-security.h"
 #include "subprocess-components.h"
 
-#include "threat-page.h"
-
-// Warning: this macro should be started and ended with a space, otherwise may cause comparison error
-#define SYSTEM_DIRECTORIES " /usr /lib /lib64 /etc /opt /var /sys /proc " // System directories that should be warned before deleting
-
 #define PKEXEC_PATH "/usr/bin/pkexec" // Path to the `pkexec` binary
-
-static GHashTable *delete_file_table = NULL; // Use to store the information of files to be deleted
 
 typedef struct DeleteFileData {
     const char *path;
-    gboolean is_external_path_string; // Whether to use the external path string or the internal path string
-    GtkWidget *threat_page;
     GtkWidget *expander_row;
 
     FileSecurityContext *security_context; // Security context for the file
@@ -59,11 +50,7 @@ delete_file_data_clear(DeleteFileData **data)
 {
     g_return_if_fail(data != NULL && *data != NULL);
 
-    file_security_context_clear(&(*data)->security_context, NULL, NULL);
-    threat_page_remove_threat(THREAT_PAGE((*data)->threat_page), (*data)->expander_row); // Remove the action row from the list view
-
-    if ((*data)->is_external_path_string) g_clear_pointer((void **)(&(*data)->path), g_free); // Only free the external path string
-
+    g_clear_pointer((void **)(&(*data)->path), g_free);
     g_free(*data);
 
     *data = NULL;
@@ -80,95 +67,34 @@ clear_hash_table_element(gpointer data)
     delete_file_data_clear(&delete_file_data);
 }
 
-/* Ensure the GHashTable exists */
-static GHashTable *
-ensure_delete_file_table(void)
+/* Create a new delete file data structure hash table */
+GHashTable *
+delete_file_data_table_new(void)
 {
-    if (!delete_file_table)
-    {
-        delete_file_table = g_hash_table_new_full(
-                                    g_direct_hash,
-                                    g_direct_equal,
-                                    NULL,
-                                    (GDestroyNotify) clear_hash_table_element);
-    }
-
-    return delete_file_table;
-}
-
-/* Set file properties */
-/*
-  * first initialize the file security context using `secure_open_and_verify()`
-  * check file whether is a file inside the system directory
-  * and set the properties of the AdwExpanderRow
-  * Warning: the AdwExpanderRow widget MUST have `subtitle` property
-*/
-static gboolean
-set_file_properties(DeleteFileData *data)
-{
-    g_return_val_if_fail(data != NULL, FALSE);
-    g_return_val_if_fail(data->security_context != NULL, FALSE);
-
-    if (!data->expander_row || !GTK_IS_WIDGET(data->expander_row)) return FALSE; // Check if the action row is valid
-
-    const char *path = data->path;
-
-    if (!path || !*path || path[0] != '/') // Check if the path is valid and is absolute
-    {
-        g_warning("Invalid absolute path: %s", path ? path : "(null)");
-        return FALSE;
-    }
-
-    /* Get the first directory name in the path */
-    // Because all the paths should be absolute, the first character should be a slash
-    char *second_slash = strchr(path + 1, '/');
-    /*
-      * if there is no second slash, copy the whole path
-      * else, copy the part of the path before the second slash
-    */
-    char *path_prefix = second_slash ? g_strndup(path, second_slash - path) : g_strdup(path);
-
-    gchar *query = g_strdup_printf(" %s ", path_prefix); // Use for searching in the `SYSTEM_DIRECTORIES`
-    gboolean is_system_direcotry = (strstr(SYSTEM_DIRECTORIES, query) != NULL);
-
-    adw_preferences_row_set_title(
-        ADW_PREFERENCES_ROW(data->expander_row),
-        is_system_direcotry ? 
-            gettext("Maybe a system file, delete it with caution!") : 
-            gettext("Normal file")
-    );
-
-    g_free(query);
-    g_free(path_prefix);
-    return TRUE;
+        return g_hash_table_new_full(
+                            g_direct_hash,
+                            g_direct_equal,
+                            NULL,
+                            (GDestroyNotify) clear_hash_table_element);
 }
 
 /* Create a new delete file data structure */
 // Tips: this also creates a new security context for the file
-// Warning: the AdwExpanderRow MUST be added to the GtkListBox before calling this function
+// @warning the `path` string must be malloced
 static DeleteFileData *
-delete_file_data_new(GtkWidget *threat_page, const char *path, GtkWidget *expander_row)
+delete_file_data_new(const char *path, GtkWidget *expander_row)
 {
-    if (!threat_page || !GTK_IS_WIDGET(threat_page) ||
-       !expander_row || !GTK_IS_WIDGET(expander_row) ||
-        gtk_widget_get_ancestor(expander_row, THREAT_TYPE_PAGE) != threat_page) // Check if the expander_row is a child of the threat_page
-    {
-        g_critical("[ERROR] Invalid parameters, threat_page: %p, expander_row: %p", threat_page, expander_row);
-        return NULL;
-    }
+    g_return_val_if_fail(path != NULL, NULL);
 
     DeleteFileData *data = g_new0(DeleteFileData, 1);
-    data->is_external_path_string = path != NULL; // Whether to use the external path string or the internal path string
-    data->path = data->is_external_path_string ? path : adw_expander_row_get_subtitle(ADW_EXPANDER_ROW(expander_row)), // Choose one of the two to get the path
-    data->threat_page = threat_page;
+    data->path = path;
     data->expander_row = expander_row;
-    data->security_context = file_security_context_new(data->path, FALSE, NULL, NULL);
+    data->security_context = file_security_context_new(path, FALSE, NULL, NULL);
 
-    if (!set_file_properties(data))
+    if (!data->security_context)
     {
-        g_critical("[ERROR] Failed to set file properties");
+        g_critical("[ERROR] Failed to create new security context for file");
         delete_file_data_clear(&data);
-        return NULL;
     }
 
     return data;
@@ -177,77 +103,38 @@ delete_file_data_new(GtkWidget *threat_page, const char *path, GtkWidget *expand
 /* Insert a new delete file data structure to the hash table */
 // @return a new created DeleteFileData structure
 DeleteFileData *
-delete_file_data_table_insert(GtkWidget *threat_page, const char *path, GtkWidget *expander_row)
+delete_file_data_table_insert(GHashTable *delete_file_table, const char *path, GtkWidget *expander_row)
 {
-    DeleteFileData *data = delete_file_data_new(threat_page, path, expander_row);
+    g_return_val_if_fail(delete_file_table != NULL, NULL);
+
+    DeleteFileData *data = delete_file_data_new(path, expander_row);
     if (!data)
     {
         g_critical("[ERROR] Failed to create new delete file data structure");
-        return NULL;
+        return data;
     }
-
-    delete_file_table = ensure_delete_file_table();
 
     g_hash_table_insert(delete_file_table, data, data); // Insert the data structure to the hash table
 
     return data;
 }
 
-/* Remove a delete file data structure from the hash table */
-// @warning this also clear the DeleteFileData structure and the security context in the hash table
-void
-delete_file_data_table_remove(DeleteFileData *data)
+/* Get expander_row from DeleteFileData structure */
+GtkWidget *
+delete_file_data_get_expander_row(DeleteFileData *data)
 {
-    g_return_if_fail(data != NULL);
+    g_return_val_if_fail(data != NULL, NULL);
 
-    if (!delete_file_table) return; // Hash table doesn't initialized, return
+    return data->expander_row;
+}
+
+/* Remove a delete file data structure from the hash table */
+static void
+delete_file_data_table_remove(GHashTable *delete_file_table, DeleteFileData *data)
+{
+    g_return_if_fail(data != NULL && delete_file_table != NULL);
 
     g_hash_table_remove(delete_file_table, data); // This also clears the delete file data structure and the security context
-}
-
-/* Clear the delete file data structure hash table */
-// Tips: this also clears the DeleteFileData structures and the security contexts in the hash table
-void
-delete_file_data_table_clear(void)
-{
-    if (!delete_file_table) return;
-
-    g_hash_table_remove_all(delete_file_table);
-    delete_file_table = NULL;
-}
-
-/* error operation */
-static void
-error_operation(DeleteFileData *data, FileSecurityStatus status)
-{
-    gtk_widget_set_sensitive(data->expander_row, FALSE);
-    switch (status)
-    {
-        case FILE_SECURITY_DIR_MODIFIED:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Directory modified, try removing it manually!"));
-            break;
-        case FILE_SECURITY_FILE_MODIFIED:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("File may compromised, try removing it manually!"));
-            break;
-        case FILE_SECURITY_DIR_NOT_FOUND:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Directory not found!"));
-            break;
-        case FILE_SECURITY_FILE_NOT_FOUND:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("File not found!"));
-            break;
-        case FILE_SECURITY_INVALID_PATH:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Invalid path!"));
-            break;
-        case FILE_SECURITY_PERMISSION_DENIED:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Permission denied!"));
-            break;
-        case FILE_SECURITY_OPERATION_FAILED:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Operation failed!"));
-            break;
-        default:
-            adw_preferences_row_set_title(ADW_PREFERENCES_ROW(data->expander_row), gettext("Unknown error!"));
-            break;
-    }
 }
 
 /* Add audit log for if user attempted to delete a file */
@@ -263,30 +150,29 @@ log_deletion_attempt(const char *path)
 }
 
 /* Delete threat files in elevated mode */
-static void
-delete_threat_file_elevated(DeleteFileData *data)
+static FileSecurityStatus
+delete_threat_file_elevated(GHashTable *delete_file_table, DeleteFileData *data)
 {
-    g_return_if_fail(data && data->security_context);
+    g_return_val_if_fail(delete_file_table, FILE_SECURITY_OPERATION_FAILED);
+    g_return_val_if_fail(data && data->security_context, FILE_SECURITY_OPERATION_FAILED);
 
     char *shm_name = NULL;
     FileSecurityContext *copied_context = file_security_context_copy(data->security_context, TRUE, &shm_name); // Copy the security context to shared memory
     if (!copied_context)
     {
         g_critical("[ERROR] Failed to copy security context to shared memory");
-        error_operation(data, FILE_SECURITY_OPERATION_FAILED);
-        return;
+        return FILE_SECURITY_OPERATION_FAILED;
     }
 
-    pid_t pid;
+    pid_t pid = 0;
 
     if (!spawn_new_process_no_pipes(&pid, PKEXEC_PATH, "pkexec", HELPER_PATH, // `HELPER_PATH` is defined in `meson.build`
                                     shm_name, data->path, NULL)) // Spawn the helper process
     {
         /* Process spawn failed */
         g_critical("[ERROR] Failed to spawn helper process");
-        error_operation(data, FILE_SECURITY_OPERATION_FAILED);
         file_security_context_clear(&copied_context, &shm_name, NULL);
-        return;
+        return FILE_SECURITY_OPERATION_FAILED;
     }
 
     int exit_status = wait_for_process(pid, 0); // Wait for the helper process to finish
@@ -295,38 +181,29 @@ delete_threat_file_elevated(DeleteFileData *data)
     {
         g_warning("[WARNING] User dismissed the elevation request");
         file_security_context_clear(&copied_context, &shm_name, NULL);
-        return;
+        return FILE_SECURITY_OPERATION_SKIPPED;
     }
 
     exit_status = (exit_status < FILE_SECURITY_OK || exit_status > FILE_SECURITY_OPERATION_FAILED) ? FILE_SECURITY_OPERATION_FAILED : exit_status; // Check if the exit status is valid
 
-    if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK)
-    {
-        g_critical("[ERROR] Helper process returned error: %d", exit_status);
-        error_operation(data, (FileSecurityStatus)exit_status);
-        file_security_context_clear(&copied_context, &shm_name, NULL);
-        return;
-    }
+    if ((FileSecurityStatus)exit_status != FILE_SECURITY_OK) g_critical("[ERROR] Helper process returned error: %d", exit_status);
 
     // Clean up
     file_security_context_clear(&copied_context, &shm_name, NULL);
     log_deletion_attempt(data->path);
-    delete_file_data_table_remove(data); // Remove the data structure from the list
-    return;
+    delete_file_data_table_remove(delete_file_table, data); // Remove the data structure from the list
+    return (FileSecurityStatus)exit_status;
 }
 
 /* Delete threat files */
 /*
-  * this function should pass a AdwExpanderRow widget to the function
-  * because the function needs to remove the row from the GtkListBox
+  * Delete a threat file and remove the delete file data structure from the hash table
 */
-void
-delete_threat_file(DeleteFileData *data)
+FileSecurityStatus
+delete_threat_file(GHashTable *delete_file_table, DeleteFileData *data)
 {
-    g_return_if_fail(data != NULL);
-    g_return_if_fail(data->security_context != NULL);
-
-    if (!data->expander_row || !GTK_IS_WIDGET(data->expander_row)) return; // Check if the action row is valid
+    g_return_val_if_fail(data != NULL, FILE_SECURITY_OPERATION_FAILED);
+    g_return_val_if_fail(data->security_context != NULL, FILE_SECURITY_OPERATION_FAILED);
 
     /* Delete file */
     FileSecurityStatus result = file_security_secure_delete(data->security_context, data->path, 0);
@@ -336,40 +213,19 @@ delete_threat_file(DeleteFileData *data)
         {
             case EACCES:
                 g_warning("[WARNING] Permission denied, use elevated mode to delete the file");
-                delete_threat_file_elevated(data);
+                return delete_threat_file_elevated(delete_file_table, data);
                 break;
             default:
-                error_operation(data, result);
+                break;
         }
     }
     else // If the file is deleted successfully, show the success message and add audit log
     {
         g_print("[INFO] File deleted: %s\n", data->path);
         log_deletion_attempt(data->path);
-        delete_file_data_table_remove(data); // Remove the data structure from the list
+        delete_file_data_table_remove(delete_file_table, data);
     }
+
+    return result;
 }
 
-void
-delete_all_threat_files(void)
-{
-    if (!delete_file_table) return;
-
-    GList *keys = NULL;
-    GHashTableIter iter;
-    gpointer key;
-    g_hash_table_iter_init(&iter, delete_file_table);
-
-    while (g_hash_table_iter_next(&iter, &key, NULL))
-    {
-        keys = g_list_prepend(keys, key);
-    }
-
-    for (GList *elements = keys; elements != NULL; elements = elements->next)
-    {
-        DeleteFileData *data = (DeleteFileData *)elements->data;
-        delete_threat_file(data);
-    }
-
-    g_list_free(keys);
-}

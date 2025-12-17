@@ -24,31 +24,27 @@
 
 #include <adwaita.h>
 
+#include "file-security-status.h"
+
 typedef struct DeleteFileData DeleteFileData;
+
+/* Create a new delete file data structure hash table */
+GHashTable *
+delete_file_data_table_new(void);
 
 /* Insert a new delete file data structure to the hash table */
 // @return a new created DeleteFileData structure
+// @warning the `path` string must be malloced
 DeleteFileData *
-delete_file_data_table_insert(GtkWidget *threat_page, const char *path, GtkWidget *expander_row);
+delete_file_data_table_insert(GHashTable *delete_file_table, const char *path, GtkWidget *expander_row);
 
-/* Remove a delete file data structure from the hash table */
-// @warning this also clear the DeleteFileData structure and the security context in the hash table
-void
-delete_file_data_table_remove(DeleteFileData *data);
-
-/* Clear the delete file data structure hash table */
-// Tips: this also clears the DeleteFileData structures and the security contexts in the hash table
-void
-delete_file_data_table_clear(void);
+/* Get expander_row from DeleteFileData structure */
+GtkWidget *
+delete_file_data_get_expander_row(DeleteFileData *data);
 
 /* Delete threat files */
 /*
-  * this function should pass a AdwExpanderRow widget to the function
-  * because the function needs to remove the row from the GtkListBox
+  * Delete a threat file and remove the delete file data structure from the hash table
 */
-void
-delete_threat_file(DeleteFileData *data);
-
-/* Delete all threat files in the threat page */
-void
-delete_all_threat_files(void);
+FileSecurityStatus
+delete_threat_file(GHashTable *delete_file_table, DeleteFileData *data);
