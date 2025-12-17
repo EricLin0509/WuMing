@@ -26,7 +26,7 @@
 #include "scan-options-configs.h"
 #include "scan.h"
 
-#include "delete-file.h"
+#include "libs/delete-file.h"
 
 #define CLAMSCAN_PATH "/usr/bin/clamscan"
 
@@ -141,68 +141,6 @@ reset_total_files(ScanContext *ctx)
   g_atomic_int_set(&ctx->total_files, 0);
 }
 
-/* Create a new `AdwActionRow` for the threat list view */
-static GtkWidget*
-create_threat_expander_row(GtkWidget **delete_button, const char *path, const char *virname)
-{
-  GtkWidget *expander_row = adw_expander_row_new(); // Create the action row for the list view
-  gtk_widget_add_css_class(expander_row, "property"); // Add property syle class to the action row
-  adw_expander_row_set_subtitle(ADW_EXPANDER_ROW(expander_row), path);
-
-  /* Delete button for the action row */
-  *delete_button = gtk_button_new();
-  gtk_widget_set_size_request(*delete_button, -1, 40);
-  gtk_widget_add_css_class(*delete_button, "button-default");
-  gtk_widget_set_halign(*delete_button, GTK_ALIGN_CENTER);
-  gtk_widget_set_valign(*delete_button, GTK_ALIGN_CENTER);
-
-  GtkWidget *content = adw_button_content_new(); // Create the button content
-  adw_button_content_set_label(ADW_BUTTON_CONTENT(content), gettext("Delete"));
-  adw_button_content_set_icon_name(ADW_BUTTON_CONTENT(content), "delete-symbolic");
-
-  gtk_button_set_child(GTK_BUTTON(*delete_button), content);
-  
-  adw_expander_row_add_suffix(ADW_EXPANDER_ROW(expander_row), *delete_button); // Add the delete button to the action row
-
-  GtkWidget *vir_row = adw_action_row_new(); // Create the virname row
-  gtk_widget_add_css_class(vir_row, "property"); // Add property style class to the virname row
-
-  adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vir_row), gettext("Threat Identity"));
-  adw_action_row_set_subtitle(ADW_ACTION_ROW(vir_row), virname);
-
-  adw_expander_row_add_row(ADW_EXPANDER_ROW(expander_row), vir_row); // Add the virname row to the action row
-
-  return expander_row;
-}
-
-/* thread-safe method to add/clear a threat path to the list */
-static gboolean
-add_threat_path(ScanContext *ctx, const char *path, const char *virname)
-{
-  g_return_val_if_fail(ctx, FALSE);
-  g_return_val_if_fail(path, FALSE);
-
-  g_mutex_lock(&ctx->threats_mutex);
-
-  GtkWidget *delete_button = NULL;
-  GtkWidget *expander_row = create_threat_expander_row(&delete_button, path, virname); // Create the action row for the list view
-
-  /* Add the threat path to the list */
-  DeleteFileData *delete_data = delete_file_data_table_insert(GTK_WIDGET(ctx->threat_page), path, expander_row); // Add the delete data to the list
-  if (delete_data == NULL) // Failed to add delete data to list
-  {
-    g_critical("Failed to add delete data to list");
-    g_mutex_unlock(&ctx->threats_mutex);
-    return FALSE;
-  }
-
-  g_signal_connect_swapped(delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
-
-  g_mutex_unlock(&ctx->threats_mutex);
-
-  return TRUE;
-}
-
 static char *
 get_status_text(ScanContext *ctx)
 {
@@ -239,11 +177,15 @@ scan_ui_callback(gpointer user_data)
     *status_marker = '\0'; // Replace the last space with null terminator
     virname = colon + 2 < status_marker ? colon + 2 : NULL; // Get the virname from the message
 
-    if (add_threat_path(ctx, message, virname)) // Ensure the threat path can be added to the list
+    g_mutex_lock(&ctx->threats_mutex);
+
+    if (threat_page_add_threat(ctx->threat_page, message, virname)) // Ensure the threat path can be added to the list
     {
       inc_total_files(ctx);
       inc_total_threats(ctx);
     }
+
+    g_mutex_unlock(&ctx->threats_mutex);
   }
   else if ((status_marker = strstr(message, " OK\0")) != NULL) inc_total_files(ctx);
   else return G_SOURCE_REMOVE; // Ignore the message if it is not a threat or OK message

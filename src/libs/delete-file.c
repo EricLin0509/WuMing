@@ -150,14 +150,12 @@ static DeleteFileData *
 delete_file_data_new(GtkWidget *threat_page, const char *path, GtkWidget *expander_row)
 {
     if (!threat_page || !GTK_IS_WIDGET(threat_page) ||
-       !expander_row || !GTK_IS_WIDGET(expander_row)) // Check if the expander_row is a child of the threat_page
+       !expander_row || !GTK_IS_WIDGET(expander_row) ||
+        gtk_widget_get_ancestor(expander_row, THREAT_TYPE_PAGE) != threat_page) // Check if the expander_row is a child of the threat_page
     {
         g_critical("[ERROR] Invalid parameters, threat_page: %p, expander_row: %p", threat_page, expander_row);
         return NULL;
     }
-
-    /* Add the action row to the list view */
-    threat_page_add_threat (THREAT_PAGE(threat_page), expander_row);
 
     DeleteFileData *data = g_new0(DeleteFileData, 1);
     data->is_external_path_string = path != NULL; // Whether to use the external path string or the internal path string

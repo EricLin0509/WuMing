@@ -28,8 +28,8 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (ThreatPage, threat_page, THREAT, PAGE, GtkWidget)
 
-void
-threat_page_add_threat (ThreatPage *self, GtkWidget *row);
+gboolean
+threat_page_add_threat (ThreatPage *self, const char *threat_path, const char *threat_name);
 
 void
 threat_page_remove_threat (ThreatPage *self, GtkWidget *row);

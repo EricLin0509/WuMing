@@ -39,10 +39,60 @@ struct _ThreatPage {
 
 G_DEFINE_FINAL_TYPE(ThreatPage, threat_page, GTK_TYPE_WIDGET)
 
-void
-threat_page_add_threat (ThreatPage *self, GtkWidget *row)
+/* Create a new `AdwExpanderRow` for the threat list view */
+static GtkWidget *
+create_threat_expander_row(GtkWidget **delete_button, const char *path, const char *virname)
 {
-    gtk_list_box_prepend (self->threat_list, GTK_WIDGET (row));
+    GtkWidget *expander_row = adw_expander_row_new(); // Create the action row for the list view
+    gtk_widget_add_css_class(expander_row, "property"); // Add property syle class to the action row
+    adw_expander_row_set_subtitle(ADW_EXPANDER_ROW(expander_row), path);
+
+    /* Delete button for the action row */
+    *delete_button = gtk_button_new();
+    gtk_widget_set_size_request(*delete_button, -1, 40);
+    gtk_widget_add_css_class(*delete_button, "button-default");
+    gtk_widget_set_halign(*delete_button, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(*delete_button, GTK_ALIGN_CENTER);
+
+    GtkWidget *content = adw_button_content_new(); // Create the button content
+    adw_button_content_set_label(ADW_BUTTON_CONTENT(content), gettext("Delete"));
+    adw_button_content_set_icon_name(ADW_BUTTON_CONTENT(content), "delete-symbolic");
+
+    gtk_button_set_child(GTK_BUTTON(*delete_button), content);
+
+    adw_expander_row_add_suffix(ADW_EXPANDER_ROW(expander_row), *delete_button); // Add the delete button to the action row
+
+    GtkWidget *vir_row = adw_action_row_new(); // Create the virname row
+    gtk_widget_add_css_class(vir_row, "property"); // Add property style class to the virname row
+
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(vir_row), gettext("Threat Identity"));
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(vir_row), virname);
+
+    adw_expander_row_add_row(ADW_EXPANDER_ROW(expander_row), vir_row); // Add the virname row to the action row
+
+    return expander_row;
+}
+
+gboolean
+threat_page_add_threat (ThreatPage *self, const char *threat_path, const char *threat_name)
+{
+    g_return_val_if_fail (THREAT_IS_PAGE (self), FALSE);
+    g_return_val_if_fail (threat_path != NULL, FALSE);
+
+    GtkWidget *delete_button = NULL;
+    GtkWidget *expander_row = create_threat_expander_row (&delete_button, threat_path, threat_name);
+    gtk_list_box_prepend (self->threat_list, expander_row); // Add the expander row to the list
+
+    DeleteFileData *delete_data = delete_file_data_table_insert (GTK_WIDGET(self), threat_path, expander_row); // Add the delete data to the list
+    if (delete_data == NULL)
+    {
+        g_critical ("Failed to add delete data to the table");
+        return FALSE;
+    }
+
+    g_signal_connect_swapped (delete_button, "clicked", G_CALLBACK(delete_threat_file), delete_data); // Connect the delete button signal to the `delete_threat_file` function
+
+    return TRUE;
 }
 
 void
