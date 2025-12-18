@@ -38,7 +38,7 @@ struct _ScanPage {
   GtkButton          *scan_a_folder_button;
 
   /* Private */
-  GFile              *initial_folder;
+  GtkFileDialog *dialog;
 };
 
 G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
@@ -166,13 +166,7 @@ file_chooser (GSimpleAction *action,
 
   g_print("[INFO] Choose a file\n");
 
-  GtkFileDialog *dialog;
-  dialog = gtk_file_dialog_new ();
-  gtk_file_dialog_set_initial_folder (dialog, self->initial_folder); // Set initial folder
-
-  gtk_file_dialog_open (dialog, GTK_WINDOW (window), NULL, start_scan_file, context); // Select a file
-
-  g_object_unref (dialog);
+  gtk_file_dialog_open (self->dialog, GTK_WINDOW (window), NULL, start_scan_file, context); // Select a file
 }
 
 static void
@@ -190,13 +184,7 @@ folder_chooser (GSimpleAction *action,
 
   g_print("[INFO] Choose a folder\n");
 
-  GtkFileDialog *dialog;
-  dialog = gtk_file_dialog_new ();
-  gtk_file_dialog_set_initial_folder (dialog, self->initial_folder); // Set initial folder
-
-  gtk_file_dialog_select_folder (dialog, GTK_WINDOW (window), NULL, start_scan_folder, context); // Select a folder
-
-  g_object_unref (dialog);
+  gtk_file_dialog_select_folder (self->dialog, GTK_WINDOW (window), NULL, start_scan_folder, context); // Select a folder
 }
 
 /*GObject Essential Functions */
@@ -210,8 +198,6 @@ static void
 scan_page_dispose(GObject *gobject)
 {
   ScanPage *self = SCAN_PAGE (gobject);
-
-  g_clear_object (&self->initial_folder); // Clear the initial folder
 
   GApplication *app = g_application_get_default();
 
@@ -267,7 +253,8 @@ scan_page_init (ScanPage *self)
   gtk_widget_init_template (GTK_WIDGET (self));
 
   /* Set initial folder */
-  self->initial_folder = g_file_new_for_path ("/"); // Set initial folder to root directory
+  self->dialog = gtk_file_dialog_new();
+  g_object_ref_sink(self->dialog);
 
   /* Map scan actions */
   GApplication *app = g_application_get_default();
