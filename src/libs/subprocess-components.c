@@ -215,7 +215,7 @@ build_command_args(const char *command, va_list args)
 // path & command: use for `execv()`
 // This function MUST end with a NULL argument to indicate the end of the arguments list
 gboolean
-spawn_new_process(int *pipefd, pid_t *pid, const char *path, const char *command, ...)
+spawn_new_process(int pipefd[2], pid_t *pid, const char *path, const char *command, ...)
 {
     if (access(path, X_OK) == -1) // First check if the path is valid
     {
