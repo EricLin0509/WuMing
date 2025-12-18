@@ -314,10 +314,31 @@ wuming_window_on_drag_drop (GtkDropTarget* self, const GValue* value, gdouble x,
 }
 
 /* GObject essential functions */
+
+static void
+goto_scan_page_action (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
+{
+    g_return_if_fail (user_data != NULL); // Check if the object is valid
+
+    WumingWindow *self = user_data;
+
+    adw_view_stack_set_visible_child_name (self->view_stack, "scan");
+}
+
+static const GActionEntry window_actions[] = {
+  { "goto-scan-page", goto_scan_page_action }
+};
+
 static void
 wuming_window_dispose (GObject *object)
 {
     WumingWindow *self = WUMING_WINDOW (object);
+
+    g_action_map_remove_action_entries (G_ACTION_MAP (self),
+	                                 window_actions,
+	                                 G_N_ELEMENTS (window_actions));
 
     signature_status_clear (&self->status);
     update_context_clear (&self->update_context);
@@ -455,7 +476,6 @@ wuming_window_init_settings (WumingWindow *self, GSettings *settings)
     update_signature_page_show_servicestat (self->update_signature_page, service_status);
 
     /* Update the `SecurityOverviewPage` */
-    security_overview_page_connect_goto_scan_page_signal (self->security_overview_page);
     security_overview_page_show_health_level (self->security_overview_page);
 }
 
@@ -483,6 +503,11 @@ wuming_window_init (WumingWindow *self)
     gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->drop_target));
 
     self->is_hidden = FALSE;
+
+    g_action_map_add_action_entries (G_ACTION_MAP (self),
+	                                 window_actions,
+	                                 G_N_ELEMENTS (window_actions),
+	                                 self);
 
     self->app = g_application_get_default ();
 }

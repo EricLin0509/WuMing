@@ -31,7 +31,6 @@ struct _SecurityOverviewPage {
 
     AdwStatusPage *status_page;
     GtkButton *scan_overview_button;
-    gulong scan_overview_button_handler_id;
     GtkButton *signature_overview_button;
     GtkButton *service_overview_button;
 
@@ -49,28 +48,6 @@ security_overview_page_set_css_style (GtkWidget *widget, const char *style)
     gtk_widget_remove_css_class(widget, "button-error");
 
     gtk_widget_add_css_class(widget, style);
-}
-
-static void
-goto_scan_page_cb (GtkButton *button, gpointer user_data)
-{
-    AdwViewStack *view_stack = user_data;
-    adw_view_stack_set_visible_child_name (view_stack, "scan");
-}
-
-/* Let `scan_overview_button` connect signal to `clicked` signal of goto scan page */
-/*
-  * @warning
-  * This function should be called when `wuming-window` initialized.
-*/
-void
-security_overview_page_connect_goto_scan_page_signal (SecurityOverviewPage *self)
-{
-    g_return_if_fail(self != NULL);
-
-    AdwViewStack *view_stack = ADW_VIEW_STACK (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_VIEW_STACK));
-
-    self->scan_overview_button_handler_id = g_signal_connect (self->scan_overview_button, "clicked", G_CALLBACK (goto_scan_page_cb), view_stack);
 }
 
 /* Show the last scan time status on the security overview page. */
@@ -248,8 +225,6 @@ security_overview_page_dispose (GObject *object)
 {
     SecurityOverviewPage *self = SECURITY_OVERVIEW_PAGE (object);
 
-    g_signal_handler_disconnect (self->scan_overview_button, self->scan_overview_button_handler_id);
-
     GtkWidget *status_page = GTK_WIDGET (self->status_page);
     g_clear_pointer (&status_page, gtk_widget_unparent);
 
@@ -264,7 +239,6 @@ security_overview_page_finalize (GObject *object)
     /* Reset all widgets */
     self->status_page = NULL;
     self->scan_overview_button = NULL;
-    self->scan_overview_button_handler_id = 0;
     self->signature_overview_button = NULL;
 
     self->health_level = 0;

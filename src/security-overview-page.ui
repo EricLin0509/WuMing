@@ -25,6 +25,7 @@
 
                     <child>
                       <object class="GtkButton" id="scan_overview_button">
+                        <property name="action-name">win.goto-scan-page</property>
                         <property name="child">
                           <object class="AdwButtonContent">
                             <property name="can-shrink">true</property>
