@@ -33,51 +33,28 @@ G_DECLARE_FINAL_TYPE (ScanPage, scan_page, SCAN, PAGE, GtkWidget)
   * @param self
   * `ScanPage` object
   * 
-  * @param setting [OPTIONAL]
-  * `GSettings` object to save last scan time, if this is NULL, it will create a new one.
-  * 
-  * @param timestamp [OPTIONAL]
-  * Timestamp string to set as last scan time, if this is NULL, it will use the `GSSettings` object to get the last scan time.
-  * 
-  * @note
-  * if `timestamp` is provided, the `setting` parameter will be ignored.
+  * @param timestamp
+  * Timestamp string to set as last scan time, if this is NULL, it will use the `GSettings` object to get the last scan time.
   * 
   * @warning
   * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
 */
 void
-scan_page_show_last_scan_time (ScanPage *self, GSettings *setting, const gchar *timestamp);
+scan_page_show_last_scan_time (ScanPage *self, const gchar *timestamp);
 
 /* Show whether the last scan time is expired or not */
 /*
   * @param self
   * `ScanPage` object
   * 
-  * @param setting [OPTIONAL]
-  * `GSettings` object to save last scan time, if is NULL, it will ignore it and use `is_expired` directly.
-  * 
-  * @param is_expired [OPTIONAL]
+  * @param is_expired
   * Whether the last scan time is expired or not.
   * 
   * @note
   * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
 */
 void
-scan_page_show_last_scan_time_status (ScanPage *self, GSettings *setting, gboolean is_expired);
-
-/* Save last scan time to GSettings */
-/*
-  * @param setting
-  * `GSettings` object to save last scan time, if this is NULL, it will create a new one.
-  * 
-  * @param need_timestamp [optional]
-  * If this is true, it will generate a new timestamp and save it to GSettings. otherwise return NULL
-  * 
-  * @warning
-  * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
-*/
-gchar *
-save_last_scan_time (GSettings *setting, gboolean need_timestamp);
+scan_page_show_last_scan_time_status (ScanPage *self, gboolean is_expired);
 
 GtkWidget *
 scan_page_new(void);

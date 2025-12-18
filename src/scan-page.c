@@ -49,42 +49,20 @@ G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
   * @param self
   * `ScanPage` object
   * 
-  * @param setting [OPTIONAL]
-  * `GSettings` object to save last scan time, if this is NULL, it will create a new one.
-  * 
-  * @param timestamp [OPTIONAL]
-  * Timestamp string to set as last scan time, if this is NULL, it will use the `GSSettings` object to get the last scan time.
-  * 
-  * @note
-  * if `timestamp` is provided, the `setting` parameter will be ignored.
+  * @param timestamp
+  * Timestamp string to set as last scan time, if this is NULL, it will use the `GSettings` object to get the last scan time.
   * 
   * @warning
   * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
 */
 void
-scan_page_show_last_scan_time (ScanPage *self, GSettings *setting, const gchar *timestamp)
+scan_page_show_last_scan_time (ScanPage *self, const gchar *timestamp)
 {
-  g_return_if_fail (SCAN_PAGE (self));
-
-  gboolean has_timestamp = (timestamp != NULL);
-  gboolean is_null = (setting == NULL);
+  g_return_if_fail (SCAN_IS_PAGE (self) && timestamp != NULL);
 
   GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
 
-  g_autofree gchar *description = NULL;
-  if (has_timestamp) // Has timestamp, use it directly
-  {
-    description = g_strdup_printf (gettext("Last Scan Time: %s"), timestamp); // Use the provided timestamp
-  }
-  else // No timestamp, get from GSettings
-  {
-    GSettings *setting_choice = is_null ? g_settings_new ("com.ericlin.wuming") : setting;
-
-    g_autofree gchar *stored_timestamp = g_settings_get_string (setting_choice, "last-scan-time");
-    description = g_strdup_printf (gettext("Last Scan Time: %s"), stored_timestamp); // No timestamp, get from GSettings
-
-    if (is_null) g_object_unref (setting_choice); // Only unref if it is created here
-  }
+  g_autofree gchar *description = g_strdup_printf (gettext("Last Scan Time: %s"), timestamp);
 
   adw_status_page_set_description (ADW_STATUS_PAGE (status_page), description);
 }
@@ -94,70 +72,27 @@ scan_page_show_last_scan_time (ScanPage *self, GSettings *setting, const gchar *
   * @param self
   * `ScanPage` object
   * 
-  * @param setting [OPTIONAL]
-  * `GSettings` object to save last scan time, if is NULL, it will ignore it and use `is_expired` directly.
-  * 
-  * @param is_expired [OPTIONAL]
+  * @param is_expired
   * Whether the last scan time is expired or not.
   * 
   * @note
   * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
 */
 void
-scan_page_show_last_scan_time_status (ScanPage *self, GSettings *setting, gboolean is_expired)
+scan_page_show_last_scan_time_status (ScanPage *self, gboolean is_expired)
 {
-  g_return_if_fail (SCAN_PAGE (self));
+  g_return_if_fail (SCAN_IS_PAGE (self));
 
   GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
-
-  gboolean is_null = (setting == NULL);
 
   gchar *title = NULL;
   gchar *icon_name = NULL;
 
-  if (is_null) // No `GSettings`, use `is_expired` directly
-  {
-    title = is_expired ? gettext("Scan Has Expired") : gettext("Scan Has Not Expired");
-    icon_name = is_expired ? "status-warning-symbolic" : "status-ok-symbolic";
-  }
-  else // Has `GSettings`, use it to get the last scan time and check if it is expired
-  {
-    gboolean is_older_than_a_week = is_scan_time_expired (NULL, setting);
-
-    title = is_older_than_a_week ? gettext("Scan Has Expired") : gettext("Scan Has Not Expired");
-    icon_name = is_older_than_a_week ? "status-warning-symbolic" : "status-ok-symbolic";
-  }
+  title = is_expired ? gettext("Scan Has Expired") : gettext("Scan Has Not Expired");
+  icon_name = is_expired ? "status-warning-symbolic" : "status-ok-symbolic";
 
   adw_status_page_set_title (ADW_STATUS_PAGE (status_page), title);
   adw_status_page_set_icon_name (ADW_STATUS_PAGE (status_page), icon_name);
-}
-
-/* Save last scan time to GSettings */
-/*
-  * @param setting
-  * `GSettings` object to save last scan time, if this is NULL, it will create a new one.
-  * 
-  * @param need_timestamp [optional]
-  * If this is true, it will generate a new timestamp and save it to GSettings. otherwise return NULL
-  * 
-  * @warning
-  * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
-*/
-gchar *
-save_last_scan_time (GSettings *setting, gboolean need_timestamp)
-{
-  gboolean is_null = (setting == NULL);
-
-  GSettings *setting_choice = is_null ? g_settings_new ("com.ericlin.wuming") : setting;
-
-  GDateTime *now = g_date_time_new_now_local();
-  g_autofree gchar *timestamp = g_date_time_format(now, "%Y.%m.%d %H:%M:%S"); // Format: YYYY.MM.DD HH:MM:SS
-  g_settings_set_string (setting_choice, "last-scan-time", timestamp);
-  g_date_time_unref (now);
-
-  if (is_null) g_object_unref (setting_choice);
-
-  return need_timestamp ? g_steal_pointer(&timestamp) : NULL;
 }
 
 static void

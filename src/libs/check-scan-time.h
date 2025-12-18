@@ -27,14 +27,8 @@
   * @param timestamp
   * The timestamp of the last scan time.
   * 
-  * @param setting
-  * The GSettings object that stores the last scan time.
-  * 
-  * @warning
-  * If the timestamp is not null, `setting` parameter will be ignored.
-  * 
   * @return
   * If the current time is earlier than the last scan time plus a week, it will return true.
 */
 gboolean
-is_scan_time_expired (const char *timestamp, GSettings *setting);
+is_scan_time_expired (const char *timestamp);

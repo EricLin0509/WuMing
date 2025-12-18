@@ -22,7 +22,6 @@
 
 #include <adwaita.h>
 
-#include "libs/check-scan-time.h"
 #include "libs/signature-status.h"
 
 G_BEGIN_DECLS
@@ -43,17 +42,15 @@ security_overview_page_connect_goto_scan_page_signal (SecurityOverviewPage *self
 /*
   * @param self
   * `SecurityOverviewPage` object.
-    * @param setting [OPTIONAL]
-  * `GSettings` object to save last scan time, if is NULL, it will ignore it and use `is_expired` directly.
   * 
-  * @param is_expired [OPTIONAL]
+  * @param is_expired
   * Whether the last scan time is expired or not.
   * 
   * @note
   * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
 */
 void
-security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, GSettings *setting, gboolean is_expired);
+security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, gboolean is_expired);
 
 /* Show the signature status on the security overview page. */
 /*

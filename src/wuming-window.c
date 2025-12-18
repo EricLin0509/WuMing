@@ -25,6 +25,7 @@
 
 #include "libs/systemd-control.h"
 #include "libs/update-signature.h"
+#include "libs/check-scan-time.h"
 #include "libs/scan.h"
 
 #include "wuming-window.h"
@@ -429,30 +430,33 @@ wuming_window_init_settings (WumingWindow *self, GSettings *settings)
                      self, "fullscreened",
                      G_SETTINGS_BIND_DEFAULT);
 
+    /* Check last scan time */
     g_autofree gchar *last_scan_time = g_settings_get_string (settings, "last-scan-time");
-    gboolean is_expired = is_scan_time_expired(last_scan_time, NULL);
+    gboolean is_expired = is_scan_time_expired(last_scan_time);
 
-    /* Update the `ScanPage` */
-    scan_page_show_last_scan_time (self->scan_page, NULL, last_scan_time);
-    scan_page_show_last_scan_time_status (self->scan_page, NULL, is_expired);
+    /* Show last scan time */
+    security_overview_page_show_last_scan_time_status (self->security_overview_page, is_expired);
+    scan_page_show_last_scan_time (self->scan_page, last_scan_time);
+    scan_page_show_last_scan_time_status (self->scan_page, is_expired);
 
     gint signature_expiration_time = g_settings_get_int (settings, "signature-expiration-time");
-
-    /* Check systemd service status */
-    int status = is_service_enabled ("clamav-freshclam.service");
 
     /* Scan the Database */
     self->status = signature_status_new (signature_expiration_time);
 
-    /* Update the `UpdateSignaturePage` */
+    /* Show the signature status */
+    security_overview_page_show_signature_status (self->security_overview_page, self->status);
     update_signature_page_show_isuptodate (self->update_signature_page, self->status);
-    update_signature_page_show_servicestat (self->update_signature_page, status);
+
+    /* Check systemd service status */
+    int service_status = is_service_enabled ("clamav-freshclam.service");
+
+    /* Show systemd service status */
+    security_overview_page_show_servicestat (self->security_overview_page, service_status);
+    update_signature_page_show_servicestat (self->update_signature_page, service_status);
 
     /* Update the `SecurityOverviewPage` */
-    security_overview_page_show_signature_status (self->security_overview_page, self->status);
-    security_overview_page_show_last_scan_time_status (self->security_overview_page, NULL, is_expired);
     security_overview_page_connect_goto_scan_page_signal (self->security_overview_page);
-    security_overview_page_show_servicestat (self->security_overview_page, status);
     security_overview_page_show_health_level (self->security_overview_page);
 }
 

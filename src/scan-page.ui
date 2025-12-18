@@ -27,7 +27,7 @@
                     <property name="child">
                       <object class="AdwButtonContent">
                         <property name="can-shrink">true</property>
-                        <property name="label" translatable="yes">Scan file</property>
+                        <property name="label" translatable="yes">Select a file</property>
                         <property name="icon-name">scan-file-symbolic</property>
                         <property name="use-underline">True</property>
                       </object>
@@ -45,7 +45,7 @@
                     <property name="child">
                       <object class="AdwButtonContent">
                         <property name="can-shrink">true</property>
-                        <property name="label" translatable="yes">Scan folder</property>
+                        <property name="label" translatable="yes">Select a folder</property>
                         <property name="icon-name">scan-folder-symbolic</property>
                         <property name="use-underline">True</property>
                       </object>

@@ -77,17 +77,15 @@ security_overview_page_connect_goto_scan_page_signal (SecurityOverviewPage *self
 /*
   * @param self
   * `SecurityOverviewPage` object.
-    * @param setting [OPTIONAL]
-  * `GSettings` object to save last scan time, if is NULL, it will ignore it and use `is_expired` directly.
   * 
-  * @param is_expired [OPTIONAL]
+  * @param is_expired
   * Whether the last scan time is expired or not.
   * 
   * @note
   * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
 */
 void
-security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, GSettings *setting, gboolean is_expired)
+security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, gboolean is_expired)
 {
     g_return_if_fail(self != NULL);
 
@@ -95,27 +93,14 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, G
 
     GtkWidget *button_content = gtk_button_get_child (self->scan_overview_button);
 
-    gboolean is_null = (setting == NULL);
     gchar *label = NULL;
     gchar *icon_name = NULL;
     gchar *style = NULL;
 
-    if (is_null) // Use is_expired directly
-    {
-        label = is_expired ? gettext ("Scan Has Expired") : gettext ("Scan Has Not Expired");
-        icon_name = is_expired ? "status-warning-symbolic" : "status-ok-symbolic";
-        style = is_expired ? "button-warning" : "button-success";
-        if (!is_expired) self->health_level |= LAST_SCAN_TIME_VALID;
-    }
-    else // Has `GSettings`, use it to get the last scan time and check if it is expired
-    {
-        gboolean is_older_than_a_week = is_scan_time_expired (NULL, setting);
-
-        label = is_older_than_a_week ? gettext ("Scan Has Expired") : gettext ("Scan Has Not Expired");
-        icon_name = is_older_than_a_week ? "status-warning-symbolic" : "status-ok-symbolic";
-        style = is_older_than_a_week ? "button-warning" : "button-success";
-        if (!is_older_than_a_week) self->health_level |= LAST_SCAN_TIME_VALID;
-    }
+    label = is_expired ? gettext ("Scan Has Expired") : gettext ("Scan Has Not Expired");
+    icon_name = is_expired ? "status-warning-symbolic" : "status-ok-symbolic";
+    style = is_expired ? "button-warning" : "button-success";
+    if (!is_expired) self->health_level |= LAST_SCAN_TIME_VALID;
 
     adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);
     adw_button_content_set_icon_name (ADW_BUTTON_CONTENT (button_content), icon_name);

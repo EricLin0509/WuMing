@@ -431,6 +431,21 @@ scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_p
   return ctx;
 }
 
+static char *
+save_last_scan_time (void)
+{
+  GSettings *setting = g_settings_new ("com.ericlin.wuming");
+
+  GDateTime *now = g_date_time_new_now_local();
+  g_autofree gchar *timestamp = g_date_time_format(now, "%Y.%m.%d %H:%M:%S"); // Format: YYYY.MM.DD HH:MM:SS
+  g_settings_set_string (setting, "last-scan-time", timestamp);
+  g_date_time_unref (now);
+
+  g_object_unref (setting);
+
+  return g_steal_pointer(&timestamp);
+}
+
 void
 start_scan(ScanContext *ctx, const char *path)
 {
@@ -438,10 +453,10 @@ start_scan(ScanContext *ctx, const char *path)
 
   scan_context_add_path(ctx, path);
 
-  g_autofree gchar *timestamp = save_last_scan_time(NULL, TRUE);
-  scan_page_show_last_scan_time(ctx->scan_page, NULL, timestamp);
-  scan_page_show_last_scan_time_status(ctx->scan_page, NULL, FALSE);
-  security_overview_page_show_last_scan_time_status(ctx->security_overview_page, NULL, FALSE);
+  g_autofree gchar *timestamp = save_last_scan_time();
+  scan_page_show_last_scan_time(ctx->scan_page, timestamp);
+  scan_page_show_last_scan_time_status(ctx->scan_page, FALSE);
+  security_overview_page_show_last_scan_time_status(ctx->security_overview_page, FALSE);
   security_overview_page_show_health_level(ctx->security_overview_page);
 
   wuming_window_push_page_by_tag(ctx->window, "scanning_nav_page");
@@ -449,4 +464,3 @@ start_scan(ScanContext *ctx, const char *path)
 
   start_scan_async(ctx);
 }
-
