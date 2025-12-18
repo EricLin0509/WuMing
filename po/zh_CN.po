@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-11 18:54+0800\n"
+"POT-Creation-Date: 2025-12-18 19:31+0800\n"
 "PO-Revision-Date: 2025-08-07 20:36+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -71,8 +71,7 @@ msgctxt "shortcut window"
 msgid "Quit"
 msgstr "退出程序"
 
-#: src/shortcuts-dialog.ui:35 src/wuming-window.ui:81 src/wuming-window.ui:86
-#: src/wuming-window.ui:132
+#: src/shortcuts-dialog.ui:35 src/wuming-window.ui:76 src/wuming-window.ui:118
 msgid "Scan"
 msgstr "扫描"
 
@@ -86,7 +85,7 @@ msgctxt "shortcut window"
 msgid "Scan folder"
 msgstr "扫描文件夹"
 
-#: src/shortcuts-dialog.ui:52 src/wuming-window.ui:98
+#: src/shortcuts-dialog.ui:52
 msgid "Update Signature"
 msgstr "更新病毒库"
 
@@ -95,7 +94,7 @@ msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr "更新病毒库"
 
-#: src/wuming-window.c:178
+#: src/wuming-window.c:199
 msgid "Click to show details"
 msgstr "点击查看详细信息"
 
@@ -103,27 +102,28 @@ msgstr "点击查看详细信息"
 msgid "Main Menu"
 msgstr "主菜单"
 
-#: src/wuming-window.ui:64 src/wuming-window.ui:69
-msgid "Security Overview"
-msgstr "安全概览"
+#: src/wuming-window.ui:64
+msgid "Overview"
+msgstr "概览"
 
-#: src/wuming-window.ui:120 src/update-signature-page.ui:29
+#: src/wuming-window.ui:88 src/wuming-window.ui:106
+#: src/update-signature-page.ui:32
 msgid "Update"
 msgstr "更新"
 
-#: src/wuming-window.ui:144
+#: src/wuming-window.ui:130
 msgid "Threats"
 msgstr "威胁"
 
-#: src/wuming-window.ui:160
+#: src/wuming-window.ui:146
 msgid "_Preferences"
 msgstr "首选项"
 
-#: src/wuming-window.ui:164
+#: src/wuming-window.ui:150
 msgid "_Keyboard Shortcuts"
 msgstr "快捷键"
 
-#: src/wuming-window.ui:168
+#: src/wuming-window.ui:154
 msgid "_About WuMing"
 msgstr "关于无名"
 
@@ -199,111 +199,110 @@ msgstr "病毒库有效期"
 msgid "Set The Expiration Time For The Signature (1-14 Days)"
 msgstr "设置病毒库在多长时间后失效（1-14天）"
 
-#: src/security-overview-page.c:105 src/security-overview-page.c:114
-#: src/security-overview-page.c:241 src/scan-page.c:120 src/scan-page.c:127
+#: src/security-overview-page.c:77 src/security-overview-page.c:201
+#: src/scan-page.c:71
 msgid "Scan Has Expired"
 msgstr "扫描已过期"
 
-#: src/security-overview-page.c:105 src/security-overview-page.c:114
-#: src/scan-page.c:120 src/scan-page.c:127
+#: src/security-overview-page.c:77 src/scan-page.c:71
 msgid "Scan Has Not Expired"
 msgstr "扫描尚未过期"
 
-#: src/security-overview-page.c:151 src/update-signature-page.c:64
+#: src/security-overview-page.c:113 src/update-signature-page.c:62
 msgid "Signature Is Outdated"
 msgstr "病毒库已过期"
 
-#: src/security-overview-page.c:156 src/update-signature-page.c:72
+#: src/security-overview-page.c:118 src/update-signature-page.c:70
 msgid "No Signature Found"
 msgstr "未发现病毒库"
 
-#: src/security-overview-page.c:161 src/update-signature-page.c:80
+#: src/security-overview-page.c:123 src/update-signature-page.c:78
 msgid "Signature Is Up To Date"
 msgstr "病毒库已是最新"
 
-#: src/security-overview-page.c:167 src/update-signature-page.c:88
-#: src/update-signature-page.c:89
+#: src/security-overview-page.c:129 src/update-signature-page.c:86
+#: src/update-signature-page.c:87
 msgid "Unknown Signature Status"
 msgstr "未知病毒库状态"
 
-#: src/security-overview-page.c:191
+#: src/security-overview-page.c:154
 msgid "Freshclam Is Enabled"
 msgstr "Freshclam 服务已启用"
 
-#: src/security-overview-page.c:197
+#: src/security-overview-page.c:159
 msgid "Freshclam Is Disabled"
 msgstr "Freshclam 服务已禁用"
 
-#: src/security-overview-page.c:203
+#: src/security-overview-page.c:164
 msgid "Freshclam Is Not Found"
 msgstr "未找到 Freshclam 服务"
 
-#: src/security-overview-page.c:230
+#: src/security-overview-page.c:190
 msgid "Poor Status"
 msgstr "状态欠佳"
 
-#: src/security-overview-page.c:231
+#: src/security-overview-page.c:191
 msgid "Please take action immediately"
 msgstr "请立即采取措施"
 
-#: src/security-overview-page.c:235 src/security-overview-page.c:240
+#: src/security-overview-page.c:195 src/security-overview-page.c:200
 msgid "Need Attention"
 msgstr "需要注意"
 
-#: src/security-overview-page.c:236
+#: src/security-overview-page.c:196
 msgid "Something wrong with the signature"
 msgstr "病毒库有问题"
 
-#: src/security-overview-page.c:245
+#: src/security-overview-page.c:205
 msgid "All Good"
 msgstr "状态良好"
 
-#: src/security-overview-page.c:246
+#: src/security-overview-page.c:206
 msgid "All set, have a nice day"
 msgstr "一切就绪，祝你有愉快的一天"
 
-#: src/security-overview-page.c:250
+#: src/security-overview-page.c:210
 msgid "Unknown Health Level"
 msgstr "未知健康水平"
 
-#: src/security-overview-page.c:251
+#: src/security-overview-page.c:211
 msgid "Please check the logs for more information"
 msgstr "请检查日志以获取更多信息"
 
-#: src/security-overview-page.ui:28
+#: src/security-overview-page.ui:32
 msgid "Last Scan Time"
 msgstr "上次扫描时间"
 
-#: src/security-overview-page.ui:45 src/update-signature-page.ui:19
+#: src/security-overview-page.ui:51 src/update-signature-page.ui:22
 msgid "Current Signature Status"
 msgstr "当前病毒库状态"
 
-#: src/security-overview-page.ui:57 src/update-signature-page.ui:40
+#: src/security-overview-page.ui:64 src/update-signature-page.ui:44
 msgid "Freshclam Service Status"
 msgstr "Freshclam 服务状态"
 
-#: src/scan-page.c:77 src/scan-page.c:84
+#: src/scan-page.c:69
 #, c-format
 msgid "Last Scan Time: %s"
 msgstr "上次扫描时间：%s"
 
-#: src/scan-page.ui:30
-msgid "Scan file"
+#: src/scan-page.ui:32
+msgid "Select a file"
 msgstr "扫描文件"
 
-#: src/scan-page.ui:48
-msgid "Scan folder"
+#: src/scan-page.ui:50
+msgid "Select a folder"
 msgstr "扫描文件夹"
 
-#: src/scanning-page.c:53 src/libs/scan.c:505
+#: src/scanning-page.c:52 src/libs/scan.c:462
 msgid "Scanning..."
 msgstr "扫描中..."
 
-#: src/scanning-page.c:54
+#: src/scanning-page.c:53
 msgid "Preparing..."
 msgstr "准备中..."
 
-#: src/scanning-page.ui:14 src/threat-page.c:139
+#: src/scanning-page.ui:14 src/threat-page.c:321
 msgid "Cancel"
 msgstr "取消"
 
@@ -315,23 +314,71 @@ msgstr "显示威胁"
 msgid "Close"
 msgstr "关闭"
 
-#: src/threat-page.c:61
+#: src/threat-page.c:67
+msgid "Maybe a system file, delete it with caution!"
+msgstr "可能是系统文件，慎重删除！"
+
+#: src/threat-page.c:68
+msgid "Normal file"
+msgstr "常规文件"
+
+#: src/threat-page.c:93
+msgid "Delete"
+msgstr "删除"
+
+#: src/threat-page.c:103
+msgid "Threat Identity"
+msgstr "威胁特征"
+
+#: src/threat-page.c:124
+msgid "Directory modified, try removing it manually!"
+msgstr "文件可能已被篡改，请手动删除！"
+
+#: src/threat-page.c:127
+msgid "File may compromised, try removing it manually!"
+msgstr "文件可能已被篡改，请手动删除！"
+
+#: src/threat-page.c:130
+msgid "Directory not found!"
+msgstr "目录不存在"
+
+#: src/threat-page.c:133
+msgid "File not found!"
+msgstr "文件不存在"
+
+#: src/threat-page.c:136
+msgid "Invalid path!"
+msgstr "无效路径"
+
+#: src/threat-page.c:139
+msgid "Permission denied!"
+msgstr "拒绝访问"
+
+#: src/threat-page.c:142
+msgid "Operation failed!"
+msgstr ""
+
+#: src/threat-page.c:145
+msgid "Unknown error!"
+msgstr "未知错误"
+
+#: src/threat-page.c:176
 msgid "All Clear"
 msgstr "完成"
 
-#: src/threat-page.c:61
+#: src/threat-page.c:176
 msgid "All threats have been removed!"
 msgstr "所有威胁都清除了！"
 
-#: src/threat-page.c:135
+#: src/threat-page.c:317
 msgid "Delete All Threats?"
 msgstr "删除全部威胁？"
 
-#: src/threat-page.c:136
+#: src/threat-page.c:318
 msgid "This will delete all threat files and cannot be undone. Are you sure?"
 msgstr "这将会删除全部威胁且无法撤销，确定吗？"
 
-#: src/threat-page.c:140 src/threat-page.ui:17
+#: src/threat-page.c:322 src/threat-page.ui:17
 msgid "Delete All"
 msgstr "删除全部"
 
@@ -339,15 +386,16 @@ msgstr "删除全部"
 msgid "Found Threats"
 msgstr "发现威胁"
 
-#: src/update-signature-page.c:62 src/update-signature-page.c:78
+#: src/update-signature-page.c:60 src/update-signature-page.c:76
+#, c-format
 msgid "Current Signature Date: %4d.%02d.%02d %02d:%02d"
 msgstr "当前病毒库日期：%4d.%02d.%02d %02d:%02d"
 
-#: src/update-signature-page.c:65
+#: src/update-signature-page.c:63
 msgid "Outdated!"
 msgstr "已过期"
 
-#: src/update-signature-page.c:70
+#: src/update-signature-page.c:68
 msgid ""
 "Warning: No signature found\n"
 "Please update the signature now!"
@@ -355,32 +403,32 @@ msgstr ""
 "警告：未找到病毒库！\n"
 "请立即更新病毒库！"
 
-#: src/update-signature-page.c:73
+#: src/update-signature-page.c:71
 msgid "Signature Not Found"
 msgstr "未发现病毒库"
 
-#: src/update-signature-page.c:81
+#: src/update-signature-page.c:79
 msgid "Is Up To Date"
 msgstr "已是最新"
 
-#: src/update-signature-page.c:86
+#: src/update-signature-page.c:84
 #, c-format
 msgid "Signature Status: %d"
 msgstr "病毒库状态：%d"
 
-#: src/update-signature-page.c:111
+#: src/update-signature-page.c:114
 msgid "Enabled"
 msgstr "已启用"
 
-#: src/update-signature-page.c:112
+#: src/update-signature-page.c:117
 msgid "Disabled"
 msgstr "已禁用"
 
-#: src/update-signature-page.c:113
+#: src/update-signature-page.c:120
 msgid "Failed to check!"
 msgstr "检查失败！"
 
-#: src/updating-page.c:43 src/libs/update-signature.c:194
+#: src/updating-page.c:43 src/libs/update-signature.c:215
 msgid "Updating..."
 msgstr "更新中..."
 
@@ -388,55 +436,7 @@ msgstr "更新中..."
 msgid "This might take a while"
 msgstr "这可能需要一些时间"
 
-#: src/libs/delete-file.c:137
-msgid "Maybe a system file, delete it with caution!"
-msgstr "可能是系统文件，慎重删除！"
-
-#: src/libs/delete-file.c:138
-msgid "Normal file"
-msgstr "常规文件"
-
-#: src/libs/delete-file.c:227
-msgid "Directory modified, try removing it manually!"
-msgstr "文件可能已被篡改，请手动删除！"
-
-#: src/libs/delete-file.c:230
-msgid "File may compromised, try removing it manually!"
-msgstr "文件可能已被篡改，请手动删除！"
-
-#: src/libs/delete-file.c:233
-msgid "Directory not found!"
-msgstr "目录不存在"
-
-#: src/libs/delete-file.c:236
-msgid "File not found!"
-msgstr "文件不存在"
-
-#: src/libs/delete-file.c:239
-msgid "Invalid path!"
-msgstr "无效路径"
-
-#: src/libs/delete-file.c:242
-msgid "Permission denied!"
-msgstr "拒绝访问"
-
-#: src/libs/delete-file.c:245
-msgid "Operation failed!"
-msgstr ""
-
-#: src/libs/delete-file.c:248
-msgid "Unknown error!"
-msgstr "未知错误"
-
-#: src/libs/scan.c:159
-msgid "Delete"
-msgstr "删除"
-
-#: src/libs/scan.c:169
-msgid "Threat Identity"
-msgstr "威胁特征"
-
-#: src/libs/scan.c:216
+#: src/libs/scan.c:150
 #, c-format
 msgid ""
 "%d files scanned\n"
@@ -445,31 +445,32 @@ msgstr ""
 "%d 个文件已扫描\n"
 "发现 %d 个威胁"
 
-#: src/libs/scan.c:282
+#: src/libs/scan.c:220
 #, c-format
 msgid "Scan failed with exit status %d"
 msgstr "扫描失败且退出状态为 %d"
 
-#: src/libs/scan.c:344
+#: src/libs/scan.c:282
 msgid "Scan Canceled"
 msgstr "扫描被取消"
 
-#: src/libs/scan.c:358
+#: src/libs/scan.c:295
 msgid "Scan Complete"
 msgstr "扫描完成"
 
-#: src/libs/scan.c:358 src/libs/scan.c:380
+#: src/libs/scan.c:295 src/libs/scan.c:317
 msgid "Scan Failed"
 msgstr "扫描失败"
 
-#: src/libs/update-signature.c:93
+#: src/libs/update-signature.c:94
+#, c-format
 msgid "Signature update failed with exit status %d"
 msgstr "病毒库更新失败且退出状态为 %d"
 
-#: src/libs/update-signature.c:120
+#: src/libs/update-signature.c:121
 msgid "Signature Update Complete"
 msgstr "病毒库更新完成"
 
-#: src/libs/update-signature.c:120 src/libs/update-signature.c:135
+#: src/libs/update-signature.c:121 src/libs/update-signature.c:136
 msgid "Signature Update Failed"
 msgstr "病毒库更新失败"
