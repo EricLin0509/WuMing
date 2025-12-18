@@ -30,7 +30,7 @@ struct _UpdateSignaturePage {
   GtkWidget          parent_instance;
 
   /*Child*/
-  GtkWidget          *clamp;
+  AdwStatusPage      *status_page;
   AdwActionRow       *status_row;
   GtkButton          *update_button;
   AdwActionRow       *service_row;
@@ -41,8 +41,6 @@ G_DEFINE_FINAL_TYPE (UpdateSignaturePage, update_signature_page, GTK_TYPE_WIDGET
 void
 update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature_status *result)
 {
-  GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
-
   g_autofree char *date_msg = NULL; // The description message for `AdwStatusPage` (This need autofree because it will be used in `g_strdup_printf`)
 
   char *signature_msg = NULL; // The title message for `AdwStatusPage`
@@ -98,9 +96,9 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 
   gtk_widget_add_css_class (GTK_WIDGET (self->update_button), button_style);
 
-  adw_status_page_set_title (ADW_STATUS_PAGE (status_page), signature_msg);
-  adw_status_page_set_description (ADW_STATUS_PAGE (status_page), date_msg);
-  adw_status_page_set_icon_name (ADW_STATUS_PAGE (status_page), icon_name);
+  adw_status_page_set_title (self->status_page, signature_msg);
+  adw_status_page_set_description (self->status_page, date_msg);
+  adw_status_page_set_icon_name (self->status_page, icon_name);
 
   adw_action_row_set_subtitle (self->status_row, row_subtitle);
 }
@@ -158,7 +156,8 @@ update_signature_page_dispose(GObject *gobject)
 	                                 update_actions,
 	                                 G_N_ELEMENTS (update_actions));
 
-  g_clear_pointer(&self->clamp, gtk_widget_unparent);
+  GtkWidget *status_page = GTK_WIDGET (self->status_page);
+  g_clear_pointer(&status_page, gtk_widget_unparent);
 
   G_OBJECT_CLASS(update_signature_page_parent_class)->dispose(gobject);
 }
@@ -169,7 +168,7 @@ update_signature_page_finalize(GObject *gobject)
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE (gobject);
 
   /* Reset all child widgets */
-  self->clamp = NULL;
+  self->status_page = NULL;
   self->status_row = NULL;
   self->update_button = NULL;
   self->service_row = NULL;
@@ -190,7 +189,7 @@ update_signature_page_class_init (UpdateSignaturePageClass *klass)
 
 	  gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/update-signature-page.ui");
 
-    gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, clamp);
+    gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, status_page);
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, status_row);
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, update_button);
     gtk_widget_class_bind_template_child (widget_class, UpdateSignaturePage, service_row);

@@ -28,24 +28,13 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (ScanPage, scan_page, SCAN, PAGE, GtkWidget)
 
-/* Show the last scan time to the status page */
+/* Show whether the last scan time is expired or not */
 /*
   * @param self
   * `ScanPage` object
   * 
   * @param timestamp
-  * Timestamp string to set as last scan time, if this is NULL, it will use the `GSettings` object to get the last scan time.
-  * 
-  * @warning
-  * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
-*/
-void
-scan_page_show_last_scan_time (ScanPage *self, const gchar *timestamp);
-
-/* Show whether the last scan time is expired or not */
-/*
-  * @param self
-  * `ScanPage` object
+  * Timestamp string to set as last scan time
   * 
   * @param is_expired
   * Whether the last scan time is expired or not.
@@ -54,7 +43,7 @@ scan_page_show_last_scan_time (ScanPage *self, const gchar *timestamp);
   * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
 */
 void
-scan_page_show_last_scan_time_status (ScanPage *self, gboolean is_expired);
+scan_page_show_last_scan_time_status (ScanPage *self, const gchar *timestamp, gboolean is_expired);
 
 GtkWidget *
 scan_page_new(void);

@@ -33,7 +33,7 @@ struct _ScanPage {
   GtkWidget          parent_instance;
 
   /*Child*/
-  GtkWidget          *break_point;
+  AdwStatusPage      *status_page;
   GtkButton          *scan_a_file_button;
   GtkButton          *scan_a_folder_button;
 
@@ -43,34 +43,13 @@ struct _ScanPage {
 
 G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
 
-
-/* Show the last scan time to the status page */
+/* Show whether the last scan time is expired or not */
 /*
   * @param self
   * `ScanPage` object
   * 
   * @param timestamp
-  * Timestamp string to set as last scan time, if this is NULL, it will use the `GSettings` object to get the last scan time.
-  * 
-  * @warning
-  * If `GSettings` is not NULL, you need to unref it manually. This allow sharing the same `GSettings` object with other parts of the program.
-*/
-void
-scan_page_show_last_scan_time (ScanPage *self, const gchar *timestamp)
-{
-  g_return_if_fail (SCAN_IS_PAGE (self) && timestamp != NULL);
-
-  GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
-
-  g_autofree gchar *description = g_strdup_printf (gettext("Last Scan Time: %s"), timestamp);
-
-  adw_status_page_set_description (ADW_STATUS_PAGE (status_page), description);
-}
-
-/* Show whether the last scan time is expired or not */
-/*
-  * @param self
-  * `ScanPage` object
+  * Timestamp string to set as last scan time
   * 
   * @param is_expired
   * Whether the last scan time is expired or not.
@@ -79,7 +58,7 @@ scan_page_show_last_scan_time (ScanPage *self, const gchar *timestamp)
   * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
 */
 void
-scan_page_show_last_scan_time_status (ScanPage *self, gboolean is_expired)
+scan_page_show_last_scan_time_status (ScanPage *self, const gchar *timestamp, gboolean is_expired)
 {
   g_return_if_fail (SCAN_IS_PAGE (self));
 
@@ -87,12 +66,14 @@ scan_page_show_last_scan_time_status (ScanPage *self, gboolean is_expired)
 
   gchar *title = NULL;
   gchar *icon_name = NULL;
+  g_autofree gchar *description = g_strdup_printf (gettext("Last Scan Time: %s"), timestamp);
 
   title = is_expired ? gettext("Scan Has Expired") : gettext("Scan Has Not Expired");
   icon_name = is_expired ? "status-warning-symbolic" : "status-ok-symbolic";
 
-  adw_status_page_set_title (ADW_STATUS_PAGE (status_page), title);
-  adw_status_page_set_icon_name (ADW_STATUS_PAGE (status_page), icon_name);
+  adw_status_page_set_title (self->status_page, title);
+  adw_status_page_set_description (self->status_page, description);
+  adw_status_page_set_icon_name (self->status_page, icon_name);
 }
 
 static void
@@ -205,7 +186,8 @@ scan_page_dispose(GObject *gobject)
 	                                 scan_actions,
 	                                 G_N_ELEMENTS (scan_actions));
 
-  g_clear_pointer (&self->break_point, gtk_widget_unparent);
+  GtkWidget *status_page = GTK_WIDGET (self->status_page);
+  g_clear_pointer (&status_page, gtk_widget_unparent);
 
   G_OBJECT_CLASS(scan_page_parent_class)->dispose(gobject);
 }
@@ -216,7 +198,7 @@ scan_page_finalize(GObject *gobject)
   ScanPage *self = SCAN_PAGE (gobject);
 
   /* Reset all child widgets */
-  self->break_point = NULL;
+  self->status_page = NULL;
   self->scan_a_file_button = NULL;
   self->scan_a_folder_button = NULL;
 
@@ -236,7 +218,7 @@ scan_page_class_init (ScanPageClass *klass)
 
   gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/scan-page.ui");
 
-  gtk_widget_class_bind_template_child (widget_class, ScanPage, break_point);
+  gtk_widget_class_bind_template_child (widget_class, ScanPage, status_page);
   gtk_widget_class_bind_template_child (widget_class, ScanPage, scan_a_file_button);
   gtk_widget_class_bind_template_child (widget_class, ScanPage, scan_a_folder_button);
 }

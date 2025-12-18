@@ -65,11 +65,7 @@
                             <property name="name">security-overview</property>
                             <property name="icon-name">security-overview-symbolic</property>
                             <property name="child">
-                              <object class="AdwStatusPage">
-                                <child>
-                                  <object class="SecurityOverviewPage" id="security_overview_page"/>
-                                </child>
-                              </object>
+                              <object class="SecurityOverviewPage" id="security_overview_page"/>
                             </property>
                           </object>
                         </child>
@@ -81,11 +77,7 @@
                             <property name="name">scan</property>
                             <property name="icon-name">scan-symbolic</property>
                             <property name="child">
-                              <object class="AdwStatusPage">
-                                <child>
-                                  <object class="ScanPage" id="scan_page"/>
-                                </child>
-                              </object>
+                              <object class="ScanPage" id="scan_page"/>
                             </property>
                           </object>
                         </child>
@@ -97,11 +89,7 @@
                             <property name="name">update-signature</property>
                             <property name="icon-name">update-signature-symbolic</property>
                             <property name="child">
-                              <object class="AdwStatusPage">
-                                <child>
-                                  <object class="UpdateSignaturePage" id="update_signature_page"/>
-                                </child>
-                              </object>
+                              <object class="UpdateSignaturePage" id="update_signature_page"/>
                             </property>
                           </object>
                         </child>

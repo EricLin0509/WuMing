@@ -436,8 +436,7 @@ wuming_window_init_settings (WumingWindow *self, GSettings *settings)
 
     /* Show last scan time */
     security_overview_page_show_last_scan_time_status (self->security_overview_page, is_expired);
-    scan_page_show_last_scan_time (self->scan_page, last_scan_time);
-    scan_page_show_last_scan_time_status (self->scan_page, is_expired);
+    scan_page_show_last_scan_time_status (self->scan_page, last_scan_time, is_expired);
 
     gint signature_expiration_time = g_settings_get_int (settings, "signature-expiration-time");
 

@@ -29,7 +29,7 @@
 struct _SecurityOverviewPage {
     GtkWidget parent_instance;
 
-    AdwBreakpointBin *break_point;
+    AdwStatusPage *status_page;
     GtkButton *scan_overview_button;
     gulong scan_overview_button_handler_id;
     GtkButton *signature_overview_button;
@@ -203,8 +203,6 @@ security_overview_page_show_health_level (SecurityOverviewPage *self)
 {
     g_return_if_fail(self != NULL);
 
-    GtkWidget *status_page = gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_STATUS_PAGE);
-
     gchar *title = NULL;
     gchar *message = NULL;
     gchar *icon_name = NULL;
@@ -238,9 +236,9 @@ security_overview_page_show_health_level (SecurityOverviewPage *self)
             break;
     }
 
-    adw_status_page_set_title (ADW_STATUS_PAGE (status_page), title);
-    adw_status_page_set_description (ADW_STATUS_PAGE (status_page), message);
-    adw_status_page_set_icon_name (ADW_STATUS_PAGE (status_page), icon_name);
+    adw_status_page_set_title (self->status_page, title);
+    adw_status_page_set_description (self->status_page, message);
+    adw_status_page_set_icon_name (self->status_page, icon_name);
 }
 
 /* GObject essential functions */
@@ -252,9 +250,8 @@ security_overview_page_dispose (GObject *object)
 
     g_signal_handler_disconnect (self->scan_overview_button, self->scan_overview_button_handler_id);
 
-    GtkWidget *break_point = GTK_WIDGET (self->break_point);
-
-    g_clear_pointer (&break_point, gtk_widget_unparent);
+    GtkWidget *status_page = GTK_WIDGET (self->status_page);
+    g_clear_pointer (&status_page, gtk_widget_unparent);
 
     G_OBJECT_CLASS (security_overview_page_parent_class)->dispose (object);
 }
@@ -265,7 +262,7 @@ security_overview_page_finalize (GObject *object)
     SecurityOverviewPage *self = SECURITY_OVERVIEW_PAGE (object);
 
     /* Reset all widgets */
-    self->break_point = NULL;
+    self->status_page = NULL;
     self->scan_overview_button = NULL;
     self->scan_overview_button_handler_id = 0;
     self->signature_overview_button = NULL;
@@ -289,7 +286,7 @@ security_overview_page_class_init (SecurityOverviewPageClass *klass)
 
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/security-overview-page.ui");
 
-    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, break_point);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, status_page);
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, scan_overview_button);
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, signature_overview_button);
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, service_overview_button);

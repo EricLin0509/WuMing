@@ -454,8 +454,7 @@ start_scan(ScanContext *ctx, const char *path)
   scan_context_add_path(ctx, path);
 
   g_autofree gchar *timestamp = save_last_scan_time();
-  scan_page_show_last_scan_time(ctx->scan_page, timestamp);
-  scan_page_show_last_scan_time_status(ctx->scan_page, FALSE);
+  scan_page_show_last_scan_time_status(ctx->scan_page, timestamp, FALSE);
   security_overview_page_show_last_scan_time_status(ctx->security_overview_page, FALSE);
   security_overview_page_show_health_level(ctx->security_overview_page);
 
