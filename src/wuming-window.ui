@@ -10,7 +10,7 @@
 
     <child>
       <object class="AdwBreakpoint">
-        <condition>max-width: 900sp</condition>
+        <condition>max-width: 550px</condition>
         <setter object="switcher_bar" property="reveal">True</setter>
         <setter object="header_bar" property="title-widget"/>
       </object>
@@ -61,12 +61,11 @@
                         <child>
                           <!-- Security Overview Page -->
                           <object class="AdwViewStackPage">
-                            <property name="title" translatable="yes">Security Overview</property>
+                            <property name="title" translatable="yes">Overview</property>
                             <property name="name">security-overview</property>
                             <property name="icon-name">security-overview-symbolic</property>
                             <property name="child">
                               <object class="AdwStatusPage">
-                                <property name="title" translatable="yes">Security Overview</property>
                                 <child>
                                   <object class="SecurityOverviewPage" id="security_overview_page"/>
                                 </child>
@@ -83,7 +82,6 @@
                             <property name="icon-name">scan-symbolic</property>
                             <property name="child">
                               <object class="AdwStatusPage">
-                                <property name="title" translatable="yes">Scan</property>
                                 <child>
                                   <object class="ScanPage" id="scan_page"/>
                                 </child>
@@ -95,7 +93,7 @@
                         <!-- Update Signature Page -->
                         <child>
                           <object class="AdwViewStackPage">
-                            <property name="title" translatable="yes">Update Signature</property>
+                            <property name="title" translatable="yes">Update</property>
                             <property name="name">update-signature</property>
                             <property name="icon-name">update-signature-symbolic</property>
                             <property name="child">
