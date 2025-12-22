@@ -139,15 +139,15 @@ handle_output_event(RingBuffer *ring_buf, int pipefd)
   * context: the context data for the callback function
   * callback_function: the callback function to process the output lines
 */
-void
+gboolean
 process_output_lines(RingBuffer *ring_buf, int pipefd, gpointer context,
                       GSourceFunc callback_function)
 {
-    g_return_if_fail(ring_buf != NULL);
-    g_return_if_fail(callback_function != NULL);
-    g_return_if_fail(context != NULL);
+    g_return_val_if_fail(ring_buf != NULL, FALSE);
+    g_return_val_if_fail(callback_function != NULL, FALSE);
+    g_return_val_if_fail(context != NULL, FALSE);
 
-    if (!handle_output_event(ring_buf, pipefd)) return; // Check if there is any output event
+    if (!handle_output_event(ring_buf, pipefd)) return FALSE; // Check if there is any output event
 
     char *line;
     while ((line = ring_buffer_find_new_line(ring_buf)) != NULL)
@@ -162,6 +162,8 @@ process_output_lines(RingBuffer *ring_buf, int pipefd, gpointer context,
                        data,
                        (GDestroyNotify)idle_data_clear);
     }
+
+    return TRUE;
 }
 
 /* Send the final message from the subprocess to the main process */

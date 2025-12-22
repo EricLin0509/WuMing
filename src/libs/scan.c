@@ -283,7 +283,7 @@ scan_sync_callback(gpointer user_data)
       return G_SOURCE_REMOVE;
   }
 
-  process_output_lines(&ctx->ring_buffer, ctx->pipefd[0], ctx, scan_ui_callback);
+  if (process_output_lines(&ctx->ring_buffer, ctx->pipefd[0], ctx, scan_ui_callback)) return G_SOURCE_CONTINUE; // Has more output to read
 
   const int exit_status = wait_for_process(ctx->pid, WNOHANG);
 

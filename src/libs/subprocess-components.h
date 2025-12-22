@@ -54,7 +54,7 @@ wait_for_process(pid_t pid, int flags);
   * context: the context data for the callback function
   * callback_function: the callback function to process the output lines
 */
-void
+gboolean
 process_output_lines(RingBuffer *ring_buf, int pipefd, gpointer context,
                       GSourceFunc callback_function);
 
