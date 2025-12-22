@@ -80,6 +80,7 @@ struct _WumingWindow
 
     /* Private */
     WumingPreferencesDialog *prefrences_dialog;
+    GtkFileDialog       *file_dialog;
     GNotification       *notification;
     GtkDropTarget       *drop_target;
     GApplication        *app;
@@ -295,6 +296,8 @@ wuming_window_update_signature_status (WumingWindow *self, gboolean need_rescan_
     security_overview_page_show_health_level (self->security_overview_page);
 }
 
+/* GObject essential functions */
+
 static void
 wuming_window_on_drag_drop (GtkDropTarget* self, const GValue* value, gdouble x, gdouble y, gpointer user_data)
 {
@@ -313,7 +316,105 @@ wuming_window_on_drag_drop (GtkDropTarget* self, const GValue* value, gdouble x,
     start_scan (window->scan_context, path);
 }
 
-/* GObject essential functions */
+static void
+start_scan_file (GObject *source_object, GAsyncResult *res, gpointer data)
+{
+    GtkFileDialog *file_dialog = GTK_FILE_DIALOG (source_object);
+    ScanContext *context = data;
+    GFile *file = NULL;
+    GError *error = NULL;
+
+    file = gtk_file_dialog_open_finish (file_dialog, res, &error);
+
+    if (file == NULL)
+    {
+        if (error->code == GTK_DIALOG_ERROR_DISMISSED)
+            g_warning ("[INFO] User canceled the file selection!");
+        else
+            g_critical ("[ERROR] Failed to open the file!");
+
+        g_clear_error (&error);
+        return;
+    }
+
+    const char *filepath = g_file_get_path (file);
+
+    start_scan (context, filepath);
+
+    g_clear_error (&error);
+    g_object_unref (file); // Only unref the file if it is successfully opened
+}
+
+static void
+start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
+{
+    GtkFileDialog *file_dialog = GTK_FILE_DIALOG (source_object);
+    ScanContext *context = data;
+    GFile *file = NULL;
+    GError *error = NULL;
+
+    file = gtk_file_dialog_select_folder_finish (file_dialog, res, &error);
+
+    if (file == NULL)
+    {
+        if (error->code == GTK_DIALOG_ERROR_DISMISSED)
+            g_warning ("[INFO] User canceled the folder selection!");
+        else
+            g_critical ("[ERROR] Failed to open the folder!");
+
+        g_clear_error (&error);
+        return;
+    }
+
+    const char *folderpath = g_file_get_path (file);
+
+    start_scan (context, folderpath);
+
+    g_clear_error (&error);
+    g_object_unref (file); // Only unref the file if it is successfully opened
+}
+
+static void
+scan_file_action (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
+{
+  WumingWindow *window = user_data;
+
+  if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
+
+  g_print("[INFO] Choose a file\n");
+
+  gtk_file_dialog_open (window->file_dialog, GTK_WINDOW (window), NULL, start_scan_file, window->scan_context); // Select a file
+}
+
+static void
+scan_folder_action (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
+{
+  WumingWindow *window = user_data;
+
+  if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
+
+  g_print("[INFO] Choose a folder\n");
+
+  gtk_file_dialog_select_folder (window->file_dialog, GTK_WINDOW (window), NULL, start_scan_folder, window->scan_context); // Select a folder
+}
+
+static void
+update_signature_action (GSimpleAction *action,
+                                GVariant      *parameter,
+                                gpointer       user_data)
+{
+  WumingWindow *window = user_data;
+
+  if (!wuming_window_is_in_main_page (window)) return; // Prevent multiple tasks running at the same time
+
+  g_print("[INFO] Update Signature\n");
+
+  start_update(window->update_context);
+}
 
 static void
 goto_scan_page_action (GSimpleAction *action,
@@ -328,7 +429,10 @@ goto_scan_page_action (GSimpleAction *action,
 }
 
 static const GActionEntry window_actions[] = {
-  { "goto-scan-page", goto_scan_page_action }
+  { "goto-scan-page", goto_scan_page_action },
+  { "scan-file", scan_file_action },
+  { "scan-folder", scan_folder_action },
+  { "update", update_signature_action }
 };
 
 static void
@@ -349,6 +453,7 @@ wuming_window_dispose (GObject *object)
     wuming_window_close_notification (self);
 
     g_clear_object (&self->prefrences_dialog);
+    g_clear_object (&self->file_dialog);
     g_clear_object (&self->notification);
     gtk_widget_remove_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (self->drop_target));
 
@@ -492,6 +597,9 @@ wuming_window_init (WumingWindow *self)
 
     self->prefrences_dialog = wuming_preferences_dialog_new (self);
     g_object_ref_sink (self->prefrences_dialog); // Keep the reference count
+
+    self->file_dialog = gtk_file_dialog_new ();
+    g_object_ref_sink (self->file_dialog); // Keep the reference count
 
     GSettings *settings = wuming_preferences_dialog_get_settings (self->prefrences_dialog);
 

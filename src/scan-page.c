@@ -20,11 +20,7 @@
 
 #include <glib/gi18n.h>
 
-#include "libs/check-scan-time.h"
-#include "libs/scan.h"
-
 #include "scan-page.h"
-#include "wuming-window.h"
 
 struct _ScanPage {
   GtkWidget          parent_instance;
@@ -33,9 +29,6 @@ struct _ScanPage {
   AdwStatusPage      *status_page;
   GtkButton          *scan_a_file_button;
   GtkButton          *scan_a_folder_button;
-
-  /* Private */
-  GtkFileDialog *dialog;
 };
 
 G_DEFINE_FINAL_TYPE (ScanPage, scan_page, GTK_TYPE_WIDGET)
@@ -73,104 +66,7 @@ scan_page_show_last_scan_time_status (ScanPage *self, const gchar *timestamp, gb
   adw_status_page_set_icon_name (self->status_page, icon_name);
 }
 
-static void
-start_scan_file (GObject *source_object, GAsyncResult *res, gpointer data)
-{
-  GtkFileDialog *file_dialog = GTK_FILE_DIALOG (source_object);
-  ScanContext *context = data;
-  GFile *file = NULL;
-  GError *error = NULL;
-
-  if ((file = gtk_file_dialog_open_finish (file_dialog, res, &error)) != NULL)
-  {
-    char *filepath = g_file_get_path (file);
-
-    /* Start scannning */
-    start_scan (context, filepath);
-
-    g_object_unref (file); // Only unref the file if it is successfully opened
-  }
-  else
-  {
-    if (error->code == GTK_DIALOG_ERROR_DISMISSED)
-          g_warning ("[INFO] User canceled the file selection!");
-    else
-          g_critical ("[ERROR] Failed to open the file!");
-  }
-  g_clear_error (&error);
-}
-
-static void
-start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
-{
-  GtkFileDialog *file_dialog = GTK_FILE_DIALOG (source_object);
-  ScanContext *context = data;
-  GFile *file = NULL;
-  GError *error = NULL;
-
-  if ((file = gtk_file_dialog_select_folder_finish (file_dialog, res, &error)) != NULL)
-  {
-    char *folderpath = g_file_get_path (file);
-
-    /* Start scannning */
-    start_scan (context, folderpath);
-
-    g_object_unref (file); // Only unref the file if it is successfully opened
-  }
-  else
-  {
-    if (error->code == GTK_DIALOG_ERROR_DISMISSED)
-          g_warning ("[INFO] User canceled the folder selection!");
-    else
-          g_critical ("[ERROR] Failed to open the folder!");
-  }
-  g_clear_error (&error);
-}
-
-/*Callbacks*/
-
-static void
-file_chooser (GSimpleAction *action,
-                                GVariant      *parameter,
-                                gpointer       user_data)
-{
-  ScanPage *self = user_data;
-
-  WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
-
-  if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
-
-  ScanContext *context = (ScanContext *)wuming_window_get_component (window, "scan_context");
-
-  g_print("[INFO] Choose a file\n");
-
-  gtk_file_dialog_open (self->dialog, GTK_WINDOW (window), NULL, start_scan_file, context); // Select a file
-}
-
-static void
-folder_chooser (GSimpleAction *action,
-                                GVariant      *parameter,
-                                gpointer       user_data)
-{
-  ScanPage *self = user_data;
-
-  WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), ADW_TYPE_APPLICATION_WINDOW));
-
-  if (!wuming_window_is_in_main_page(window)) return; // Prevent multiple tasks running at the same time
-
-  ScanContext *context = (ScanContext *)wuming_window_get_component (window, "scan_context");
-
-  g_print("[INFO] Choose a folder\n");
-
-  gtk_file_dialog_select_folder (self->dialog, GTK_WINDOW (window), NULL, start_scan_folder, context); // Select a folder
-}
-
 /*GObject Essential Functions */
-
-static const GActionEntry scan_actions[] = {
-    { "scan-file", file_chooser },
-    { "scan-folder", folder_chooser },
-};
 
 static void
 scan_page_dispose(GObject *gobject)
@@ -178,10 +74,6 @@ scan_page_dispose(GObject *gobject)
   ScanPage *self = SCAN_PAGE (gobject);
 
   GApplication *app = g_application_get_default();
-
-  g_action_map_remove_action_entries (G_ACTION_MAP (app),
-	                                 scan_actions,
-	                                 G_N_ELEMENTS (scan_actions));
 
   GtkWidget *status_page = GTK_WIDGET (self->status_page);
   g_clear_pointer (&status_page, gtk_widget_unparent);
@@ -230,15 +122,4 @@ static void
 scan_page_init (ScanPage *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-
-  /* Set initial folder */
-  self->dialog = gtk_file_dialog_new();
-  g_object_ref_sink(self->dialog);
-
-  /* Map scan actions */
-  GApplication *app = g_application_get_default();
-	g_action_map_add_action_entries (G_ACTION_MAP (app),
-	                                 scan_actions,
-	                                 G_N_ELEMENTS (scan_actions),
-	                                 self);
 }

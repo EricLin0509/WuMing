@@ -36,13 +36,13 @@
         <child>
           <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Scan file</property>
-            <property name="action-name">app.scan-file</property>
+            <property name="action-name">win.scan-file</property>
           </object>
         </child>
         <child>
           <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Scan folder</property>
-            <property name="action-name">app.scan-folder</property>
+            <property name="action-name">win.scan-folder</property>
           </object>
         </child>
       </object>
@@ -53,7 +53,7 @@
         <child>
           <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Update Signature</property>
-            <property name="action-name">app.update</property>
+            <property name="action-name">win.update</property>
           </object>
         </child>
       </object>

@@ -21,9 +21,6 @@
 #include <glib/gi18n.h>
 
 #include "update-signature-page.h"
-#include "wuming-window.h"
-
-#include "libs/update-signature.h"
 
 struct _UpdateSignaturePage {
   GtkWidget          parent_instance;
@@ -123,37 +120,13 @@ update_signature_page_show_servicestat(UpdateSignaturePage *self, int service_st
   adw_action_row_set_subtitle (self->service_row, subtitle);
 }
 
-static void
-update_signature_cb (GSimpleAction *action,
-                                GVariant      *parameter,
-                                gpointer       user_data)
-{
-  UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE(user_data);
-  WumingWindow *window = WUMING_WINDOW (gtk_widget_get_ancestor (GTK_WIDGET (self), WUMING_TYPE_WINDOW));
-  UpdateContext *context = (UpdateContext *)wuming_window_get_component(window, "update_context");
-
-  if (!wuming_window_is_in_main_page (window)) return; // Prevent multiple tasks running at the same time
-
-  g_print("[INFO] Update Signature\n");
-
-  start_update(context);
-}
-
 /*GObject Essential Functions */
-
-static const GActionEntry update_actions[] = {
-  { "update", update_signature_cb }
-};
 
 static void
 update_signature_page_dispose(GObject *gobject)
 {
   UpdateSignaturePage *self = UPDATE_SIGNATURE_PAGE (gobject);
   GApplication *app = g_application_get_default();
-
-  g_action_map_remove_action_entries (G_ACTION_MAP (app),
-	                                 update_actions,
-	                                 G_N_ELEMENTS (update_actions));
 
   GtkWidget *status_page = GTK_WIDGET (self->status_page);
   g_clear_pointer(&status_page, gtk_widget_unparent);
@@ -204,11 +177,4 @@ static void
 update_signature_page_init (UpdateSignaturePage *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
-
-  /* Map update action */
-  GApplication *app = g_application_get_default();
-	g_action_map_add_action_entries (G_ACTION_MAP (app),
-	                                 update_actions,
-	                                 G_N_ELEMENTS (update_actions),
-	                                 self);
 }

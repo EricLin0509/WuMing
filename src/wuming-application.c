@@ -130,12 +130,12 @@ wuming_application_init (WumingApplication *self)
 	                                       "app.quit",
 	                                       (const char *[]) { "<primary>q", NULL });
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
-	                                       "app.scan-file",
+	                                       "win.scan-file",
 	                                       (const char *[]) { "<primary>s", NULL });
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
-	                                       "app.scan-folder",
+	                                       "win.scan-folder",
 	                                       (const char *[]) { "<primary>f", NULL });
 	gtk_application_set_accels_for_action (GTK_APPLICATION (self),
-	                                       "app.update",
+	                                       "win.update",
 	                                       (const char *[]) { "<primary>u", NULL });
 }
