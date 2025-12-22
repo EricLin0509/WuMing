@@ -25,9 +25,6 @@
 
 #include "scan-page.h"
 #include "wuming-window.h"
-#include "security-overview-page.h"
-#include "scanning-page.h"
-#include "threat-page.h"
 
 struct _ScanPage {
   GtkWidget          parent_instance;

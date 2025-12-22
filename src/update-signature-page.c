@@ -22,7 +22,6 @@
 
 #include "update-signature-page.h"
 #include "wuming-window.h"
-#include "updating-page.h"
 
 #include "libs/update-signature.h"
 
