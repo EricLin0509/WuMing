@@ -247,16 +247,16 @@ get_extra_args(char *extra_args[SCAN_OPTIONS_N_ELEMENTS])
   int bitmask = g_settings_get_int(settings, "scan-options-bitmask");
   g_object_unref(settings);
 
-  int i = 0;
-  int j = 0;
+  int index = 0;
   int options_bit = 1;
 
-  while (options_bit <= bitmask && i < SCAN_OPTIONS_N_ELEMENTS)
+  for (int i = 0; i < SCAN_OPTIONS_N_ELEMENTS &&
+                  index < SCAN_OPTIONS_N_ELEMENTS &&
+                  options_bit <= bitmask; i++)
   {
-    if (bitmask & options_bit) extra_args[j++] = g_strdup(args_list[i]);
+    if (bitmask & options_bit) extra_args[index++] = g_strdup(args_list[i]);
 
-    i++;
-    options_bit <<= 1; // Move to the next option bit
+    options_bit <<= 1; // Move to the next bit
   }
 }
 
