@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-18 19:31+0800\n"
+"POT-Creation-Date: 2025-12-30 17:36+0800\n"
 "PO-Revision-Date: 2025-08-08 01:00+0800\n"
 "Last-Translator:  <ericlin050914@gmail.com>\n"
 "Language-Team: English\n"
@@ -99,7 +99,7 @@ msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr "Update Signature"
 
-#: src/wuming-window.c:199
+#: src/wuming-window.c:200
 msgid "Click to show details"
 msgstr "Click to show details"
 
@@ -131,6 +131,11 @@ msgstr "Keyboard Shortcuts"
 #: src/wuming-window.ui:154
 msgid "_About WuMing"
 msgstr "About WuMing"
+
+#: src/wuming-window.ui:158
+#, fuzzy
+msgid "_Quit"
+msgstr "Quit"
 
 #: src/wuming-preferences-dialog.ui:11
 msgid "Scan Options"
@@ -205,28 +210,28 @@ msgid "Set The Expiration Time For The Signature (1-14 Days)"
 msgstr "Set The Expiration Time For The Signature (1-14 Days)"
 
 #: src/security-overview-page.c:77 src/security-overview-page.c:201
-#: src/scan-page.c:71
+#: src/scan-page.c:61
 msgid "Scan Has Expired"
 msgstr "Scan Has Expired"
 
-#: src/security-overview-page.c:77 src/scan-page.c:71
+#: src/security-overview-page.c:77 src/scan-page.c:61
 msgid "Scan Has Not Expired"
 msgstr "Scan Has Not Expired"
 
-#: src/security-overview-page.c:113 src/update-signature-page.c:62
+#: src/security-overview-page.c:113 src/update-signature-page.c:58
 msgid "Signature Is Outdated"
 msgstr "Signature Is Outdated"
 
-#: src/security-overview-page.c:118 src/update-signature-page.c:70
+#: src/security-overview-page.c:118 src/update-signature-page.c:66
 msgid "No Signature Found"
 msgstr "No Signature Found"
 
-#: src/security-overview-page.c:123 src/update-signature-page.c:78
+#: src/security-overview-page.c:123 src/update-signature-page.c:74
 msgid "Signature Is Up To Date"
 msgstr "Signature Is Up To Date"
 
-#: src/security-overview-page.c:129 src/update-signature-page.c:86
-#: src/update-signature-page.c:87
+#: src/security-overview-page.c:129 src/update-signature-page.c:82
+#: src/update-signature-page.c:83
 msgid "Unknown Signature Status"
 msgstr "Unknown Signature Status"
 
@@ -288,7 +293,7 @@ msgstr "Current Signature Status"
 msgid "Freshclam Service Status"
 msgstr "Freshclam Service Status"
 
-#: src/scan-page.c:69
+#: src/scan-page.c:59
 #, c-format
 msgid "Last Scan Time: %s"
 msgstr "Last Scan Time: %s"
@@ -397,16 +402,16 @@ msgstr "Delete All"
 msgid "Found Threats"
 msgstr "Found Threats"
 
-#: src/update-signature-page.c:60 src/update-signature-page.c:76
+#: src/update-signature-page.c:56 src/update-signature-page.c:72
 #, fuzzy, c-format
 msgid "Current Signature Date: %4d.%02d.%02d %02d:%02d"
 msgstr "Current signature date: %d.%d.%d %d:%d"
 
-#: src/update-signature-page.c:63
+#: src/update-signature-page.c:59
 msgid "Outdated!"
 msgstr "Outdated!"
 
-#: src/update-signature-page.c:68
+#: src/update-signature-page.c:64
 #, fuzzy
 msgid ""
 "Warning: No signature found\n"
@@ -415,29 +420,29 @@ msgstr ""
 "Warning: No signature found\n"
 "Please update the signature now!"
 
-#: src/update-signature-page.c:71
+#: src/update-signature-page.c:67
 #, fuzzy
 msgid "Signature Not Found"
 msgstr "No Signature Found"
 
-#: src/update-signature-page.c:79
+#: src/update-signature-page.c:75
 msgid "Is Up To Date"
 msgstr "Is Up To Date"
 
-#: src/update-signature-page.c:84
+#: src/update-signature-page.c:80
 #, fuzzy, c-format
 msgid "Signature Status: %d"
 msgstr "Unknown signature status: %d"
 
-#: src/update-signature-page.c:114
+#: src/update-signature-page.c:110
 msgid "Enabled"
 msgstr "Enabled"
 
-#: src/update-signature-page.c:117
+#: src/update-signature-page.c:113
 msgid "Disabled"
 msgstr "Disabled"
 
-#: src/update-signature-page.c:120
+#: src/update-signature-page.c:116
 msgid "Failed to check!"
 msgstr "Failed to check!"
 
@@ -489,3 +494,7 @@ msgstr "Signature Update Complete"
 #, fuzzy
 msgid "Signature Update Failed"
 msgstr "Signature Update Failed"
+
+#, fuzzy
+#~ msgid "_Quit WuMing"
+#~ msgstr "Quit WuMing"

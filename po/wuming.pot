@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-18 19:31+0800\n"
+"POT-Creation-Date: 2025-12-30 17:36+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -95,7 +95,7 @@ msgctxt "shortcut window"
 msgid "Update Signature"
 msgstr ""
 
-#: src/wuming-window.c:199
+#: src/wuming-window.c:200
 msgid "Click to show details"
 msgstr ""
 
@@ -126,6 +126,10 @@ msgstr ""
 
 #: src/wuming-window.ui:154
 msgid "_About WuMing"
+msgstr ""
+
+#: src/wuming-window.ui:158
+msgid "_Quit"
 msgstr ""
 
 #: src/wuming-preferences-dialog.ui:11
@@ -201,28 +205,28 @@ msgid "Set The Expiration Time For The Signature (1-14 Days)"
 msgstr ""
 
 #: src/security-overview-page.c:77 src/security-overview-page.c:201
-#: src/scan-page.c:71
+#: src/scan-page.c:61
 msgid "Scan Has Expired"
 msgstr ""
 
-#: src/security-overview-page.c:77 src/scan-page.c:71
+#: src/security-overview-page.c:77 src/scan-page.c:61
 msgid "Scan Has Not Expired"
 msgstr ""
 
-#: src/security-overview-page.c:113 src/update-signature-page.c:62
+#: src/security-overview-page.c:113 src/update-signature-page.c:58
 msgid "Signature Is Outdated"
 msgstr ""
 
-#: src/security-overview-page.c:118 src/update-signature-page.c:70
+#: src/security-overview-page.c:118 src/update-signature-page.c:66
 msgid "No Signature Found"
 msgstr ""
 
-#: src/security-overview-page.c:123 src/update-signature-page.c:78
+#: src/security-overview-page.c:123 src/update-signature-page.c:74
 msgid "Signature Is Up To Date"
 msgstr ""
 
-#: src/security-overview-page.c:129 src/update-signature-page.c:86
-#: src/update-signature-page.c:87
+#: src/security-overview-page.c:129 src/update-signature-page.c:82
+#: src/update-signature-page.c:83
 msgid "Unknown Signature Status"
 msgstr ""
 
@@ -282,7 +286,7 @@ msgstr ""
 msgid "Freshclam Service Status"
 msgstr ""
 
-#: src/scan-page.c:69
+#: src/scan-page.c:59
 #, c-format
 msgid "Last Scan Time: %s"
 msgstr ""
@@ -387,43 +391,43 @@ msgstr ""
 msgid "Found Threats"
 msgstr ""
 
-#: src/update-signature-page.c:60 src/update-signature-page.c:76
+#: src/update-signature-page.c:56 src/update-signature-page.c:72
 #, c-format
 msgid "Current Signature Date: %4d.%02d.%02d %02d:%02d"
 msgstr ""
 
-#: src/update-signature-page.c:63
+#: src/update-signature-page.c:59
 msgid "Outdated!"
 msgstr ""
 
-#: src/update-signature-page.c:68
+#: src/update-signature-page.c:64
 msgid ""
 "Warning: No signature found\n"
 "Please update the signature now!"
 msgstr ""
 
-#: src/update-signature-page.c:71
+#: src/update-signature-page.c:67
 msgid "Signature Not Found"
 msgstr ""
 
-#: src/update-signature-page.c:79
+#: src/update-signature-page.c:75
 msgid "Is Up To Date"
 msgstr ""
 
-#: src/update-signature-page.c:84
+#: src/update-signature-page.c:80
 #, c-format
 msgid "Signature Status: %d"
 msgstr ""
 
-#: src/update-signature-page.c:114
+#: src/update-signature-page.c:110
 msgid "Enabled"
 msgstr ""
 
-#: src/update-signature-page.c:117
+#: src/update-signature-page.c:113
 msgid "Disabled"
 msgstr ""
 
-#: src/update-signature-page.c:120
+#: src/update-signature-page.c:116
 msgid "Failed to check!"
 msgstr ""
 
