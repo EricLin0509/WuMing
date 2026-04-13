@@ -63,13 +63,13 @@ set_file_properties(GtkWidget *expander_row, const char *path)
 
     adw_preferences_row_set_title(
         ADW_PREFERENCES_ROW(expander_row),
-        is_system_direcotry ? 
-            gettext("Maybe a system file, delete it with caution!") : 
+        is_system_direcotry ?
+            gettext("Maybe a system file, delete it with caution!") :
             gettext("Normal file")
     );
 
     g_free(query);
-    
+
     if (second_slash) *second_slash = '/'; // Restore the path
 }
 
@@ -85,7 +85,6 @@ create_threat_expander_row (GtkWidget **delete_button, const char *path, const c
     /* Delete button for the action row */
     *delete_button = gtk_button_new ();
     gtk_widget_set_size_request (*delete_button, -1, 40);
-    gtk_widget_add_css_class (*delete_button, "button-default");
     gtk_widget_set_halign (*delete_button, GTK_ALIGN_CENTER);
     gtk_widget_set_valign (*delete_button, GTK_ALIGN_CENTER);
 

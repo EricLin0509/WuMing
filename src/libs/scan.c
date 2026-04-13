@@ -19,14 +19,23 @@
  */
 
 #include <glib/gi18n.h>
+#include <gio/gio.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <stdbool.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "subprocess-components.h"
 #include "scan-options-configs.h"
-#include "scan.h"
+#include "systemd-control.h"
+#include "../wuming-window.h"
+#include "../security-overview-page.h"
+#include "../scan-page.h"
+#include "../scanning-page.h"
+#include "../threat-page.h"
 
-#define CLAMSCAN_PATH "/usr/bin/clamscan"
+#define CLAMDSCAN_PATH "/usr/bin/clamdscan"
 
 typedef struct ScanContext {
   /* Protected by mutex */
@@ -177,6 +186,12 @@ scan_ui_callback(gpointer user_data)
 
     g_mutex_lock(&ctx->threats_mutex);
 
+    if (virname != NULL && g_strcmp0(virname, "Heuristics.Structured.CreditCardNumber") == 0)
+    {
+      g_mutex_unlock(&ctx->threats_mutex);
+      return G_SOURCE_REMOVE;
+    }
+
     if (threat_page_add_threat(ctx->threat_page, message, virname)) // Ensure the threat path can be added to the list
     {
       inc_total_files(ctx);
@@ -242,7 +257,7 @@ static void
 get_extra_args(char *extra_args[SCAN_OPTIONS_N_ELEMENTS])
 {
   const char *args_list[SCAN_OPTIONS_N_ELEMENTS] = { "--max-filesize=2048M", "--detect-pua=yes", "--scan-archive=yes", "--scan-mail=yes", "--alert-exceeds-max=yes", "--alert-encrypted=yes" };
-  
+
   GSettings *settings = g_settings_new("com.ericlin.wuming");
   int bitmask = g_settings_get_int(settings, "scan-options-bitmask");
   g_object_unref(settings);
@@ -305,19 +320,32 @@ scan_sync_callback(gpointer user_data)
 static void
 start_scan_async(ScanContext *ctx)
 {
-    char *extra_args[SCAN_OPTIONS_N_ELEMENTS] = { NULL };
-    get_extra_args(extra_args);
+    /* Check if clamav-daemon.service is active */
+    if (is_service_active("clamav-daemon.service") != 1)
+    {
+        wuming_window_send_toast_notification(ctx->window, gettext("ClamAV daemon is not running. Scan may fail."), 10);
+    }
 
     /* Spawn scan process */
+    char *path_to_scan = ctx->path;
+    if (g_file_test(ctx->path, G_FILE_TEST_IS_DIR)) {
+        path_to_scan = g_strconcat(ctx->path, "/**", NULL);
+    }
+
+    char *command = g_strdup_printf("clamdscan --fdpass -m %s", path_to_scan);
+    g_print("DEBUG: Executing: %s\n", command);
+
     if (!spawn_new_process(ctx->pipefd, &ctx->pid,
-        CLAMSCAN_PATH, "clamscan", ctx->path, "--recursive",extra_args[0], extra_args[1], extra_args[2], extra_args[3], extra_args[4], extra_args[5], NULL))
+        "/bin/sh", "sh", "-c", command, NULL))
     {
-          g_critical("Failed to spawn clamscan process");
-          extra_args_free(extra_args);
+          g_critical("Failed to spawn clamdscan process");
+          if (path_to_scan != ctx->path) g_free(path_to_scan);
+          g_free(command);
           send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
           return;
     }
-    extra_args_free(extra_args);
+    if (path_to_scan != ctx->path) g_free(path_to_scan);
+    g_free(command);
 
     ring_buffer_init(&ctx->ring_buffer);
 
@@ -342,7 +370,7 @@ scan_context_add_path(ScanContext *ctx, const char *path)
 
   if (ctx->path) scan_context_clear_path(ctx); // If have a path, clear it first
 
-  ctx->path = (char *)g_steal_pointer(&path); // Add the new path to the context
+  ctx->path = g_strdup(path); // Add the new path to the context
 }
 
 /* Clear `ScanContext` */
@@ -463,3 +491,4 @@ start_scan(ScanContext *ctx, const char *path)
 
   start_scan_async(ctx);
 }
+

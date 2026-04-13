@@ -57,7 +57,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 
       signature_msg = gettext("Signature Is Outdated");
       row_subtitle = gettext("Outdated!");
-      button_style = "button-suggestion";
+      button_style = "suggested-action";
       icon_name = "status-warning-symbolic";
       break;
     case SIGNATURE_STATUS_NOT_FOUND: // No signature found
@@ -65,7 +65,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 
       signature_msg = gettext("No Signature Found");
       row_subtitle = gettext("Signature Not Found");
-      button_style = "button-suggestion";
+      button_style = "suggested-action";
       icon_name = "status-error-symbolic";
       break;
     case SIGNATURE_STATUS_UPTODATE: // Signature is up-to-date
@@ -73,7 +73,7 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 
       signature_msg = gettext("Signature Is Up To Date");
       row_subtitle = gettext("Is Up To Date");
-      button_style = "button-default";
+      button_style = NULL;
       icon_name = "status-ok-symbolic";
       break;
     default: // Bit mask is invalid (because these two bit mask cannot be set at the same time)
@@ -81,16 +81,16 @@ update_signature_page_show_isuptodate(UpdateSignaturePage *self, const signature
 
       signature_msg = gettext("Unknown Signature Status");
       row_subtitle = gettext("Unknown Signature Status");
-      button_style = "button-suggestion";
+      button_style = "suggested-action";
       icon_name = "status-error-symbolic";
       break;
   }
 
   /* Remove the old style class and add the new one */
-  gtk_widget_remove_css_class (GTK_WIDGET (self->update_button), "button-default");
-  gtk_widget_remove_css_class (GTK_WIDGET (self->update_button), "button-suggestion");
+  gtk_widget_remove_css_class (GTK_WIDGET (self->update_button), "suggested-action");
 
-  gtk_widget_add_css_class (GTK_WIDGET (self->update_button), button_style);
+  if (button_style)
+    gtk_widget_add_css_class (GTK_WIDGET (self->update_button), button_style);
 
   adw_status_page_set_title (self->status_page, signature_msg);
   adw_status_page_set_description (self->status_page, date_msg);

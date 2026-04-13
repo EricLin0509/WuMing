@@ -309,7 +309,7 @@ wuming_window_on_drag_drop (GtkDropTarget* self, const GValue* value, gdouble x,
 
     if (file == NULL) return;
 
-    const char *path = g_file_get_path (file);
+    g_autofree char *path = g_file_get_path (file);
 
     if (path == NULL) return;
 
@@ -337,7 +337,7 @@ start_scan_file (GObject *source_object, GAsyncResult *res, gpointer data)
         return;
     }
 
-    const char *filepath = g_file_get_path (file);
+    g_autofree char *filepath = g_file_get_path (file);
 
     start_scan (context, filepath);
 
@@ -366,7 +366,7 @@ start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
         return;
     }
 
-    const char *folderpath = g_file_get_path (file);
+    g_autofree char *folderpath = g_file_get_path (file);
 
     start_scan (context, folderpath);
 

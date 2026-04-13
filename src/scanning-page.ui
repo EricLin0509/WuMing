@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="Adw" version="1.0"/>
+  <requires lib="Adw" version="1.4"/>
 
   <template class="ScanningPage" parent="GtkWidget">
     <child>
@@ -13,7 +13,7 @@
                 <property name="can-shrink">true</property>
                 <property name="label" translatable="yes">Cancel</property>
                 <style>
-                  <class name="button-error"/>
+                  <class name="destructive-action"/>
                 </style>
               </object>
             </child>
@@ -38,7 +38,7 @@
                     <property name="action-target">'threat_nav_page'</property>
                     <style>
                       <class name="pill"/>
-                      <class name="button-warning"/>
+                      <class name="warning"/>
                     </style>
                   </object>
                 </child>
@@ -51,7 +51,6 @@
                     <property name="action-name">navigation.pop</property>
                     <style>
                       <class name="pill"/>
-                      <class name="button-default"/>
                     </style>
                   </object>
                 </child>

@@ -28,16 +28,16 @@ G_BEGIN_DECLS
 
 #define SECURITY_OVERVIEW_TYPE_PAGE (security_overview_page_get_type ())
 
-G_DECLARE_FINAL_TYPE (SecurityOverviewPage, security_overview_page, SECURITY_OVERVIEW, PAGE, GtkWidget)
+G_DECLARE_FINAL_TYPE (SecurityOverviewPage, security_overview_page, SECURITY_OVERVIEW, PAGE, AdwBin)
 
 /* Show the last scan time status on the security overview page. */
 /*
   * @param self
   * `SecurityOverviewPage` object.
-  * 
+  *
   * @param is_expired
   * Whether the last scan time is expired or not.
-  * 
+  *
   * @note
   * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
 */
@@ -48,7 +48,7 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, g
 /*
   * @param self
   * `SecurityOverviewPage` object.
-  * 
+  *
   * @param result
   * `scan_result` object to get signature status.
 */
