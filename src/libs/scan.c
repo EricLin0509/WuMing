@@ -18,6 +18,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#define _XOPEN_SOURCE 500
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <limits.h>
@@ -25,6 +26,10 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <ftw.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "subprocess-components.h"
 #include "scan-options-configs.h"
@@ -62,8 +67,20 @@ typedef struct ScanContext {
   ScanPage *scan_page; // The scan page
   ScanningPage *scanning_page; // The scanning page
   char *path; // file/folder path
+  char *temp_file_path; // path to the temporary file for file list
 
 } ScanContext;
+
+static FILE *temp_file_fp;
+
+static int
+collect_file_path(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
+{
+  if (tflag == FTW_F) {
+    fprintf(temp_file_fp, "%s\n", fpath);
+  }
+  return 0;
+}
 
 /* thread-safe method to get/set states */
 static void
@@ -229,6 +246,12 @@ scan_complete_callback(gpointer user_data)
 
   scanning_page_set_final_result(ctx->scanning_page, has_threat, message, status_text, icon_name);
 
+  if (ctx->temp_file_path) {
+      unlink(ctx->temp_file_path);
+      g_free(ctx->temp_file_path);
+      ctx->temp_file_path = NULL;
+  }
+
   if (!is_success)
   {
     int exit_status = get_idle_exit_status(data);
@@ -326,26 +349,35 @@ start_scan_async(ScanContext *ctx)
         wuming_window_send_toast_notification(ctx->window, gettext("ClamAV daemon is not running. Scan may fail."), 10);
     }
 
-    /* Spawn scan process */
-    char *path_to_scan = ctx->path;
-    if (g_file_test(ctx->path, G_FILE_TEST_IS_DIR)) {
-        path_to_scan = g_strconcat(ctx->path, "/**", NULL);
+    /* Create temporary file for file list */
+    char *temp_template = g_strdup("/tmp/wuming_scan_XXXXXX");
+    int fd = mkstemp(temp_template);
+    if (fd == -1) {
+        g_critical("Failed to create temporary file");
+        send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+        g_free(temp_template);
+        return;
+    }
+    ctx->temp_file_path = temp_template;
+    temp_file_fp = fdopen(fd, "w");
+    if (temp_file_fp) {
+        nftw(ctx->path, collect_file_path, 20, FTW_PHYS);
+        fclose(temp_file_fp);
+    } else {
+        g_critical("Failed to open temporary file for writing");
+        close(fd);
+        send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+        return;
     }
 
-    char *command = g_strdup_printf("clamdscan --fdpass -m %s", path_to_scan);
-    g_print("DEBUG: Executing: %s\n", command);
-
+    /* Spawn scan process */
     if (!spawn_new_process(ctx->pipefd, &ctx->pid,
-        "/bin/sh", "sh", "-c", command, NULL))
+        CLAMDSCAN_PATH, "clamdscan", "-f", ctx->temp_file_path, "--recursive", NULL))
     {
           g_critical("Failed to spawn clamdscan process");
-          if (path_to_scan != ctx->path) g_free(path_to_scan);
-          g_free(command);
           send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
           return;
     }
-    if (path_to_scan != ctx->path) g_free(path_to_scan);
-    g_free(command);
 
     ring_buffer_init(&ctx->ring_buffer);
 
@@ -392,6 +424,10 @@ scan_context_clear(ScanContext **ctx)
   g_mutex_clear(&(*ctx)->threats_mutex);
 
   if ((*ctx)->path) scan_context_clear_path(*ctx); // Clear the path if have one
+  if ((*ctx)->temp_file_path) {
+      unlink((*ctx)->temp_file_path);
+      g_free((*ctx)->temp_file_path);
+  }
 
   g_clear_pointer(ctx, g_free);
 }
@@ -449,6 +485,7 @@ scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_p
   ctx->scanning_page = scanning_page;
   ctx->threat_page = threat_page;
   ctx->path = NULL;
+  ctx->temp_file_path = NULL;
 
   ctx->should_cancel = FALSE;
 

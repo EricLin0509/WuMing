@@ -46,10 +46,8 @@ At the heart of WuMing is a commitment to user control and safety. **WuMing does
 
 ## Installation
 
-### Arch Linux
-
-Available in the Arch User Repository (AUR). Install using your favorite AUR helper:
+### Manual Installation
 
 ```sh
-yay -S wuming
+meson setup build --prefix=/usr && sudo ninja -C build install
 ```
