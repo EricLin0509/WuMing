@@ -190,7 +190,7 @@ scan_ui_callback(gpointer user_data)
   const char *message = get_idle_message(data); // Get the message from the ring buffer
   char *status_marker = NULL; // Check file is OK or FOUND
 
-  if ((status_marker = strstr(message, " FOUND\0")) != NULL)
+  if ((status_marker = strstr(message, " FOUND")) != NULL)
   {
     /* Add threat path to the list */
     char *colon = strrchr(message, ':'); // Find the last colon separator
@@ -217,7 +217,7 @@ scan_ui_callback(gpointer user_data)
 
     g_mutex_unlock(&ctx->threats_mutex);
   }
-  else if ((status_marker = strstr(message, " OK\0")) != NULL) inc_total_files(ctx);
+  else if ((status_marker = strstr(message, " OK")) != NULL) inc_total_files(ctx);
   else return G_SOURCE_REMOVE; // Ignore the message if it is not a threat or OK message
 
   g_autofree char *status_text = get_status_text(ctx);
