@@ -18,15 +18,30 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#define _XOPEN_SOURCE 500
 #include <glib/gi18n.h>
+#include <gio/gio.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <stdbool.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <ftw.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "subprocess-components.h"
 #include "scan-options-configs.h"
-#include "scan.h"
+#include "systemd-control.h"
+#include "../wuming-window.h"
+#include "../security-overview-page.h"
+#include "../scan-page.h"
+#include "../scanning-page.h"
+#include "../threat-page.h"
 
-#define CLAMSCAN_PATH "/usr/bin/clamscan"
+#define CLAMDSCAN_PATH "/usr/bin/clamdscan"
+#define CLAMSCAN_PATH_FALLBACK "/usr/bin/clamscan"
 
 typedef struct ScanContext {
   /* Protected by mutex */
@@ -53,8 +68,20 @@ typedef struct ScanContext {
   ScanPage *scan_page; // The scan page
   ScanningPage *scanning_page; // The scanning page
   char *path; // file/folder path
+  char *temp_file_path; // path to the temporary file for file list
 
 } ScanContext;
+
+static FILE *temp_file_fp;
+
+static int
+collect_file_path(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
+{
+  if (tflag == FTW_F) {
+    fprintf(temp_file_fp, "%s\n", fpath);
+  }
+  return 0;
+}
 
 /* thread-safe method to get/set states */
 static void
@@ -164,7 +191,7 @@ scan_ui_callback(gpointer user_data)
   const char *message = get_idle_message(data); // Get the message from the ring buffer
   char *status_marker = NULL; // Check file is OK or FOUND
 
-  if ((status_marker = strstr(message, " FOUND\0")) != NULL)
+  if ((status_marker = strstr(message, " FOUND")) != NULL)
   {
     /* Add threat path to the list */
     char *colon = strrchr(message, ':'); // Find the last colon separator
@@ -177,6 +204,12 @@ scan_ui_callback(gpointer user_data)
 
     g_mutex_lock(&ctx->threats_mutex);
 
+    if (virname != NULL && g_strcmp0(virname, "Heuristics.Structured.CreditCardNumber") == 0)
+    {
+      g_mutex_unlock(&ctx->threats_mutex);
+      return G_SOURCE_REMOVE;
+    }
+
     if (threat_page_add_threat(ctx->threat_page, message, virname)) // Ensure the threat path can be added to the list
     {
       inc_total_files(ctx);
@@ -185,7 +218,7 @@ scan_ui_callback(gpointer user_data)
 
     g_mutex_unlock(&ctx->threats_mutex);
   }
-  else if ((status_marker = strstr(message, " OK\0")) != NULL) inc_total_files(ctx);
+  else if ((status_marker = strstr(message, " OK")) != NULL) inc_total_files(ctx);
   else return G_SOURCE_REMOVE; // Ignore the message if it is not a threat or OK message
 
   g_autofree char *status_text = get_status_text(ctx);
@@ -205,7 +238,7 @@ scan_complete_callback(gpointer user_data)
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
-  bool has_threat = (ctx->total_threats > 0);
+  gboolean has_threat = (ctx->total_threats > 0);
 
   char *status_text = get_status_text(ctx);
 
@@ -213,6 +246,12 @@ scan_complete_callback(gpointer user_data)
   const char *message = get_idle_message(data); // Get the message
 
   scanning_page_set_final_result(ctx->scanning_page, has_threat, message, status_text, icon_name);
+
+  if (ctx->temp_file_path) {
+      unlink(ctx->temp_file_path);
+      g_free(ctx->temp_file_path);
+      ctx->temp_file_path = NULL;
+  }
 
   if (!is_success)
   {
@@ -242,7 +281,7 @@ static void
 get_extra_args(char *extra_args[SCAN_OPTIONS_N_ELEMENTS])
 {
   const char *args_list[SCAN_OPTIONS_N_ELEMENTS] = { "--max-filesize=2048M", "--detect-pua=yes", "--scan-archive=yes", "--scan-mail=yes", "--alert-exceeds-max=yes", "--alert-encrypted=yes" };
-  
+
   GSettings *settings = g_settings_new("com.ericlin.wuming");
   int bitmask = g_settings_get_int(settings, "scan-options-bitmask");
   g_object_unref(settings);
@@ -276,7 +315,7 @@ scan_sync_callback(gpointer user_data)
 
   if (get_cancel_scan(ctx)) // Check if the scan has been cancelled
   {
-      g_warning("[INFO] User cancelled the scan");
+      g_message("[INFO] User cancelled the scan");
       kill(ctx->pid, SIGTERM);
       wait_for_process(ctx->pid, 0); // Update the exit status
       send_final_message((void *)ctx, gettext("Scan Canceled"), FALSE, SIGTERM, scan_complete_callback);
@@ -305,19 +344,52 @@ scan_sync_callback(gpointer user_data)
 static void
 start_scan_async(ScanContext *ctx)
 {
-    char *extra_args[SCAN_OPTIONS_N_ELEMENTS] = { NULL };
-    get_extra_args(extra_args);
-
-    /* Spawn scan process */
-    if (!spawn_new_process(ctx->pipefd, &ctx->pid,
-        CLAMSCAN_PATH, "clamscan", ctx->path, "--recursive",extra_args[0], extra_args[1], extra_args[2], extra_args[3], extra_args[4], extra_args[5], NULL))
+    if (is_service_enabled("clamav-daemon.service") == 1)
     {
-          g_critical("Failed to spawn clamscan process");
-          extra_args_free(extra_args);
-          send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-          return;
+        /* Use clamdscan */
+        /* Create temporary file for file list */
+        char *temp_template = g_strdup("/tmp/wuming_scan_XXXXXX");
+        int fd = mkstemp(temp_template);
+        if (fd == -1) {
+            g_critical("Failed to create temporary file");
+            send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+            g_free(temp_template);
+            return;
+        }
+        ctx->temp_file_path = temp_template;
+        temp_file_fp = fdopen(fd, "w");
+        if (temp_file_fp) {
+            nftw(ctx->path, collect_file_path, 20, FTW_PHYS);
+            fclose(temp_file_fp);
+        } else {
+            g_critical("Failed to open temporary file for writing");
+            close(fd);
+            send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+            return;
+        }
+
+        /* Spawn scan process */
+        if (!spawn_new_process(ctx->pipefd, &ctx->pid,
+            CLAMDSCAN_PATH, "clamdscan", "-f", ctx->temp_file_path, NULL))
+        {
+              g_critical("Failed to spawn clamdscan process");
+              send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+              return;
+        }
     }
-    extra_args_free(extra_args);
+    else
+    {
+        /* Use clamscan fallback */
+        wuming_window_send_toast_notification(ctx->window, gettext("ClamAV daemon is not running. Using clamscan fallback (slower)."), 10);
+        
+        if (!spawn_new_process(ctx->pipefd, &ctx->pid,
+            CLAMSCAN_PATH_FALLBACK, "clamscan", ctx->path, NULL))
+        {
+              g_critical("Failed to spawn clamscan process");
+              send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+              return;
+        }
+    }
 
     ring_buffer_init(&ctx->ring_buffer);
 
@@ -342,7 +414,7 @@ scan_context_add_path(ScanContext *ctx, const char *path)
 
   if (ctx->path) scan_context_clear_path(ctx); // If have a path, clear it first
 
-  ctx->path = (char *)g_steal_pointer(&path); // Add the new path to the context
+  ctx->path = g_strdup(path); // Add the new path to the context
 }
 
 /* Clear `ScanContext` */
@@ -364,6 +436,10 @@ scan_context_clear(ScanContext **ctx)
   g_mutex_clear(&(*ctx)->threats_mutex);
 
   if ((*ctx)->path) scan_context_clear_path(*ctx); // Clear the path if have one
+  if ((*ctx)->temp_file_path) {
+      unlink((*ctx)->temp_file_path);
+      g_free((*ctx)->temp_file_path);
+  }
 
   g_clear_pointer(ctx, g_free);
 }
@@ -421,6 +497,7 @@ scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_p
   ctx->scanning_page = scanning_page;
   ctx->threat_page = threat_page;
   ctx->path = NULL;
+  ctx->temp_file_path = NULL;
 
   ctx->should_cancel = FALSE;
 
@@ -463,3 +540,4 @@ start_scan(ScanContext *ctx, const char *path)
 
   start_scan_async(ctx);
 }
+

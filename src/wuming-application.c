@@ -109,8 +109,8 @@ wuming_application_quit_action (GSimpleAction *action,
 }
 
 static const GActionEntry app_actions[] = {
-	{ "quit", wuming_application_quit_action },
-	{ "about", wuming_application_about_action },
+	{ .name = "quit", .activate = wuming_application_quit_action },
+	{ .name = "about", .activate = wuming_application_about_action },
 };
 
 static void

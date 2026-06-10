@@ -1,82 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="Adw" version="1.0"/>
+  <requires lib="Adw" version="1.4"/>
 
-  <template class="ScanPage" parent="GtkWidget">
-    <child>
+  <template class="ScanPage" parent="AdwBin">
+    <property name="child">
       <object class="AdwStatusPage" id="status_page">
         <property name="child">
-          <object class="AdwBreakpointBin">
-            <property name="width-request">300</property>
-            <property name="height-request">120</property>
+          <object class="AdwClamp" id="clamp">
+            <property name="maximum-size">450</property>
+            <property name="tightening-threshold">300</property>
             <property name="child">
-              <object class="AdwClamp" id="clamp">
-                <property name="maximum-size">450</property>
-                <property name="tightening-threshold">300</property>
-                <property name="child">
-                  <object class="GtkBox" id="box_main">
-                    <property name="valign">center</property>
-                    <property name="height-request">60</property>
-                    <property name="margin-bottom">60</property>
-                    <property name="orientation">horizontal</property>
-                    <property name="spacing">40</property>
-                    <property name="homogeneous">true</property>
+              <object class="GtkBox" id="box_main">
+                <property name="valign">center</property>
+                <property name="height-request">60</property>
+                <property name="margin-bottom">60</property>
+                <property name="orientation">horizontal</property>
+                <property name="spacing">40</property>
+                <property name="homogeneous">true</property>
 
-                    <child>
-                      <object class="GtkButton" id="scan_a_file_button">
-                        <property name="action-name">win.scan-file</property>
-                        <property name="child">
-                          <object class="AdwButtonContent">
-                            <property name="can-shrink">true</property>
-                            <property name="label" translatable="yes">Select a file</property>
-                            <property name="icon-name">scan-file-symbolic</property>
-                            <property name="use-underline">True</property>
-                          </object>
-                        </property>
-                        <style>
-                          <class name="pill"/>
-                          <class name="button-default"/>
-                        </style>
+                <child>
+                  <object class="GtkButton" id="scan_a_file_button">
+                    <property name="action-name">win.scan-file</property>
+                    <property name="child">
+                      <object class="AdwButtonContent">
+                        <property name="can-shrink">true</property>
+                        <property name="label" translatable="yes">Select a file</property>
+                        <property name="icon-name">scan-file-symbolic</property>
+                        <property name="use-underline">True</property>
                       </object>
-                    </child>
-
-                    <child>
-                      <object class="GtkButton" id="scan_a_folder_button">
-                        <property name="action-name">win.scan-folder</property>
-                        <property name="child">
-                          <object class="AdwButtonContent">
-                            <property name="can-shrink">true</property>
-                            <property name="label" translatable="yes">Select a folder</property>
-                            <property name="icon-name">scan-folder-symbolic</property>
-                            <property name="use-underline">True</property>
-                          </object>
-                        </property>
-                        <style>
-                          <class name="pill"/>
-                          <class name="button-default"/>
-                        </style>
-                      </object>
-                    </child>
+                    </property>
+                    <style>
+                      <class name="pill"/>
+                      <class name="suggested-action"/>
+                    </style>
                   </object>
-                </property>
+                </child>
+
+                <child>
+                  <object class="GtkButton" id="scan_a_folder_button">
+                    <property name="action-name">win.scan-folder</property>
+                    <property name="child">
+                      <object class="AdwButtonContent">
+                        <property name="can-shrink">true</property>
+                        <property name="label" translatable="yes">Select a folder</property>
+                        <property name="icon-name">scan-folder-symbolic</property>
+                        <property name="use-underline">True</property>
+                      </object>
+                    </property>
+                    <style>
+                      <class name="pill"/>
+                      <class name="suggested-action"/>
+                    </style>
+                  </object>
+                </child>
               </object>
             </property>
-
-            <child>
-              <object class="AdwBreakpoint">
-                <condition>max-width: 500px</condition>
-                <setter object="clamp" property="maximum-size">200</setter>
-                <setter object="clamp" property="tightening-threshold">100</setter>
-                <setter object="box_main" property="orientation">vertical</setter>
-                <setter object="box_main" property="margin-bottom">0</setter>
-                <setter object="box_main" property="spacing">10</setter>
-                <setter object="box_main" property="height-request">120</setter>
-              </object>
-            </child>
           </object>
         </property>
       </object>
-    </child>
+    </property>
   </template>
 </interface>

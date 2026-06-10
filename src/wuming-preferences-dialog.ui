@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="Adw" version="1.0"/>
+  <requires lib="Adw" version="1.5"/>
   <template class="WumingPreferencesDialog" parent="AdwPreferencesDialog">
     <property name="search_enabled">True</property>
     <child>
@@ -12,42 +12,36 @@
             <property name="description" translatable="yes">Customize Scan Options</property>
             <child>
               <object class="AdwSwitchRow" id="enable_large_file">
-                <property name="height-request">60</property>
                 <property name="title" translatable="yes">Scan Files Larger Than 20MB</property>
                 <property name="subtitle" translatable="yes">Set Max File Size To 2GB</property>
               </object>
             </child>
             <child>
               <object class="AdwSwitchRow" id="enable_pua">
-                <property name="height-request">60</property>
                 <property name="title" translatable="yes">Detect PUA</property>
                 <property name="subtitle" translatable="yes">Mark Potentially Unwanted Application</property>
               </object>
             </child>
             <child>
               <object class="AdwSwitchRow" id="scan_archives">
-                <property name="height-request">60</property>
                 <property name="title" translatable="yes">Scan Archives</property>
                 <property name="subtitle" translatable="yes">Scan Archive Files</property>
               </object>
             </child>
             <child>
               <object class="AdwSwitchRow" id="scan_mail">
-                <property name="height-request">60</property>
                 <property name="title" translatable="yes">Scan Mails</property>
                 <property name="subtitle" translatable="yes">Scan Mail Files</property>
               </object>
             </child>
             <child>
               <object class="AdwSwitchRow" id="alert_exceeds_max">
-                <property name="height-request">60</property>
                 <property name="title" translatable="yes">Alert Exceeds Max</property>
                 <property name="subtitle" translatable="yes">Alert On Files That Exceed The Limits</property>
               </object>
             </child>
             <child>
               <object class="AdwSwitchRow" id="alert_encrypted">
-                <property name="height-request">60</property>
                 <property name="title" translatable="yes">Alert Encrypted</property>
                 <property name="subtitle" translatable="yes">Alert On Encrypted Archives And Documents</property>
               </object>
@@ -60,7 +54,6 @@
             <property name="description" translatable="yes">Customize Signature Status</property>
             <child>
               <object class="AdwSpinRow">
-                <property name="height-request">60</property>
                 <property name="title" translatable="yes">Signature Validity Period</property>
                 <property name="subtitle" translatable="yes">Set The Expiration Time For The Signature (1-14 Days)</property>
                 <property name="adjustment">

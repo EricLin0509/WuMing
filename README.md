@@ -1,16 +1,21 @@
 # <img src="./data/icons/hicolor/scalable/apps/com.ericlin.wuming.svg" height="64"/> WuMing
 
-WuMing (aka. "无名") is a simple ClamAV GUI frontend.
+WuMing (aka. "无名") is a modern, lightweight GUI frontend for ClamAV, designed for Linux users who prioritize control and security.
 
-## Discription
+## Overview
 
-WuMing is a simple ClamAV GUI frontend written in C using GTK4/LibAdwaita. It is designed to be a lightweight, easy-to-use and on-demand malware scanner for Linux systems.
+WuMing leverages `clamdscan` to provide fast, efficient, daemon-based malware scanning. It features a clean, responsive user interface built with GTK4 and Libadwaita.
 
-### Features
+### Design Philosophy: Safety First
 
-- Update ClamAV signatures
-- Scan files and directories
-- Take action on infected files
+At the heart of WuMing is a commitment to user control and safety. **WuMing does NOT auto-quarantine files.** We believe that you should have full authority over your system's files. When threats are detected, WuMing presents you with a clear interface to review the findings and decide for yourself whether to delete or keep each file. This manual-control design empowers users and prevents accidental removal of important system files.
+
+## Features
+
+- **Fast Scanning:** Utilizes `clamdscan` for rapid, daemon-based performance.
+- **Modern UI:** Built using Libadwaita for a seamless integration with modern Linux desktops.
+- **User-Centric Security:** Manual control over file handling—no automatic quarantining or deletion.
+- **Comprehensive Management:** Update ClamAV signatures, scan specific files/directories, and manage threats with ease.
 
 ## Screenshots
 
@@ -28,23 +33,21 @@ WuMing is a simple ClamAV GUI frontend written in C using GTK4/LibAdwaita. It is
 
 ![Scan Page dark mode](imgs/scan-dark.png)
 
-![Update Page dark mode](imgs/update-dark.png)
+![Update Page dark mode](imgs/update-light.png)
 
 ## Roadmap
 
 - [x] Update ClamAV signatures
-- [x] scan files and directories
-- [x] take action on infected files
-- [x] add secuirty overview page
-- [x] add settings page
-- [x] allow user to customize scan options (e.g. allow 4GB files, scan archives, etc.)
+- [x] Scan files and directories
+- [x] Take action on infected files (manual control)
+- [x] Security overview page
+- [x] Settings page
+- [x] Scan options customization
 
 ## Installation
 
-### Arch Linux
+### Manual Installation
 
-Is available in the Arch User Repository (AUR). You can install it using your favorite AUR helper.
-
-```
-yay -S wuming
+```sh
+meson setup build --prefix=/usr && sudo ninja -C build install
 ```

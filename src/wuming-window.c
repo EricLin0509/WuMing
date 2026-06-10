@@ -309,7 +309,7 @@ wuming_window_on_drag_drop (GtkDropTarget* self, const GValue* value, gdouble x,
 
     if (file == NULL) return;
 
-    const char *path = g_file_get_path (file);
+    g_autofree char *path = g_file_get_path (file);
 
     if (path == NULL) return;
 
@@ -337,7 +337,7 @@ start_scan_file (GObject *source_object, GAsyncResult *res, gpointer data)
         return;
     }
 
-    const char *filepath = g_file_get_path (file);
+    g_autofree char *filepath = g_file_get_path (file);
 
     start_scan (context, filepath);
 
@@ -366,7 +366,7 @@ start_scan_folder (GObject *source_object, GAsyncResult *res, gpointer data)
         return;
     }
 
-    const char *folderpath = g_file_get_path (file);
+    g_autofree char *folderpath = g_file_get_path (file);
 
     start_scan (context, folderpath);
 
@@ -429,10 +429,10 @@ goto_scan_page_action (GSimpleAction *action,
 }
 
 static const GActionEntry window_actions[] = {
-  { "goto-scan-page", goto_scan_page_action },
-  { "scan-file", scan_file_action },
-  { "scan-folder", scan_folder_action },
-  { "update", update_signature_action }
+  { .name = "goto-scan-page", .activate = goto_scan_page_action },
+  { .name = "scan-file", .activate = scan_file_action },
+  { .name = "scan-folder", .activate = scan_folder_action },
+  { .name = "update", .activate = update_signature_action }
 };
 
 static void

@@ -27,37 +27,95 @@
 #define SIGNATURE_VALID 0x02 // Bit mask for signature valid
 
 struct _SecurityOverviewPage {
-    GtkWidget parent_instance;
+    AdwBin parent_instance;
 
     AdwStatusPage *status_page;
-    GtkButton *scan_overview_button;
-    GtkButton *signature_overview_button;
-    GtkButton *service_overview_button;
+    AdwClamp *clamp;
+    AdwActionRow *scan_overview_row;
+    GtkImage *scan_overview_icon;
+    AdwActionRow *signature_overview_row;
+    GtkImage *signature_overview_icon;
+    AdwActionRow *service_overview_row;
+    GtkImage *service_overview_icon;
 
     gushort health_level;
 };
 
-G_DEFINE_FINAL_TYPE (SecurityOverviewPage, security_overview_page, GTK_TYPE_WIDGET)
+enum {
+  PROP_0,
+  PROP_CLAMP_MAXIMUM_SIZE,
+  PROP_CLAMP_TIGHTENING_THRESHOLD,
+  N_PROPERTIES
+};
+
+static GParamSpec *properties [N_PROPERTIES];
+
+G_DEFINE_FINAL_TYPE (SecurityOverviewPage, security_overview_page, ADW_TYPE_BIN)
 
 static void
-security_overview_page_set_css_style (GtkWidget *widget, const char *style)
+security_overview_page_get_property (GObject    *object,
+                                     guint       prop_id,
+                                     GValue     *value,
+                                     GParamSpec *pspec)
 {
-    /* Remove the old style class and add the new one */
-    gtk_widget_remove_css_class(widget, "button-warning");
-    gtk_widget_remove_css_class(widget, "button-success");
-    gtk_widget_remove_css_class(widget, "button-error");
+  SecurityOverviewPage *self = SECURITY_OVERVIEW_PAGE (object);
 
-    gtk_widget_add_css_class(widget, style);
+  switch (prop_id)
+    {
+    case PROP_CLAMP_MAXIMUM_SIZE:
+      g_value_set_int (value, adw_clamp_get_maximum_size (self->clamp));
+      break;
+    case PROP_CLAMP_TIGHTENING_THRESHOLD:
+      g_value_set_int (value, adw_clamp_get_tightening_threshold (self->clamp));
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+security_overview_page_set_property (GObject      *object,
+                                     guint         prop_id,
+                                     const GValue *value,
+                                     GParamSpec   *pspec)
+{
+  SecurityOverviewPage *self = SECURITY_OVERVIEW_PAGE (object);
+
+  switch (prop_id)
+    {
+    case PROP_CLAMP_MAXIMUM_SIZE:
+      adw_clamp_set_maximum_size (self->clamp, g_value_get_int (value));
+      break;
+    case PROP_CLAMP_TIGHTENING_THRESHOLD:
+      adw_clamp_set_tightening_threshold (self->clamp, g_value_get_int (value));
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+security_overview_page_set_row_status (AdwActionRow *row, GtkImage *icon, const char *label, const char *icon_name, const char *style)
+{
+    adw_preferences_row_set_title (ADW_PREFERENCES_ROW (row), label);
+    gtk_image_set_from_icon_name (icon, icon_name);
+
+    gtk_widget_remove_css_class (GTK_WIDGET (icon), "success");
+    gtk_widget_remove_css_class (GTK_WIDGET (icon), "warning");
+    gtk_widget_remove_css_class (GTK_WIDGET (icon), "error");
+
+    if (style)
+        gtk_widget_add_css_class (GTK_WIDGET (icon), style);
 }
 
 /* Show the last scan time status on the security overview page. */
 /*
   * @param self
   * `SecurityOverviewPage` object.
-  * 
+  *
   * @param is_expired
   * Whether the last scan time is expired or not.
-  * 
+  *
   * @note
   * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
 */
@@ -68,29 +126,23 @@ security_overview_page_show_last_scan_time_status (SecurityOverviewPage *self, g
 
     self->health_level &= ~LAST_SCAN_TIME_VALID; // Reset the last scan time valid bit
 
-    GtkWidget *button_content = gtk_button_get_child (self->scan_overview_button);
-
     gchar *label = NULL;
     gchar *icon_name = NULL;
     gchar *style = NULL;
 
     label = is_expired ? gettext ("Scan Has Expired") : gettext ("Scan Has Not Expired");
     icon_name = is_expired ? "status-warning-symbolic" : "status-ok-symbolic";
-    style = is_expired ? "button-warning" : "button-success";
+    style = is_expired ? "warning" : "success";
     if (!is_expired) self->health_level |= LAST_SCAN_TIME_VALID;
 
-    adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);
-    adw_button_content_set_icon_name (ADW_BUTTON_CONTENT (button_content), icon_name);
-
-    /* Set the style of the button */
-    security_overview_page_set_css_style (GTK_WIDGET (self->scan_overview_button), style);
+    security_overview_page_set_row_status (self->scan_overview_row, self->scan_overview_icon, label, icon_name, style);
 }
 
 /* Show the signature status on the security overview page. */
 /*
   * @param self
   * `SecurityOverviewPage` object.
-  * 
+  *
   * @param result
   * `scan_result` object to get signature status.
 */
@@ -101,8 +153,6 @@ security_overview_page_show_signature_status (SecurityOverviewPage *self, const 
 
     self->health_level &= ~SIGNATURE_VALID; // Reset the signature valid bit
 
-    GtkWidget *button_content = gtk_button_get_child (self->signature_overview_button);
-
     gchar *label = NULL;
     gchar *icon_name = NULL;
     gchar *style = NULL;
@@ -112,38 +162,32 @@ security_overview_page_show_signature_status (SecurityOverviewPage *self, const 
         case 0: // Signature is oudated
             label = gettext ("Signature Is Outdated");
             icon_name = "status-warning-symbolic";
-            style = "button-warning";
+            style = "warning";
             break;
         case SIGNATURE_STATUS_NOT_FOUND: // No signature found
             label = gettext ("No Signature Found");
             icon_name = "status-error-symbolic";
-            style = "button-error";
+            style = "error";
             break;
         case SIGNATURE_STATUS_UPTODATE: // Signature is up-to-date
             label = gettext ("Signature Is Up To Date");
             icon_name = "status-ok-symbolic";
-            style = "button-success";
+            style = "success";
             self->health_level |= SIGNATURE_VALID;
             break;
         default: // Bit mask is invalid (because these two bit mask cannot be set at the same time)
             label = gettext ("Unknown Signature Status");
             icon_name = "status-error-symbolic";
-            style = "button-error";
+            style = "error";
             break;
     }
 
-    adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);
-    adw_button_content_set_icon_name (ADW_BUTTON_CONTENT (button_content), icon_name);
-
-    /* Set the style of the button */
-    security_overview_page_set_css_style (GTK_WIDGET (self->signature_overview_button), style);
+    security_overview_page_set_row_status (self->signature_overview_row, self->signature_overview_icon, label, icon_name, style);
 }
 
 void
 security_overview_page_show_servicestat (SecurityOverviewPage *self, int service_status)
 {
-    GtkWidget *button_content = gtk_button_get_child (self->service_overview_button);
-
     char *label = NULL;
     char *icon_name = NULL;
     char *style = NULL;
@@ -153,25 +197,21 @@ security_overview_page_show_servicestat (SecurityOverviewPage *self, int service
         case 1:
             label = gettext ("Freshclam Is Enabled");
             icon_name = "status-ok-symbolic";
-            style = "button-success";
+            style = "success";
             break;
         case 0:
             label = gettext ("Freshclam Is Disabled");
             icon_name = "status-warning-symbolic";
-            style = "button-warning";
+            style = "warning";
             break;
         default:
             label = gettext ("Freshclam Is Not Found");
             icon_name = "status-error-symbolic";
-            style = "button-error";
+            style = "error";
             break;
     }
 
-    adw_button_content_set_label (ADW_BUTTON_CONTENT (button_content), label);
-    adw_button_content_set_icon_name (ADW_BUTTON_CONTENT (button_content), icon_name);
-
-    /* Set the style of the button */
-    security_overview_page_set_css_style (GTK_WIDGET (self->service_overview_button), style);
+    security_overview_page_set_row_status (self->service_overview_row, self->service_overview_icon, label, icon_name, style);
 }
 
 /* Show the health level on the security overview page. */
@@ -238,8 +278,12 @@ security_overview_page_finalize (GObject *object)
 
     /* Reset all widgets */
     self->status_page = NULL;
-    self->scan_overview_button = NULL;
-    self->signature_overview_button = NULL;
+    self->scan_overview_row = NULL;
+    self->scan_overview_icon = NULL;
+    self->signature_overview_row = NULL;
+    self->signature_overview_icon = NULL;
+    self->service_overview_row = NULL;
+    self->service_overview_icon = NULL;
 
     self->health_level = 0;
 
@@ -250,20 +294,38 @@ static void
 security_overview_page_class_init (SecurityOverviewPageClass *klass)
 {
     GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
-    
+
     GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
     object_class->dispose = security_overview_page_dispose;
     object_class->finalize = security_overview_page_finalize;
+    object_class->get_property = security_overview_page_get_property;
+    object_class->set_property = security_overview_page_set_property;
+
+    properties [PROP_CLAMP_MAXIMUM_SIZE] =
+      g_param_spec_int ("clamp-maximum-size", NULL, NULL,
+                        0, G_MAXINT, 500,
+                        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+    properties [PROP_CLAMP_TIGHTENING_THRESHOLD] =
+      g_param_spec_int ("clamp-tightening-threshold", NULL, NULL,
+                        0, G_MAXINT, 300,
+                        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+    g_object_class_install_properties (object_class, N_PROPERTIES, properties);
 
     gtk_widget_class_set_layout_manager_type(widget_class, GTK_TYPE_BIN_LAYOUT);
 
     gtk_widget_class_set_template_from_resource (widget_class, "/com/ericlin/wuming/pages/security-overview-page.ui");
 
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, status_page);
-    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, scan_overview_button);
-    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, signature_overview_button);
-    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, service_overview_button);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, clamp);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, scan_overview_row);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, scan_overview_icon);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, signature_overview_row);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, signature_overview_icon);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, service_overview_row);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, service_overview_icon);
 }
 
 GtkWidget *

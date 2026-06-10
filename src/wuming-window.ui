@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <requires lib="Adw" version="1.0"/>
+  <requires lib="Adw" version="1.4"/>
 
   <template class="WumingWindow" parent="AdwApplicationWindow">
     <property name="title" translatable="yes">WuMing</property>
@@ -13,6 +13,20 @@
         <condition>max-width: 550px</condition>
         <setter object="switcher_bar" property="reveal">True</setter>
         <setter object="header_bar" property="title-widget"/>
+      </object>
+    </child>
+
+    <child>
+      <object class="AdwBreakpoint">
+        <condition>max-width: 500px</condition>
+        <setter object="security_overview_page" property="clamp-maximum-size">300</setter>
+        <setter object="security_overview_page" property="clamp-tightening-threshold">150</setter>
+        <setter object="scan_page" property="clamp-maximum-size">200</setter>
+        <setter object="scan_page" property="clamp-tightening-threshold">100</setter>
+        <setter object="scan_page" property="box-main-orientation">vertical</setter>
+        <setter object="scan_page" property="box-main-margin-bottom">0</setter>
+        <setter object="scan_page" property="box-main-spacing">10</setter>
+        <setter object="scan_page" property="box-main-height-request">120</setter>
       </object>
     </child>
 

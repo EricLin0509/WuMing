@@ -26,19 +26,19 @@ G_BEGIN_DECLS
 
 #define SCAN_TYPE_PAGE (scan_page_get_type())
 
-G_DECLARE_FINAL_TYPE (ScanPage, scan_page, SCAN, PAGE, GtkWidget)
+G_DECLARE_FINAL_TYPE (ScanPage, scan_page, SCAN, PAGE, AdwBin)
 
 /* Show whether the last scan time is expired or not */
 /*
   * @param self
   * `ScanPage` object
-  * 
+  *
   * @param timestamp
   * Timestamp string to set as last scan time
-  * 
+  *
   * @param is_expired
   * Whether the last scan time is expired or not.
-  * 
+  *
   * @note
   * If `GSettings` is not NULL, the `is_expired` parameter will be ignored.
 */
