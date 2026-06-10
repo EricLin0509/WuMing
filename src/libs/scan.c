@@ -237,7 +237,7 @@ scan_complete_callback(gpointer user_data)
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
-  bool has_threat = (ctx->total_threats > 0);
+  gboolean has_threat = (ctx->total_threats > 0);
 
   char *status_text = get_status_text(ctx);
 
