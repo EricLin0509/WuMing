@@ -190,7 +190,7 @@ scan_ui_callback(gpointer user_data)
   const char *message = get_idle_message(data); // Get the message from the ring buffer
   char *status_marker = NULL; // Check file is OK or FOUND
 
-  if ((status_marker = strstr(message, " FOUND\0")) != NULL)
+  if ((status_marker = strstr(message, " FOUND")) != NULL)
   {
     /* Add threat path to the list */
     char *colon = strrchr(message, ':'); // Find the last colon separator
@@ -217,7 +217,7 @@ scan_ui_callback(gpointer user_data)
 
     g_mutex_unlock(&ctx->threats_mutex);
   }
-  else if ((status_marker = strstr(message, " OK\0")) != NULL) inc_total_files(ctx);
+  else if ((status_marker = strstr(message, " OK")) != NULL) inc_total_files(ctx);
   else return G_SOURCE_REMOVE; // Ignore the message if it is not a threat or OK message
 
   g_autofree char *status_text = get_status_text(ctx);
@@ -237,7 +237,7 @@ scan_complete_callback(gpointer user_data)
   gboolean is_success = FALSE;
   get_completion_state(ctx, NULL, &is_success); // Get the completion state for thread-safe access
 
-  bool has_threat = (ctx->total_threats > 0);
+  gboolean has_threat = (ctx->total_threats > 0);
 
   char *status_text = get_status_text(ctx);
 
@@ -314,7 +314,7 @@ scan_sync_callback(gpointer user_data)
 
   if (get_cancel_scan(ctx)) // Check if the scan has been cancelled
   {
-      g_warning("[INFO] User cancelled the scan");
+      g_message("[INFO] User cancelled the scan");
       kill(ctx->pid, SIGTERM);
       wait_for_process(ctx->pid, 0); // Update the exit status
       send_final_message((void *)ctx, gettext("Scan Canceled"), FALSE, SIGTERM, scan_complete_callback);
@@ -372,7 +372,7 @@ start_scan_async(ScanContext *ctx)
 
     /* Spawn scan process */
     if (!spawn_new_process(ctx->pipefd, &ctx->pid,
-        CLAMDSCAN_PATH, "clamdscan", "-f", ctx->temp_file_path, "--recursive", NULL))
+        CLAMDSCAN_PATH, "clamdscan", "-f", ctx->temp_file_path, NULL))
     {
           g_critical("Failed to spawn clamdscan process");
           send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
