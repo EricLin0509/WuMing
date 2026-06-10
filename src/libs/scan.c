@@ -372,7 +372,7 @@ start_scan_async(ScanContext *ctx)
 
     /* Spawn scan process */
     if (!spawn_new_process(ctx->pipefd, &ctx->pid,
-        CLAMDSCAN_PATH, "clamdscan", "-f", ctx->temp_file_path, "--recursive", NULL))
+        CLAMDSCAN_PATH, "clamdscan", "-f", ctx->temp_file_path, NULL))
     {
           g_critical("Failed to spawn clamdscan process");
           send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
