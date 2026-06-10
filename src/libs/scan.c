@@ -314,7 +314,7 @@ scan_sync_callback(gpointer user_data)
 
   if (get_cancel_scan(ctx)) // Check if the scan has been cancelled
   {
-      g_warning("[INFO] User cancelled the scan");
+      g_message("[INFO] User cancelled the scan");
       kill(ctx->pid, SIGTERM);
       wait_for_process(ctx->pid, 0); // Update the exit status
       send_final_message((void *)ctx, gettext("Scan Canceled"), FALSE, SIGTERM, scan_complete_callback);
