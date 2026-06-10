@@ -108,7 +108,7 @@ wuming_preferences_dialog_get_settings (WumingPreferencesDialog *self)
 /* GObject essential functions */
 
 static const GActionEntry preferences_actions[] = {
-    { "preferences", show_dialog }
+    { .name = "preferences", .activate = show_dialog }
 };
 
 static void

@@ -429,10 +429,10 @@ goto_scan_page_action (GSimpleAction *action,
 }
 
 static const GActionEntry window_actions[] = {
-  { "goto-scan-page", goto_scan_page_action },
-  { "scan-file", scan_file_action },
-  { "scan-folder", scan_folder_action },
-  { "update", update_signature_action }
+  { .name = "goto-scan-page", .activate = goto_scan_page_action },
+  { .name = "scan-file", .activate = scan_file_action },
+  { .name = "scan-folder", .activate = scan_folder_action },
+  { .name = "update", .activate = update_signature_action }
 };
 
 static void
