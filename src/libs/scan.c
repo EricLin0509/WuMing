@@ -41,6 +41,7 @@
 #include "../threat-page.h"
 
 #define CLAMDSCAN_PATH "/usr/bin/clamdscan"
+#define CLAMSCAN_PATH_FALLBACK "/usr/bin/clamscan"
 
 typedef struct ScanContext {
   /* Protected by mutex */
@@ -343,40 +344,51 @@ scan_sync_callback(gpointer user_data)
 static void
 start_scan_async(ScanContext *ctx)
 {
-    /* Check if clamav-daemon.service is active */
-    if (is_service_active("clamav-daemon.service") != 1)
+    if (is_service_enabled("clamav-daemon.service") == 1)
     {
-        wuming_window_send_toast_notification(ctx->window, gettext("ClamAV daemon is not running. Scan may fail."), 10);
-    }
+        /* Use clamdscan */
+        /* Create temporary file for file list */
+        char *temp_template = g_strdup("/tmp/wuming_scan_XXXXXX");
+        int fd = mkstemp(temp_template);
+        if (fd == -1) {
+            g_critical("Failed to create temporary file");
+            send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+            g_free(temp_template);
+            return;
+        }
+        ctx->temp_file_path = temp_template;
+        temp_file_fp = fdopen(fd, "w");
+        if (temp_file_fp) {
+            nftw(ctx->path, collect_file_path, 20, FTW_PHYS);
+            fclose(temp_file_fp);
+        } else {
+            g_critical("Failed to open temporary file for writing");
+            close(fd);
+            send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+            return;
+        }
 
-    /* Create temporary file for file list */
-    char *temp_template = g_strdup("/tmp/wuming_scan_XXXXXX");
-    int fd = mkstemp(temp_template);
-    if (fd == -1) {
-        g_critical("Failed to create temporary file");
-        send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-        g_free(temp_template);
-        return;
+        /* Spawn scan process */
+        if (!spawn_new_process(ctx->pipefd, &ctx->pid,
+            CLAMDSCAN_PATH, "clamdscan", "-f", ctx->temp_file_path, NULL))
+        {
+              g_critical("Failed to spawn clamdscan process");
+              send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+              return;
+        }
     }
-    ctx->temp_file_path = temp_template;
-    temp_file_fp = fdopen(fd, "w");
-    if (temp_file_fp) {
-        nftw(ctx->path, collect_file_path, 20, FTW_PHYS);
-        fclose(temp_file_fp);
-    } else {
-        g_critical("Failed to open temporary file for writing");
-        close(fd);
-        send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-        return;
-    }
-
-    /* Spawn scan process */
-    if (!spawn_new_process(ctx->pipefd, &ctx->pid,
-        CLAMDSCAN_PATH, "clamdscan", "-f", ctx->temp_file_path, NULL))
+    else
     {
-          g_critical("Failed to spawn clamdscan process");
-          send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-          return;
+        /* Use clamscan fallback */
+        wuming_window_send_toast_notification(ctx->window, gettext("ClamAV daemon is not running. Using clamscan fallback (slower)."), 10);
+        
+        if (!spawn_new_process(ctx->pipefd, &ctx->pid,
+            CLAMSCAN_PATH_FALLBACK, "clamscan", ctx->path, NULL))
+        {
+              g_critical("Failed to spawn clamscan process");
+              send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+              return;
+        }
     }
 
     ring_buffer_init(&ctx->ring_buffer);
