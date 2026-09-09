@@ -389,8 +389,17 @@ clamdscan_thread_func(gpointer user_data)
   ScanContext *ctx = data->ctx;
 
   /* Collect all file paths into the temp file */
-  scan_temp_file_fp = fopen(data->temp_file_path, "w");
-  if (scan_temp_file_fp) {
+  int temp_fd = open(data->temp_file_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+  if (temp_fd >= 0) {
+      scan_temp_file_fp = fdopen(temp_fd, "w");
+      if (!scan_temp_file_fp) {
+          close(temp_fd);
+          g_critical("Failed to open temporary file stream for writing");
+          send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
+          g_free(data->temp_file_path);
+          g_free(data);
+          return NULL;
+      }
       nftw(ctx->path, collect_file_path, 20, FTW_PHYS);
       fclose(scan_temp_file_fp);
       scan_temp_file_fp = NULL;
