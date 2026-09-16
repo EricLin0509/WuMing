@@ -19,8 +19,12 @@
 
 #include <glib.h>
 #include <dbus/dbus.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "systemd-control.h"
+
+#define CLAMD_CONF_PATH "/etc/clamav/clamd.conf"
 
 /* Query a single systemd unit's active state via D-Bus.
  * Returns 1 if the unit is in "active" state, 0 otherwise, -1 on error. */
@@ -138,4 +142,32 @@ cleanup:
     if (conn) dbus_connection_unref(conn);
     dbus_error_free(&err);
     return ret;
+}
+
+/* Check if clamd.conf has a non-default Threads setting.
+ * Returns >0 if Threads is configured and >1, 1 if Threads is 1 or unset, -1 on error. */
+int
+check_clamd_threads_config(void)
+{
+    FILE *f = fopen(CLAMD_CONF_PATH, "r");
+    if (!f) return -1;
+
+    char line[256];
+    while (fgets(line, sizeof(line), f))
+    {
+        /* Skip comments and empty lines */
+        char *p = line;
+        while (*p == ' ' || *p == '\t') p++;
+        if (*p == '#' || *p == '\0' || *p == '\n') continue;
+
+        int threads = 0;
+        if (sscanf(p, "Threads %d", &threads) == 1)
+        {
+            fclose(f);
+            return threads;
+        }
+    }
+
+    fclose(f);
+    return 1; /* Threads not found — clamd defaults to 1 */
 }

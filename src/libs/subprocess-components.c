@@ -286,6 +286,56 @@ error_clean_up:
     return FALSE;
 }
 
+/* Spawn a new process with a pre-built argv array and pipes for stdout/stderr */
+// argv must be NULL-terminated and argv[0] should be the command name
+gboolean
+spawn_process(int pipefd[2], pid_t *pid, const char *path, char *const *argv)
+{
+    if (access(path, X_OK) == -1)
+    {
+        g_critical("[ERROR] Cannot execute %s: %s", path, strerror(errno));
+        return FALSE;
+    }
+
+    if (pipe(pipefd) == -1)
+    {
+        g_critical("[ERROR] Failed to create pipe: %s", strerror(errno));
+        return FALSE;
+    }
+
+    int curr_flags = fcntl(pipefd[0], F_GETFL, 0);
+    if (curr_flags == -1 || fcntl(pipefd[0], F_SETFL, curr_flags | O_NONBLOCK) == -1)
+    {
+        g_critical("[ERROR] Failed to set pipe read end to non-blocking mode: %s", strerror(errno));
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return FALSE;
+    }
+
+    if ((*pid = fork()) == -1)
+    {
+        g_critical("[ERROR] Failed to fork: %s", strerror(errno));
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return FALSE;
+    }
+
+    if (*pid == 0)
+    {
+        prctl(PR_SET_PDEATHSIG, SIGTERM);
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        dup2(pipefd[1], STDERR_FILENO);
+
+        execv(path, (char **)argv);
+        g_critical("[ERROR] Failed to exec %s: %s", path, strerror(errno));
+        _exit(EXIT_FAILURE);
+    }
+
+    close(pipefd[1]);
+    return TRUE;
+}
+
 /* Spawn a new process but with no pipes */
 // No pipes means you can pass `FIFO` or `Unix Socket` as input/output
 // But this function won't provide any parameters to pass `FIFO` or `Unix Socket` , you need to pass directly in the command line

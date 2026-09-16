@@ -19,7 +19,6 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#define _XOPEN_SOURCE 500
 #include <glib/gi18n.h>
 #include <gio/gio.h>
 #include <limits.h>
@@ -27,7 +26,6 @@
 #include <stdbool.h>
 #include <signal.h>
 #include <sys/wait.h>
-#include <ftw.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -70,20 +68,8 @@ typedef struct ScanContext {
   ScanPage *scan_page; // The scan page
   ScanningPage *scanning_page; // The scanning page
   char *path; // file/folder path
-  char *temp_file_path; // path to the temporary file for file list
 
 } ScanContext;
-
-static FILE *scan_temp_file_fp;
-
-static int
-collect_file_path(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
-{
-  if (tflag == FTW_F) {
-    fprintf(scan_temp_file_fp, "%s\n", fpath);
-  }
-  return 0;
-}
 
 /* thread-safe method to get/set states */
 static void
@@ -249,12 +235,6 @@ scan_complete_callback(gpointer user_data)
 
   scanning_page_set_final_result(ctx->scanning_page, has_threat, message, status_text, icon_name);
 
-  if (ctx->temp_file_path) {
-      unlink(ctx->temp_file_path);
-      g_free(ctx->temp_file_path);
-      ctx->temp_file_path = NULL;
-  }
-
   if (!is_success)
   {
     int exit_status = get_idle_exit_status(data);
@@ -308,6 +288,34 @@ extra_args_free(char *extra_args[SCAN_OPTIONS_N_ELEMENTS])
   {
     g_clear_pointer(&extra_args[i], g_free);
   }
+}
+
+/* Build a NULL-terminated argv array: [command, base_args..., extra_args..., extra_arg, NULL].
+ * The caller must free the returned array with g_ptr_array_free(result, TRUE). */
+static GPtrArray *
+build_scan_argv(const char *command, const char *base_args[],
+                char *extra_args[SCAN_OPTIONS_N_ELEMENTS], const char *extra_arg)
+{
+  GPtrArray *argv = g_ptr_array_new();
+  g_ptr_array_add(argv, (gpointer)command);
+
+  if (base_args)
+  {
+    for (int i = 0; base_args[i] != NULL; i++)
+      g_ptr_array_add(argv, (gpointer)base_args[i]);
+  }
+
+  for (int i = 0; i < SCAN_OPTIONS_N_ELEMENTS; i++)
+  {
+    if (extra_args[i] != NULL)
+      g_ptr_array_add(argv, extra_args[i]);
+  }
+
+  if (extra_arg)
+    g_ptr_array_add(argv, (gpointer)extra_arg);
+
+  g_ptr_array_add(argv, NULL);
+  return argv;
 }
 
 static gboolean
@@ -378,63 +386,43 @@ ensure_clamd_tmp_dir(void)
 /* Data passed to the background scan thread */
 typedef struct {
   ScanContext *ctx;
-  char *temp_file_path;
 } ScanThreadData;
 
-/* Background thread: collect file paths via nftw, then spawn clamdscan */
+/* Background thread: spawn clamdscan */
 static gpointer
 clamdscan_thread_func(gpointer user_data)
 {
   ScanThreadData *data = user_data;
   ScanContext *ctx = data->ctx;
 
-  /* Collect all file paths into the temp file */
-  int temp_fd = open(data->temp_file_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-  if (temp_fd >= 0) {
-      scan_temp_file_fp = fdopen(temp_fd, "w");
-      if (!scan_temp_file_fp) {
-          close(temp_fd);
-          g_critical("Failed to open temporary file stream for writing");
-          send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-          g_free(data->temp_file_path);
-          g_free(data);
-          return NULL;
-      }
-      nftw(ctx->path, collect_file_path, 20, FTW_PHYS);
-      fclose(scan_temp_file_fp);
-      scan_temp_file_fp = NULL;
-  } else {
-      g_critical("Failed to open temporary file for writing");
-      send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-      g_free(data->temp_file_path);
-      g_free(data);
-      return NULL;
-  }
-
-  /* Spawn clamdscan with the file list */
   g_autofree char *clamdscan_path = find_program(CLAMDSCAN_PATH, "clamdscan");
   if (!clamdscan_path)
   {
       g_critical("clamdscan not found");
       send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-      g_free(data->temp_file_path);
       g_free(data);
       return NULL;
   }
-  if (!spawn_new_process(ctx->pipefd, &ctx->pid,
-      clamdscan_path, "clamdscan", "--fdpass", "-m", "-f", data->temp_file_path, NULL))
+
+  char *extra_args[SCAN_OPTIONS_N_ELEMENTS] = {0};
+  get_extra_args(extra_args);
+
+  const char *base_args[] = {"--fdpass", "-m", NULL};
+  g_autoptr(GPtrArray) argv = build_scan_argv("clamdscan", base_args, extra_args, ctx->path);
+
+  if (!spawn_process(ctx->pipefd, &ctx->pid, clamdscan_path, (char *const *)argv->pdata))
   {
       g_critical("Failed to spawn clamdscan process");
+      extra_args_free(extra_args);
       send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-      g_free(data->temp_file_path);
       g_free(data);
       return NULL;
   }
+
+  extra_args_free(extra_args);
 
   ring_buffer_init(&ctx->ring_buffer);
 
-  /* Set up repeating async I/O monitoring on the main context.
-   * Use a GSource timer — safe to create and attach from any thread. */
   GSource *source = g_timeout_source_new(BASE_TIMEOUT_MS);
   g_source_set_callback(source, (GSourceFunc) scan_sync_callback, ctx, NULL);
   g_source_attach(source, g_main_context_default());
@@ -451,27 +439,15 @@ start_scan_async(ScanContext *ctx)
 
     if (is_service_enabled("clamav-daemon.service") == 1)
     {
-        /* Use clamdscan — collect files in background thread to avoid blocking UI */
-        char *temp_template = g_strdup("/tmp/wuming_scan_XXXXXX");
-        int fd = mkstemp(temp_template);
-        if (fd == -1) {
-            g_critical("Failed to create temporary file");
-            send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
-            g_free(temp_template);
-            return;
-        }
-        close(fd); /* Thread will open the file itself */
-        ctx->temp_file_path = temp_template;
-
+        /* Use clamdscan — clamdscan recurses directories on its own */
         ScanThreadData *data = g_new0(ScanThreadData, 1);
         data->ctx = ctx;
-        data->temp_file_path = g_strdup(temp_template);
 
-        g_thread_new("clamdscan-collector", clamdscan_thread_func, data);
+        g_thread_new("clamdscan-worker", clamdscan_thread_func, data);
     }
     else
     {
-        /* Use clamscan fallback */
+        /* Use clamscan fallback — clamscan recurses directories on its own */
         wuming_window_send_toast_notification(ctx->window, gettext("ClamAV daemon is not running. Using clamscan fallback (slower)."), 10);
 
         g_autofree char *clamscan_path = find_program(CLAMSCAN_PATH_FALLBACK, "clamscan");
@@ -481,13 +457,20 @@ start_scan_async(ScanContext *ctx)
               send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
               return;
         }
-        if (!spawn_new_process(ctx->pipefd, &ctx->pid,
-            clamscan_path, "clamscan", ctx->path, NULL))
+
+        char *extra_args[SCAN_OPTIONS_N_ELEMENTS] = {0};
+        get_extra_args(extra_args);
+        g_autoptr(GPtrArray) argv = build_scan_argv("clamscan", NULL, extra_args, ctx->path);
+
+        if (!spawn_process(ctx->pipefd, &ctx->pid, clamscan_path, (char *const *)argv->pdata))
         {
               g_critical("Failed to spawn clamscan process");
+              extra_args_free(extra_args);
               send_final_message((void *)ctx, gettext("Scan Failed"), FALSE, -1, scan_complete_callback);
               return;
         }
+
+        extra_args_free(extra_args);
 
         ring_buffer_init(&ctx->ring_buffer);
 
@@ -534,14 +517,6 @@ scan_context_clear(ScanContext **ctx)
   g_mutex_clear(&(*ctx)->threats_mutex);
 
   if ((*ctx)->path) scan_context_clear_path(*ctx); // Clear the path if have one
-  if ((*ctx)->temp_file_path) {
-      if (scan_temp_file_fp) {
-          fclose(scan_temp_file_fp);
-          scan_temp_file_fp = NULL;
-      }
-      unlink((*ctx)->temp_file_path);
-      g_free((*ctx)->temp_file_path);
-  }
 
   g_clear_pointer(ctx, g_free);
 }
@@ -599,7 +574,6 @@ scan_context_new(WumingWindow *window, SecurityOverviewPage *security_overview_p
   ctx->scanning_page = scanning_page;
   ctx->threat_page = threat_page;
   ctx->path = NULL;
-  ctx->temp_file_path = NULL;
 
   ctx->should_cancel = FALSE;
 

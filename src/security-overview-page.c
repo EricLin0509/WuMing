@@ -38,6 +38,8 @@ struct _SecurityOverviewPage {
     GtkImage *signature_overview_icon;
     AdwActionRow *service_overview_row;
     GtkImage *service_overview_icon;
+    AdwActionRow *threads_overview_row;
+    GtkImage *threads_overview_icon;
 
     gushort health_level;
 };
@@ -215,6 +217,43 @@ security_overview_page_show_servicestat (SecurityOverviewPage *self, int service
     security_overview_page_set_row_status (self->service_overview_row, self->service_overview_icon, label, icon_name, style);
 }
 
+void
+security_overview_page_show_threads_status (SecurityOverviewPage *self, int threads_count)
+{
+    g_return_if_fail (self != NULL);
+
+    char *label = NULL;
+    char *subtitle = NULL;
+    char *icon_name = NULL;
+    char *style = NULL;
+
+    if (threads_count > 1)
+    {
+        label = gettext ("Multithreading Enabled");
+        subtitle = g_strdup_printf (gettext ("Threads: %d"), threads_count);
+        icon_name = "status-ok-symbolic";
+        style = "success";
+    }
+    else if (threads_count == 1)
+    {
+        label = gettext ("Multithreading Disabled");
+        subtitle = gettext ("Set Threads > 1 in /etc/clamav/clamd.conf for faster scans");
+        icon_name = "status-warning-symbolic";
+        style = "warning";
+    }
+    else
+    {
+        label = gettext ("Cannot Read clamd Configuration");
+        subtitle = gettext ("Check /etc/clamav/clamd.conf exists and is readable");
+        icon_name = "status-error-symbolic";
+        style = "error";
+    }
+
+    security_overview_page_set_row_status (self->threads_overview_row, self->threads_overview_icon, label, icon_name, style);
+    adw_action_row_set_subtitle (self->threads_overview_row, subtitle);
+    g_free (subtitle);
+}
+
 /* Show the health level on the security overview page. */
 void
 security_overview_page_show_health_level (SecurityOverviewPage *self)
@@ -285,6 +324,8 @@ security_overview_page_finalize (GObject *object)
     self->signature_overview_icon = NULL;
     self->service_overview_row = NULL;
     self->service_overview_icon = NULL;
+    self->threads_overview_row = NULL;
+    self->threads_overview_icon = NULL;
 
     self->health_level = 0;
 
@@ -327,6 +368,8 @@ security_overview_page_class_init (SecurityOverviewPageClass *klass)
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, signature_overview_icon);
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, service_overview_row);
     gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, service_overview_icon);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, threads_overview_row);
+    gtk_widget_class_bind_template_child (widget_class, SecurityOverviewPage, threads_overview_icon);
 }
 
 GtkWidget *

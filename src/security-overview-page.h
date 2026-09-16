@@ -60,6 +60,10 @@ security_overview_page_show_signature_status (SecurityOverviewPage *self, const 
 void
 security_overview_page_show_servicestat (SecurityOverviewPage *self, int service_status);
 
+/* Show clamd multithreading configuration status */
+void
+security_overview_page_show_threads_status (SecurityOverviewPage *self, int threads_count);
+
 /* Show the health level on the security overview page. */
 void
 security_overview_page_show_health_level (SecurityOverviewPage *self);

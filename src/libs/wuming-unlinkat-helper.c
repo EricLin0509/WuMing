@@ -31,7 +31,7 @@
 #include "file-security.h"
 
 /* Prevent handle `SIGTRAP` (breakpoint) and `SIGILL` (illegal instruction) signal when the program is running */
-void
+G_GNUC_NORETURN void
 breakpoint_handler(int signal)
 {
     g_critical("[ERROR] Breakpoint detected, aborting...");
