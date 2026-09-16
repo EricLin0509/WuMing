@@ -174,7 +174,9 @@ wuming_window_get_component(WumingWindow *self, const char *component_name)
     {
         if (g_strcmp0(components[i].name, component_name) == 0)
         {
-            return *(void **)((char *)self + components[i].offset);
+            gpointer ptr;
+            memcpy(&ptr, (char *)self + components[i].offset, sizeof(ptr));
+            return ptr;
         }
     }
     g_critical("Component '%s' not found in WumingWindow", component_name);
@@ -580,6 +582,10 @@ wuming_window_init_settings (WumingWindow *self, GSettings *settings)
     /* Show systemd service status */
     security_overview_page_show_servicestat (self->security_overview_page, service_status);
     update_signature_page_show_servicestat (self->update_signature_page, service_status);
+
+    /* Check clamd multithreading configuration */
+    int threads_count = check_clamd_threads_config ();
+    security_overview_page_show_threads_status (self->security_overview_page, threads_count);
 
     /* Update the `SecurityOverviewPage` */
     security_overview_page_show_health_level (self->security_overview_page);

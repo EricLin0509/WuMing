@@ -50,6 +50,18 @@
                     </child>
                   </object>
                 </child>
+                <child>
+                  <object class="AdwActionRow" id="threads_overview_row">
+                    <property name="title" translatable="yes">ClamAV Multithreading</property>
+                    <property name="subtitle" translatable="yes">Set Threads in /etc/clamav/clamd.conf for faster scans</property>
+                    <property name="activatable">False</property>
+                    <child type="prefix">
+                      <object class="GtkImage" id="threads_overview_icon">
+                        <property name="icon-name">status-warning-symbolic</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
               </object>
             </property>
           </object>

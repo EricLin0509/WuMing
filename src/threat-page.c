@@ -120,6 +120,7 @@ delete_error_operation(GtkWidget *expander_row, FileSecurityStatus status)
         case FILE_SECURITY_OK:
         case FILE_SECURITY_OPERATION_SKIPPED:
             break;
+        case FILE_SECURITY_INVALID_CONTEXT:
         case FILE_SECURITY_DIR_MODIFIED:
             adw_preferences_row_set_title(ADW_PREFERENCES_ROW(expander_row), gettext("Directory modified, try removing it manually!"));
             break;
@@ -158,8 +159,18 @@ threat_page_remove_threat (ThreatPage *self, GtkWidget *row, FileSecurityStatus 
             break;
         case FILE_SECURITY_OPERATION_SKIPPED:
             return; // Skip the delete operation, do nothing
-        default: // Delete failed, show the error message
+        case FILE_SECURITY_DIR_MODIFIED:
+        case FILE_SECURITY_FILE_MODIFIED:
+        case FILE_SECURITY_DIR_NOT_FOUND:
+        case FILE_SECURITY_FILE_NOT_FOUND:
+        case FILE_SECURITY_INVALID_PATH:
+        case FILE_SECURITY_INVALID_CONTEXT:
+        case FILE_SECURITY_PERMISSION_DENIED:
+        case FILE_SECURITY_OPERATION_FAILED:
             delete_error_operation(row, status);
+            return;
+        default:
+            g_assert_not_reached();
             return;
     }
 

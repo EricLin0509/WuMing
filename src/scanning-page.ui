@@ -21,19 +21,25 @@
         </child>
         <property name="content">
           <object class="AdwStatusPage" id="status_page">
+            <style>
+              <class name="scanning-status"/>
+            </style>
             <child>
-              <object class="GtkBox">
+              <object class="GtkBox" id="action_box">
                 <property name="valign">center</property>
                 <property name="halign">center</property>
                 <property name="homogeneous">true</property>
-                <property name="spacing">10</property>
+                <property name="spacing">12</property>
                 <property name="orientation">vertical</property>
+                <style>
+                  <class name="scan-action-box"/>
+                </style>
                 <child>
                   <object class="GtkButton" id="threat_button">
-                    <property name="width-request">100</property>
-                    <property name="height-request">40</property>
+                    <property name="width-request">140</property>
+                    <property name="height-request">44</property>
                     <property name="visible">false</property>
-                    <property name="label" translatable="yes">Show threats</property>
+                    <property name="label" translatable="yes">Show Threats</property>
                     <property name="action-name">navigation.push</property>
                     <property name="action-target">'threat_nav_page'</property>
                     <style>
@@ -44,13 +50,14 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="close_button">
-                    <property name="width-request">100</property>
-                    <property name="height-request">40</property>
+                    <property name="width-request">140</property>
+                    <property name="height-request">44</property>
                     <property name="visible">false</property>
                     <property name="label" translatable="yes">Close</property>
                     <property name="action-name">navigation.pop</property>
                     <style>
                       <class name="pill"/>
+                      <class name="suggested-action"/>
                     </style>
                   </object>
                 </child>

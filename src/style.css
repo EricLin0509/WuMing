@@ -7,3 +7,29 @@
   margin-left: 10px;
   margin-right: 10px;
 }
+
+/* Scanning page status */
+.scanning-status {
+  margin-bottom: 24px;
+}
+
+.scanning-status .title {
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+.scanning-status .description {
+  font-size: 1.1em;
+  opacity: 0.8;
+  margin-top: 8px;
+}
+
+/* Action buttons on scanning/threat pages */
+.scan-action-box {
+  margin-top: 16px;
+}
+
+.scan-action-box button {
+  min-width: 120px;
+  padding: 8px 24px;
+}

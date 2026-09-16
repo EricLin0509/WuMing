@@ -21,3 +21,8 @@
 
 int
 is_service_enabled(const char *service_name);
+
+/* Check if clamd.conf has a non-default Threads setting.
+ * Returns >1 if Threads is configured and >1, 1 if Threads is 1 or unset, -1 on error. */
+int
+check_clamd_threads_config(void);

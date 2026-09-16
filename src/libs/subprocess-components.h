@@ -69,6 +69,11 @@ void
 send_final_message(gpointer context, const char *message, gboolean is_success, int exit_status,
                     GSourceFunc callback_function);
 
+/* Spawn a new process with a pre-built argv array and pipes for stdout/stderr */
+// argv must be NULL-terminated and argv[0] should be the command name
+gboolean
+spawn_process(int pipefd[2], pid_t *pid, const char *path, char *const *argv);
+
 /* Spawn a new process */
 // path & command: use for `execv()`
 // This function MUST end with a NULL argument to indicate the end of the arguments list
